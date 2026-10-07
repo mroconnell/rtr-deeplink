@@ -192,7 +192,8 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (63)
   Granicus's video-only RSS listing needs a `view_id` nobody discovers…
   Legistar answers 410 Gone to a meeting link without its `GUID`, and…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (30)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (31)
+  [HUMAN] Ryan decides which Granicus feeds from his two lead…
   [HUMAN] [LOGIN] WO-1055's live page moves and twin deletes wait for a…
   [HUMAN] WO-1165: 17 CivicMedia pages need a title refresh, a hand…
   [HUMAN] WO-1162 left 421 CivicMedia channels unpinned: 191 "likely"…
@@ -564,7 +565,8 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (38)
   YouTube channels the access ladder found for 5,000+ governments are…
   37 of the 212 dead government addresses over 5,000 people were not…
 
-Dormant — needs a real example first `[LATER]`
+Dormant — needs a real example first `[LATER]`  (1)
+  Granicus `TranscriptViewer.php` as a transcript fallback: wait for a…
 
 Parked deliberately — allowed back `[PARK]`  (3)
   Video-to-calendar join: match a government's video source to its own…  (3)
@@ -2121,8 +2123,8 @@ WO-932 and WO-913.
 - **Issue**: `granicus.py`'s `list_recent_video_meetings()` (the `mode=video` RSS listing that only surfaces meetings with a real clip attached, confirmed live on Prince William County, VA) requires the URL it's given to already carry `view_id` — it returns `[]` outright without one. `detect_platform()` recognizes a bare tenant host like `cityoftacoma.granicus.com` as Granicus from the host alone, with no `view_id`, so every listing path comes back empty on a real Granicus tenant that has real, current video (confirmed live on Tacoma, WA, WO-1030's own smoke test) purely because nothing discovered which `view_id` this tenant's listing lives under. `scripts/wo134_confirmed_hits_ingest.py`'s `granicus_locate_listing()` already solves this exact problem (RSS-first, tries `view_id=1..5`, cites WO-169's cheap-RSS-before-expensive-HTML-table ordering) but opens its own `aiohttp.ClientSession` rather than Meeting Finder's `Fetcher`, so it was never reused into the listing path (see `app/platforms/meeting_finder/listing.py`'s own comment on this, WO-1030 conductor review).
 - **Impact**: any Granicus tenant pasted as a bare hub, or found as a bare hub by a sweep, silently returns no meeting even when a real, current one exists — this is the repo's single biggest tenant pool by count (~240 real Granicus tenants), so a `view_id` miss here likely accounts for a real share of "no video" Granicus rows.
 - **Next action**: port `granicus_locate_listing()`'s `view_id` discovery to use Meeting Finder's `Fetcher` instead of its own session, wire it as a `view_id`-discovery step ahead of `list_recent_video_meetings()` in both the Meeting Finder listing path and (once the CivicPlus-style script-to-adapter move above lands) `granicus.py`'s own `resolve()`, so a bare Granicus hub works the same way pasted into the site as it does swept.
-- **Constraint**: keep the `view_id=1..5` probe cheap and bounded (RSS fetches, not full HTML tables) — the existing script already made this tradeoff deliberately, don't regress it chasing a higher `view_id` ceiling.
-- **History**: `app/platforms/meeting_finder/listing.py`'s WO-1030 conductor-review comment (2026-09-23); re-confirmed live 2026-09-26 that `list_recent_video_meetings()` still requires `view_id` and no caller discovers one.
+- **Constraint**: `view_id=1..5` is not enough, and there is no shortcut range. Measured 2026-10-07 on the 274 `no-rss-found` tenants (views 1-7 and 44-50, 3,836 direct requests): 25 tenants have a feed with items, 11 of them only at views 44-50. Alexandria VA's feeds sit at views 29 and 57, in the untested gap (views 8-43 and 51+ were never probed). `view_id=0`, `all`, `-1`, `*` answer Page not found, and `ViewPublisher.php` or `ViewPublisherRSS.php` with no `view_id` answers PermissionDenied: the host gates it on purpose, do not try to get past it. Keep the probe to bounded numeric ids with a hard delay between requests and no redirects followed.
+- **History**: `app/platforms/meeting_finder/listing.py`'s WO-1030 conductor-review comment (2026-09-23); re-confirmed live 2026-09-26 that `list_recent_video_meetings()` still requires `view_id` and no caller discovers one. The 2026-10-07 id-range measurement and its per-tenant results are in `~/Documents/rtr-findmeeting/data/granicus_norss_rss_check_2026-10-07/` (not in this repo); findmeeting's PR 73 records subscribed feeds.
 
 ### Legistar answers 410 Gone to a meeting link without its `GUID`, and `legistar.py` shows the reader a raw error `[JUST-DO-IT]` `[EASY]`
 
@@ -2136,6 +2138,12 @@ WO-932 and WO-913.
 Nothing here is blocked on engineering. Most are one dashboard login or
 one deliberate production action away from closing. Grouped by what kind
 of human step they need.
+
+- **[HUMAN] Ryan decides which Granicus feeds from his two lead spreadsheets are subscribed, once each host's owner is confirmed (2026-10-07).**
+  - **Issue**: Ryan's two `granicus-meeting-links` sheets (73 rows each, view ids found by hand) gave 63 feed addresses never seen in our local records. A direct check (own 3 s pacing, `~/Documents/rtr-findmeeting/data/granicus_norss_rss_check_2026-10-07/results/leads_direct/results.csv`) found 35 feeds with real items on 26 hosts, 10 parsed but empty, and `oregon.granicus.com` gated on every view.
+  - **Impact**: possible new governments, mostly special districts and authorities; "never seen in our records" is not "no Archive page", since the Archive inventory was not readable.
+  - **Next action**: confirm each host's owner (a hand check, not the sheet's match), pin it, then subscribe under findmeeting's PR 73 rules (pinned tenant, real items, no internal or test channel title). Leave out iframe-copy views (Clark, view 17 and 23) and stale feeds (Somerton 2021, Jackson Health 2024).
+  - **Constraint**: the sheets flag 11 ownership mismatches (`cityofgonzales` is Gonzales CA, not the county in TX; `alameda` is the City of Alameda, not the school district; `pinole` is the City of Pinole). Never pin from the sheet's match.
 
 - **[HUMAN] [LOGIN] WO-1055's live page moves and twin deletes wait for a deploy, then one worklist run.**
   - **Issue**: WO-1055 committed the registry fixes (METRO, The Harris Center, the Port of Corpus Christi, the Metropolitan Water District, six county hosts) but moved no live page. Its session had no Archive token. Pages to fix: 399, 4177, 5908 (to METRO), 3759 (to The Harris Center), 2659 and the 2026-08-18 Port Commission page (to the Port), 2535 and any other `mwdh2o.granicus.com` page (to the Metropolitan Water District of Southern California), any page on the six county hosts still under a city (two Sedgwick pages sit on a "County of Sedgwick" hub), and three deletes: twins 1171 and 3964, trailer 5775.
@@ -7725,7 +7733,13 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 
 ## Dormant — needs a real example first `[LATER]`
 
-Nothing open here right now.
+### Granicus `TranscriptViewer.php` as a transcript fallback: wait for a tenant that runs Granicus captioning `[LATER]` `[EXAMPLE]`
+
+- **Issue**: `https://<tenant>.granicus.com/TranscriptViewer.php?clip_id=N&view_id=V` shows a meeting's closed captions as plain text with `>>` speaker marks and no timestamps. South San Francisco clip 1966 had 32,715 characters there while its player page linked no caption file, so the resolver found no transcript.
+- **Impact**: 0 of 30 clips on 14 tenants in the 2026-10-07 pilot had a real transcript (all under 1,400 characters, no `>>`): 6 blank, 5 HTTP 500, 19 agenda or title only. Only the hand-found South San Francisco control passed. 14 of 15 host robots.txt files say Disallow all, so the fallback would read pages those hosts ask automated clients to skip.
+- **Next action**: find tenants that run Granicus captioning (what marks them on the player page is unknown) and re-test. If several pass, build about 40 lines in `granicus.py`'s caption branch: one capped read (`read_capped_text`) when no caption file exists, a "real transcript" test (at least 2,000 characters, no "$Title" template, at least 3 `>>`), and the existing untimed path (`TranscriptSegment(start=0, end=0)` lines) with a distinct warning marker added to `archive/db/crud.py`'s marker list.
+- **Constraint**: needs Ryan's yes on reading these pages (robots.txt); a pilot needs 10 s per host and the generic User-Agent. Build tests from real pages, not synthetic ones.
+- **History**: pilot sample, results and saved pages are in `~/Documents/rtr-findmeeting/data/granicus_transcriptviewer_pilot_2026-10-07/` (not in this repo).
 
 ## Parked deliberately — allowed back `[PARK]`
 
