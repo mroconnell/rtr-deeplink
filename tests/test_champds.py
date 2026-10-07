@@ -175,7 +175,19 @@ async def test_resolve_reports_no_transcript_when_captions_list_is_empty():
 async def test_resolve_returns_error_for_a_url_with_no_event_id():
     url = "https://play.champds.com/atlantaga/"
 
-    result = await ChampDSAssetFinder().resolve(url)
+    # The account page now tries a pick list first; an empty listing keeps
+    # the old warning.
+    empty = json.dumps({"SearchResult": {"Events": []}})
+    routes = {
+        "https://playapi.champds.com/atlantaga/archive/1/search/meeting": FakeResponse(
+            status=200, text=empty
+        ),
+        "https://playapi.champds.com/atlantaga/archive/1/search/council": FakeResponse(
+            status=200, text=empty
+        ),
+    }
+    with mock_session(routes):
+        result = await ChampDSAssetFinder().resolve(url)
 
     assert result.video_warnings == [
         "Could not find a customer/event id in this ChampDS URL."
@@ -650,3 +662,108 @@ def test_caption_url_prefers_english_when_several_are_listed():
         ChampDSAssetFinder._caption_url(data, "elpasococo")
         == "https://play.champds.com/CAPTION/elpasococo/2026-09/en.vtt"
     )
+
+
+# --- Hub pick list (2026-10-06): an account page gives a pick list ---
+
+import pytest  # noqa: E402
+
+from app.platforms import champds as champds_module  # noqa: E402
+from app.platforms.base import CalendarPageError  # noqa: E402
+
+ATLANTA_HUB = "https://play.champds.com/atlantaga"
+
+
+@pytest.fixture(autouse=True)
+def _clear_hub_cache():
+    champds_module._hub_cache.clear()
+    yield
+    champds_module._hub_cache.clear()
+
+
+def _hub_routes(council=None, meeting=None, status=200):
+    return {
+        ATLANTA_COUNCIL_SEARCH_URL: FakeResponse(
+            status=status,
+            text=council
+            or _load_champds_fixture("atlantaga_archive1_search_council.json"),
+        ),
+        ATLANTA_MEETING_SEARCH_URL: FakeResponse(
+            status=status,
+            text=meeting
+            or _load_champds_fixture("atlantaga_archive1_search_meeting.json"),
+        ),
+    }
+
+
+def _search_json(n):
+    events = [
+        {
+            "CustomerEventID": 5000 + i,
+            "EventTitle": f"Meeting {i}",
+            "EventDateTimeLocal": f"2026-{1 + i // 28:02d}-{1 + i % 28:02d} 18:00:00",
+            "EventMediaClassID": 2 if i % 2 == 0 else 0,
+        }
+        for i in range(n)
+    ]
+    return json.dumps({"SearchResult": {"Events": events}})
+
+
+@pytest.mark.parametrize(
+    "hub_url",
+    [ATLANTA_HUB, ATLANTA_HUB + "/", ATLANTA_HUB + "/archive/1"],
+)
+async def test_hub_gives_calendar_page_with_title_date_url(hub_url):
+    with mock_session(_hub_routes()):
+        with pytest.raises(CalendarPageError) as exc:
+            await ChampDSAssetFinder().resolve(hub_url)
+    cands = exc.value.candidates
+    assert cands
+    assert all(set(c) == {"title", "date", "url"} for c in cands)
+    assert all(c["url"].startswith(ATLANTA_HUB + "/event/") for c in cands)
+    dates = [c["date"] for c in cands]
+    assert dates == sorted(dates, reverse=True)
+
+
+async def test_hub_list_is_capped_at_15_and_makes_two_requests():
+    routes = _hub_routes(council=_search_json(40), meeting=_search_json(40))
+    with mock_session(routes):
+        with pytest.raises(CalendarPageError) as exc:
+            await ChampDSAssetFinder().resolve(ATLANTA_HUB)
+    assert len(exc.value.candidates) == 15
+
+
+async def test_hub_empty_listing_keeps_old_warning():
+    empty = json.dumps({"SearchResult": {"Events": []}})
+    with mock_session(_hub_routes(council=empty, meeting=empty)):
+        result = await ChampDSAssetFinder().resolve(ATLANTA_HUB)
+    assert result.video_warnings == [
+        "Could not find a customer/event id in this ChampDS URL."
+    ]
+
+
+async def test_hub_http_error_keeps_old_warning():
+    with mock_session(_hub_routes(council="{}", meeting="{}", status=503)):
+        result = await ChampDSAssetFinder().resolve(ATLANTA_HUB)
+    assert result.video_warnings == [
+        "Could not find a customer/event id in this ChampDS URL."
+    ]
+
+
+async def test_hub_result_is_cached_per_account():
+    with mock_session(_hub_routes()):
+        with pytest.raises(CalendarPageError):
+            await ChampDSAssetFinder().resolve(ATLANTA_HUB)
+    with mock_session({}):  # any request would fail
+        with pytest.raises(CalendarPageError):
+            await ChampDSAssetFinder().resolve(ATLANTA_HUB + "/archive/1")
+
+
+async def test_event_url_still_resolves_without_a_listing():
+    event_url = "https://playapi.champds.com/atlantaga/event/1261"
+    fixture = _load_champds_fixture("gwinnettcoga_event_356.json")
+    with mock_session({event_url: FakeResponse(status=200, text=fixture)}):
+        result = await ChampDSAssetFinder().resolve(
+            "https://play.champds.com/atlantaga/event/1261"
+        )
+    assert result.platform == "champds"

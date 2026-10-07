@@ -1436,15 +1436,18 @@ async def test_resolve_gallery_returns_pick_list_not_newest_show(_fixed_today):
     assert candidates[0]["url"].endswith("/internetchannel/show/7480?site=1")
 
 
-async def test_resolve_gallery_pick_list_drops_future_shows(monkeypatch):
+async def test_resolve_gallery_pick_list_keeps_future_dated_shows_with_video(
+    monkeypatch,
+):
+    # A show with a complete video is kept even when its eventDate is
+    # still in the future (confirmed live on Maplewood MN, 2026-10-06).
     monkeypatch.setattr(cablecast, "_today", lambda: date(2020, 1, 1))
     gallery_html = load_fixture("cablecast", "oldsaybrook_gallery_22.html")
     routes = {GALLERY_FETCH_URL: FakeResponse(status=200, text=gallery_html)}
     with mock_session(routes):
-        result = await CablecastAssetFinder().resolve(GALLERY_URL)
-    # Nothing is dated on or before 2020: no pick-list, honest warning.
-    assert result.video_url is None
-    assert "no past video-ready show" in result.video_warnings[0].lower()
+        with pytest.raises(CalendarPageError) as exc:
+            await CablecastAssetFinder().resolve(GALLERY_URL)
+    assert exc.value.candidates[0]["date"] == "2026-08-19"
 
 
 async def test_resolve_gallery_http_error_keeps_old_warning(_fixed_today):
@@ -1683,3 +1686,71 @@ async def test_near_empty_station_captions_are_not_used_as_a_transcript():
     assert result.segments == []
     assert any("hold only" in w for w in result.transcript_warnings)
     assert "No transcript found for this event." in result.transcript_warnings
+
+
+# --- Self-hosted `/CablecastPublicSite/gallery/N` (2026-10-06): the server
+# 301-redirects to `/internetchannel/gallery/N`, a Remix page with a list.
+# Real fixture `maplewood_gallery_19.html` fetched live 2026-10-06 from
+# vod.maplewoodmn.gov/internetchannel/gallery/19.
+
+SELFHOSTED_GALLERY_URL = "https://vod.maplewoodmn.gov/CablecastPublicSite/gallery/19"
+SELFHOSTED_FETCH_URL = "http://vod.maplewoodmn.gov/CablecastPublicSite/gallery/19"
+SELFHOSTED_REDIRECTED_URL = "http://vod.maplewoodmn.gov/internetchannel/gallery/19"
+
+
+def test_detect_platform_recognizes_selfhosted_publicsite_gallery_url():
+    assert detect_platform(SELFHOSTED_GALLERY_URL) == "cablecast"
+
+
+async def test_selfhosted_publicsite_gallery_follows_redirect_then_lists(
+    monkeypatch,
+):
+    monkeypatch.setattr(cablecast, "_today", lambda: date(2026, 10, 6))
+    html = load_fixture("cablecast", "maplewood_gallery_19.html")
+    routes = {
+        SELFHOSTED_FETCH_URL: FakeResponse(
+            status=200, text=html, url=SELFHOSTED_REDIRECTED_URL
+        )
+    }
+    with mock_session(routes):
+        with pytest.raises(CalendarPageError) as exc:
+            await CablecastAssetFinder().resolve(SELFHOSTED_GALLERY_URL)
+    candidates = exc.value.candidates
+    assert 0 < len(candidates) <= 15
+    assert all(
+        c["url"].startswith("https://vod.maplewoodmn.gov/internetchannel/show/")
+        for c in candidates
+    )
+    assert candidates[0]["url"].endswith("/internetchannel/show/1809")
+
+
+def test_gallery_rows_with_video_rank_first_then_newest():
+    rows = [
+        {"title": "no video, newer", "date": "2026-09-01", "has_video_hint": False},
+        {"title": "video, older", "date": "2026-01-01", "has_video_hint": True},
+        {"title": "video, newer", "date": "2026-06-01", "has_video_hint": True},
+    ]
+    ranked = cablecast._rank_gallery_rows(rows, "2026-10-06")
+    assert [r["title"] for r in ranked] == [
+        "video, newer",
+        "video, older",
+        "no video, newer",
+    ]
+
+
+def test_gallery_rows_future_dated_with_video_kept_without_video_dropped():
+    rows = [
+        {"title": "future video", "date": "2026-10-28", "has_video_hint": True},
+        {"title": "future none", "date": "2026-10-29", "has_video_hint": False},
+        {"title": "past none", "date": "2026-09-01", "has_video_hint": False},
+    ]
+    ranked = cablecast._rank_gallery_rows(rows, "2026-10-06")
+    assert [r["title"] for r in ranked] == ["future video", "past none"]
+
+
+async def test_selfhosted_show_url_still_resolves_as_a_show():
+    # Show URLs are untouched by the gallery change: a show address never
+    # goes through the gallery path.
+    show_url = "https://vod.maplewoodmn.gov/internetchannel/show/1809"
+    assert cablecast._GALLERY_ID_RE.search(show_url) is None
+    assert CablecastAssetFinder._extract_show_id(show_url) == 1809

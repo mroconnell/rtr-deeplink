@@ -2,6 +2,7 @@ import csv
 import json
 import logging
 import re
+import time
 from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
@@ -11,7 +12,7 @@ from urllib.parse import urljoin, urlparse
 import aiohttp
 from bs4 import BeautifulSoup
 
-from .base import AssetFinder
+from .base import AssetFinder, CalendarCandidate, CalendarPageError
 from .media_scan import is_hls_url, scan_media_urls, media_type
 from .models import ResolvedMeeting, TranscriptSegment, VideoSegment
 from ..utils import jurisdiction_enrich
@@ -367,6 +368,113 @@ def _parse_swagit_transcript_download(
     return segments, disclaimers
 
 
+# Hub pick list (2026-10-06): a pasted `/views/{id}` page (or one of its
+# `/views/{id}/{slug}` category pages) names no single meeting, so
+# `resolve()` raises `CalendarPageError` with up to 15 past meetings read
+# from the page it already fetched (rows are dated, newest first), cached
+# per page for a few minutes. An index view holds no rows, so at most two of
+# its category pages are fetched. No Meeting Finder import (legacy); the two
+# small parsers below are copies of the ones Meeting Finder uses.
+_HUB_LIST_LIMIT = 15
+_HUB_CACHE_TTL_SECONDS = 300
+_HUB_CACHE_MAX = 200
+_HUB_MAX_CATEGORY_PAGES = 2
+_hub_cache: Dict[str, tuple] = {}
+_SWAGIT_HUB_PATH_RE = re.compile(r"^/views/(\d+)(?:/[^/]+)?/?$", re.I)
+_SWAGIT_VIEWS_URL_RE = re.compile(r"/views/(\d+)\b", re.I)
+_SWAGIT_VIDEO_URL_RE = re.compile(r"/videos/(\d+)\b", re.I)
+_SWAGIT_ROW_DATE_FORMATS = ("%b %d, %Y",)  # "Sep 24, 2014"
+_SWAGIT_LIVE_SLUGS = frozenset({"live"})
+
+
+def _is_swagit_hub_url(url: str) -> bool:
+    return bool(_SWAGIT_HUB_PATH_RE.match(urlparse(url).path))
+
+
+def _parse_swagit_video_table(html: str, base_url: str) -> List[CalendarCandidate]:
+    """Every row of every `table#video-table` on a view page (one tab per
+    body and year) as {title, date, url}; date is "" when unreadable."""
+    soup = BeautifulSoup(html, "html.parser")
+    rows = [
+        tr
+        for table in soup.find_all("table", id="video-table")
+        for tr in table.find_all("tr")
+    ]
+    found: List[CalendarCandidate] = []
+    for tr in rows:
+        a = tr.find("a", href=True)
+        if a is None:
+            continue
+        m = _SWAGIT_VIDEO_URL_RE.search(a["href"])
+        if not m:
+            continue
+        td = tr.find("td")
+        lines = (
+            [line.strip() for line in td.get_text("\n").split("\n") if line.strip()]
+            if td is not None
+            else []
+        )
+        # A tab page puts the date under the title; a `/views/{id}` page
+        # puts it in its own column.
+        texts = [lines[-1]] if len(lines) > 1 else []
+        texts += [cell.get_text(" ", strip=True) for cell in tr.find_all("td")[1:]]
+        date = ""
+        for text in texts:
+            for fmt in _SWAGIT_ROW_DATE_FORMATS:
+                try:
+                    date = datetime.strptime(text, fmt).strftime("%Y-%m-%d")
+                    break
+                except ValueError:
+                    continue
+            if date:
+                break
+        found.append(
+            {
+                "title": lines[0] if lines else "Meeting",
+                "date": date,
+                "url": urljoin(base_url, f"/videos/{m.group(1)}"),
+            }
+        )
+    return found
+
+
+def _swagit_view_category_urls(html: str, page_url: str) -> List[str]:
+    """An index view holds no meetings; its tabs link `/views/{n}/{slug}`
+    category pages that do. The live-stream slug is skipped."""
+    view = _SWAGIT_VIEWS_URL_RE.search(urlparse(page_url).path)
+    if view is None:
+        return []
+    host = urlparse(page_url).netloc.lower()
+    pattern = re.compile(rf"^/views/{view.group(1)}/([^/]+)/?$", re.I)
+    urls: List[str] = []
+    for a in BeautifulSoup(html, "html.parser").find_all("a", href=True):
+        target = urlparse(urljoin(page_url, a["href"]))
+        if target.netloc.lower() != host:
+            continue
+        m = pattern.match(target.path)
+        if not m or m.group(1).lower() in _SWAGIT_LIVE_SLUGS:
+            continue
+        url = f"{target.scheme}://{target.netloc}{target.path}"
+        if url not in urls:
+            urls.append(url)
+    return urls
+
+
+def _cap_hub_rows(rows: List[CalendarCandidate]) -> List[CalendarCandidate]:
+    """Past rows only, newest first, undated last, capped. A view can hold
+    ~1,500 rows, so sort and drop duplicates before slicing."""
+    today = datetime.now().strftime("%Y-%m-%d")
+    seen = set()
+    unique = []
+    for r in rows:
+        if r["url"] in seen or (r["date"] and r["date"] > today):
+            continue
+        seen.add(r["url"])
+        unique.append(r)
+    unique.sort(key=lambda r: r["date"], reverse=True)
+    return unique[:_HUB_LIST_LIMIT]
+
+
 class SwagitAssetFinder(AssetFinder):
     """Resolves video + chapter markers for a Swagit meeting page.
 
@@ -433,6 +541,50 @@ class SwagitAssetFinder(AssetFinder):
             ),
         }
 
+    @staticmethod
+    def _raise_hub_pick_list(rows: List[CalendarCandidate]):
+        raise CalendarPageError(
+            message=(
+                "This is a Swagit list of many meetings, not a link to one "
+                "specific meeting."
+            ),
+            candidates=[dict(r) for r in rows],
+        )
+
+    async def _list_hub_meetings(
+        self, session: aiohttp.ClientSession, html: str, page_url: str
+    ) -> List[CalendarCandidate]:
+        """Meetings from a `/views/{id}` page already fetched: its own video
+        tables, or (an index view with no rows) up to two category pages.
+        Any failure on a category page is skipped; [] keeps today's path."""
+        try:
+            rows = _parse_swagit_video_table(html, page_url)
+            if not rows:
+                for cat_url in _swagit_view_category_urls(html, page_url)[
+                    :_HUB_MAX_CATEGORY_PAGES
+                ]:
+                    try:
+                        async with session.get(
+                            cat_url,
+                            headers=self.headers,
+                            timeout=aiohttp.ClientTimeout(total=20),
+                        ) as response:
+                            if response.status != 200:
+                                continue
+                            cat_html = await response.text()
+                    except Exception:
+                        logger.warning(
+                            "Swagit hub category fetch failed for %s",
+                            cat_url,
+                            exc_info=True,
+                        )
+                        continue
+                    rows.extend(_parse_swagit_video_table(cat_html, cat_url))
+            return _cap_hub_rows(rows)
+        except Exception:
+            logger.warning("Swagit hub listing failed for %s", page_url, exc_info=True)
+            return []
+
     async def resolve(self, url: str) -> ResolvedMeeting:
         video_warnings: List[str] = []
         transcript_warnings: List[str] = []
@@ -451,6 +603,15 @@ class SwagitAssetFinder(AssetFinder):
             _TRANSCRIPT_URL_SUFFIX_RE.sub("", url) if transcript_url_requested else url
         )
 
+        is_hub = _is_swagit_hub_url(fetch_url)
+        hub_key = ""
+        if is_hub:
+            parsed_hub = urlparse(fetch_url)
+            hub_key = f"{parsed_hub.netloc}{parsed_hub.path.rstrip('/')}".lower()
+            cached = _hub_cache.get(hub_key)
+            if cached and time.monotonic() - cached[0] < _HUB_CACHE_TTL_SECONDS:
+                self._raise_hub_pick_list(cached[1])
+
         async with aiohttp.ClientSession() as session:
             async with session.get(
                 fetch_url,
@@ -461,6 +622,14 @@ class SwagitAssetFinder(AssetFinder):
                 response.raise_for_status()
                 final_url = str(response.url)
                 html = await response.text()
+
+            if is_hub:
+                hub_rows = await self._list_hub_meetings(session, html, final_url)
+                if hub_rows:
+                    if len(_hub_cache) >= _HUB_CACHE_MAX:
+                        _hub_cache.clear()
+                    _hub_cache[hub_key] = (time.monotonic(), hub_rows)
+                    self._raise_hub_pick_list(hub_rows)
 
         soup = BeautifulSoup(html, "html.parser")
         title, date, jurisdiction = self._extract_metadata(soup)

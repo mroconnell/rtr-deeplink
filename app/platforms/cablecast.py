@@ -1002,13 +1002,26 @@ class CablecastAssetFinder(AssetFinder):
             )
 
         fetch_url = self._force_http(url)
-        html = await self._fetch_html(fetch_url)
+        fetched = await self._fetch_html_with_final_url(fetch_url)
+        html = fetched[1] if fetched else None
         if not html:
             return ResolvedMeeting(
                 platform=self.platform_name,
                 source_url=url,
                 video_warnings=["Could not fetch this Cablecast gallery page."],
             )
+        # A self-hosted `/CablecastPublicSite/gallery/N` redirects to
+        # `/internetchannel/gallery/N`: list from where the page ended up
+        # (when that is still a gallery address), so each row's show URL
+        # is built on the real host and path.
+        final_url = fetched[0]
+        if _GALLERY_ID_RE.search(urlparse(final_url).path):
+            final_parsed = urlparse(final_url)._replace(scheme=parsed_url.scheme)
+            if parsed_url.query and not final_parsed.query:
+                final_parsed = final_parsed._replace(query=parsed_url.query)
+            list_url = final_parsed.geturl()
+        else:
+            list_url = url
 
         remix_data = self._extract_remix_context(html)
         shows = self._find_gallery_shows(remix_data, gallery_id) if remix_data else None
@@ -1034,7 +1047,7 @@ class CablecastAssetFinder(AssetFinder):
 
         # A gallery is a list of meetings, not one meeting: hand back the
         # pick-list (past shows, newest first) instead of guessing the newest.
-        candidates = _gallery_candidates(url, html)
+        candidates = _gallery_candidates(list_url, html)
         if not candidates:
             # Only future-dated shows: nothing to pick from.
             return ResolvedMeeting(
@@ -1151,6 +1164,17 @@ class CablecastAssetFinder(AssetFinder):
         hosts aborted the whole run). Caught explicitly now, alongside
         `aiohttp.ClientError`.
         """
+        fetched = await CablecastAssetFinder._fetch_html_with_final_url(url)
+        return fetched[1] if fetched else None
+
+    @staticmethod
+    async def _fetch_html_with_final_url(url: str) -> Optional[Tuple[str, str]]:
+        """Same fetch as `_fetch_html()` but also returns the URL the
+        request ended on after redirects, as `(final_url, html)`. Needed
+        because a self-hosted `/CablecastPublicSite/gallery/{id}` address
+        301-redirects to `/internetchannel/gallery/{id}` (confirmed live
+        2026-10-06, Maplewood MN), and pick-list rows must be built from
+        where the page really lives, not the address the caller typed."""
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(
@@ -1158,7 +1182,8 @@ class CablecastAssetFinder(AssetFinder):
                 ) as response:
                     if response.status >= 400:
                         return None
-                    return await response.text()
+                    html = await response.text()
+                    return (str(response.url) or url, html)
         except (aiohttp.ClientError, TimeoutError):
             return None
 
@@ -1513,13 +1538,29 @@ def _today() -> _date:
     return datetime.now(timezone.utc).date()
 
 
+def _rank_gallery_rows(rows: List[dict], today: str) -> List[dict]:
+    """Pick-list order for gallery rows (dicts with `date` and
+    `has_video_hint`): shows with a watchable video first, then newest
+    first (undated last). A future `eventDate` is NOT a reason to drop a
+    show that already has a complete video -- confirmed live 2026-10-06
+    (Maplewood MN lists "October 28, 2026" with its recording published);
+    a future-dated show with no video is dropped."""
+    kept = [
+        r
+        for r in rows
+        if r.get("has_video_hint") or r["date"] is None or r["date"] <= today
+    ]
+    kept.sort(key=lambda r: r["date"] or "", reverse=True)
+    kept.sort(key=lambda r: 0 if r.get("has_video_hint") else 1)
+    return kept
+
+
 def _gallery_candidates(url: str, html: str) -> List[dict]:
-    """Pick-list rows (`title`/`date`/`url`) for a gallery page: past
-    video-ready shows, newest first (undated last), at most 15."""
-    today = _today().isoformat()
+    """Pick-list rows (`title`/`date`/`url`) for a gallery page: video-
+    ready shows first, newest first (undated last), at most 15. See
+    `_rank_gallery_rows()` for how future-dated shows are treated."""
     rows = [
         {"title": r["title"], "date": r["date"], "url": r["url"]}
-        for r in list_gallery_shows(url, html)
-        if not r["date"] or r["date"] <= today
+        for r in _rank_gallery_rows(list_gallery_shows(url, html), _today().isoformat())
     ]
     return rows[:_GALLERY_MAX_CANDIDATES]
