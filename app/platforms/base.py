@@ -508,6 +508,12 @@ def detect_platform(url: str) -> str:
         # adapter. See telvue.py's own docstring for the real page
         # structure this was built against.
         return "telvue"
+    if netloc == "webtv.coop" or netloc == "www.webtv.coop":
+        # Coop WebTV: one website, one channel per customer (Montreal-area
+        # governments). Confirmed live 2026-10-07 -- see webtv_coop.py.
+        # Any webtv.coop path routes here; the adapter says plainly when a
+        # page is not a single video.
+        return "webtv_coop"
     if "viebit.com" in netloc:
         # The real video platform underneath NYC Council's Legistar
         # instance, reached by delegation (see the legistar.council.nyc.gov

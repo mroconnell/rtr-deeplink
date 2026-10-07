@@ -904,6 +904,39 @@ _COMMON_SHORT_WORDS_ES = {
     "ya",
     "eh",
 }
+# And for French (2026-10-07): webtv.coop's machine captions for Pointe-Claire,
+# QC (2026-10-06 council, 1,946 cues) scored 7.2% junk without it, over the
+# 6% line, though the text is coherent. 47 of the 50 "junk" words in the
+# sample were these real short French words ("de" 11, "le" 7, "la" 6, "du" 5,
+# "à" 4, "un" 3, "et", "je", "ce", "en" ...); the rest of this set is the
+# other two-letter French function words. With them the same sample scores
+# under 1%. Only applied when the caller's `lang` is "fr".
+_COMMON_SHORT_WORDS_FR = {
+    "de",
+    "le",
+    "la",
+    "du",
+    "à",
+    "un",
+    "et",
+    "je",
+    "ce",
+    "en",
+    "ne",
+    "sa",
+    "me",
+    "il",
+    "on",
+    "se",
+    "au",
+    "ou",
+    "ma",
+    "si",
+    "tu",
+    "te",
+    "y",
+    "ça",
+}
 _GARBLED_MIN_SAMPLE_WORDS = 40
 _GARBLED_JUNK_RATIO_MAX = 0.06
 # Four offsets across the transcript rather than just its start -- see the
@@ -1020,6 +1053,8 @@ def is_likely_garbled(cues: List[Dict[str, Any]], lang: Optional[str] = None) ->
     allowlist = _COMMON_SHORT_WORDS
     if lang == "es":
         allowlist = allowlist | _COMMON_SHORT_WORDS_ES
+    elif lang == "fr":
+        allowlist = allowlist | _COMMON_SHORT_WORDS_FR
     junk = sum(1 for w in alpha_words if len(w) <= 2 and w.lower() not in allowlist)
     return (junk / len(alpha_words)) > _GARBLED_JUNK_RATIO_MAX
 

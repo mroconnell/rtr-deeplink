@@ -1240,3 +1240,22 @@ def test_rollup_cue_units_joins_each_cues_lines_into_one_unit():
         # compare, and an empty string would trivially "overlap" with
         # anything, which would corrupt the ratio.
     ]
+
+
+def test_is_likely_garbled_false_for_real_french_webtv_coop_captions():
+    # Real machine captions from webtv.coop, Pointe-Claire QC, 2026-10-06
+    # council, first 60 of 1,946 cues (tests/fixtures/webtv_coop/). Mixed
+    # French and English, coherent. Without the lang="fr" allowlist French
+    # "de/le/la/du/à" counted as junk; the full file scored 7.2% (line: 6%).
+    cues = parse_vtt(
+        load_fixture("webtv_coop", "captions_pointe_claire_2026-10-06_first60.vtt")
+    )
+    assert is_likely_garbled(cues, lang="fr") is False
+    assert is_likely_garbled(cues) is True  # no lang given: unchanged behaviour
+
+
+def test_is_likely_garbled_still_true_for_genuinely_garbled_french():
+    junk_words = ["tm", "Oa", "sd", "xr", "qp"] * 10
+    clean_words = ["la", "le", "de", "du", "et"] * 3
+    cues = [{"start": 0, "end": 1, "text": " ".join(junk_words + clean_words)}]
+    assert is_likely_garbled(cues, lang="fr") is True

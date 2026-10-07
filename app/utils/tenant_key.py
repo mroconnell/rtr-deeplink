@@ -97,6 +97,7 @@ _HOST_ALIASES: Dict[str, str] = {
     "www.townhallstreams.com": "townhallstreams.com",
     "www.spectrumstream.com": "spectrumstream.com",
     "playapi.champds.com": "play.champds.com",
+    "www.webtv.coop": "webtv.coop",
 }
 
 
@@ -299,6 +300,20 @@ def civicmedia_chid(url: str) -> Optional[str]:
     return chid
 
 
+# --- Coop WebTV (webtv_coop.py): one channel per customer, `/channel/<slug>/
+# <number>`. A video reached from its channel, `/channel/video/<slug>/<key>/
+# <number>`, carries the number too. The site-wide `/video/<slug>/<key>`
+# address does not name its channel, so it is None here (like a BoxCast
+# `/view/` link); webtv_coop.py reads the channel from the page itself and
+# sends it as `video_channel` = `webtv_coop:{number}`.
+_WEBTV_COOP_RE = re.compile(r"^/channel/(?:video/[^/]+/[0-9a-fA-F]{32}|[^/]+)/(\d+)/?$")
+
+
+def _webtv_coop(url: str) -> Optional[str]:
+    match = _WEBTV_COOP_RE.match(urlparse(url).path)
+    return match.group(1) if match else None
+
+
 # Host -> key rule for every shared website with a defined key.
 KEYED_SHARED_HOSTS: Dict[str, Callable[[str], Optional[str]]] = {
     "play.champds.com": _champds,
@@ -316,6 +331,7 @@ KEYED_SHARED_HOSTS: Dict[str, Callable[[str], Optional[str]]] = {
     "spectrumstream.com": _spectrumstream,
     "civplus.tikiliveapi.com": civicmedia_chid,
     "wms.civplus.tikiliveapi.com": civicmedia_chid,
+    "webtv.coop": _webtv_coop,
 }
 
 
@@ -676,6 +692,7 @@ _QUERY_PIN_PATH: Dict[str, str] = {
 _TELVUE_BARE_TOKEN_RE = re.compile(r"^[A-Za-z0-9_-]{32}$")
 _BOXCAST_CHANNEL_HINT_RE = re.compile(r"^channel=boxcast:(.+)$", re.IGNORECASE)
 _CIVICMEDIA_CHANNEL_HINT_RE = re.compile(r"^channel=civicmedia:(\d+)$", re.IGNORECASE)
+_WEBTV_COOP_CHANNEL_HINT_RE = re.compile(r"^channel=webtv_coop:(\d+)$", re.IGNORECASE)
 # How a pin may spell "exactly this tenant" in front of the bare key.
 _WHOLE_TENANT_PREFIXES = (
     "player/",
@@ -683,6 +700,7 @@ _WHOLE_TENANT_PREFIXES = (
     "channel/",
     "channel=boxcast:",
     "channel=civicmedia:",
+    "channel=webtv_coop:",
     "clientid=",
     "location_id=",
     "id=",
@@ -717,6 +735,13 @@ def pin_tenant_key(host: str, match: Optional[str]) -> Optional[str]:
         # URL carries the chid.
         chid = hint.group(1)
         return None if chid in CIVICMEDIA_MIXED_CHANNELS else chid
+    hint = _WEBTV_COOP_CHANNEL_HINT_RE.match(match)
+    if host == "webtv.coop" and hint:
+        # Coop WebTV's channel pin, `channel=webtv_coop:{n}`: matched
+        # against the adapter's `video_channel` page hint (the site-wide
+        # video address does not carry the channel) and against channel
+        # and `/channel/video/...` addresses by their number.
+        return hint.group(1)
     if re.match(r"^[A-Za-z_]+=", match):
         url = f"https://{host}/{_QUERY_PIN_PATH.get(host, '')}?{match}"
     else:
