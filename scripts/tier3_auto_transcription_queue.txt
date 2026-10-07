@@ -989,3 +989,4 @@ https://cityofringgoldga.granicus.com/MediaPlayer.php?view_id=1&clip_id=228
 https://rocklin-ca.granicus.com/MediaPlayer.php?view_id=1&clip_id=415
 https://sanmiguelcountyco.granicus.com/MediaPlayer.php?view_id=1&clip_id=597
 https://southwhitehall.granicus.com/MediaPlayer.php?view_id=1&clip_id=54
+https://play.champds.com/northmiamifl/event/620		us:place:1249450
