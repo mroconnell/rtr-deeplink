@@ -153,12 +153,20 @@ async def test_probe_reads_only_the_first_256kb_header(monkeypatch):
     big = asf_header(5400.0) + b"\x01" * (10 * 1024 * 1024)
     resp = _Response(
         200,
-        {"Content-Length": str(len(big)), "Last-Modified": "Tue, 06 Oct 2026 12:00:00 GMT"},
+        {
+            "Content-Length": str(len(big)),
+            "Last-Modified": "Tue, 06 Oct 2026 12:00:00 GMT",
+        },
         big,
     )
-    monkeypatch.setattr(queue_probe.aiohttp, "ClientSession", _fake_session_class(resp, seen))
+    monkeypatch.setattr(
+        queue_probe.aiohttp, "ClientSession", _fake_session_class(resp, seen)
+    )
     result = await queue_probe.probe_queue_entry(
-        FEED_ITEM, video_url=ENCLOSURE, source_page_url=FEED_ITEM, platform="direct_file",
+        FEED_ITEM,
+        video_url=ENCLOSURE,
+        source_page_url=FEED_ITEM,
+        platform="direct_file",
         video_format="wmv",
     )
     assert result.verdict == "accept"
@@ -227,7 +235,9 @@ async def test_consumer_uses_the_enclosure_and_never_fetches_source_url(monkeypa
 
     captured = {}
 
-    async def fake_ingest(session, payload, normalized, *, already_probed=False, caller=""):
+    async def fake_ingest(
+        session, payload, normalized, *, already_probed=False, caller=""
+    ):
         captured["payload"] = payload
         return {"url": "/m/x"}
 
@@ -236,9 +246,7 @@ async def test_consumer_uses_the_enclosure_and_never_fetches_source_url(monkeypa
     monkeypatch.setattr(feed_mod, "_ingest", fake_ingest)
     monkeypatch.setattr(feed_mod, "_append_feed_log_row", lambda *a, **k: None)
 
-    outcome = await feed_mod._push_if_has_video(
-        None, ENCLOSURE, FEED_ITEM, "gov-123"
-    )
+    outcome = await feed_mod._push_if_has_video(None, ENCLOSURE, FEED_ITEM, "gov-123")
     assert "[OK]" in outcome, outcome
     assert fetched == [ENCLOSURE]
     assert seen_probe["platform"] == "direct_file"
@@ -250,7 +258,9 @@ async def test_consumer_uses_the_enclosure_and_never_fetches_source_url(monkeypa
 # --- worker media path -------------------------------------------------------------
 
 
-async def test_worker_extraction_hands_a_wmv_url_to_ffmpeg_unchanged(monkeypatch, tmp_path):
+async def test_worker_extraction_hands_a_wmv_url_to_ffmpeg_unchanged(
+    monkeypatch, tmp_path
+):
     calls = []
 
     async def fake_run(*args, timeout=None):
@@ -261,7 +271,11 @@ async def test_worker_extraction_hands_a_wmv_url_to_ffmpeg_unchanged(monkeypatch
     monkeypatch.setattr(media_probe, "_run", fake_run)
     out = tmp_path / "chunk_0.mp3"
     await media_probe.extract_chunk_audio(
-        ENCLOSURE, start=0, duration=60, source_page_url=FEED_ITEM, out_path=out,
+        ENCLOSURE,
+        start=0,
+        duration=60,
+        source_page_url=FEED_ITEM,
+        out_path=out,
         is_final_chunk=False,
     )
     assert calls, "ffmpeg was never called"

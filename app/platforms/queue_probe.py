@@ -167,6 +167,7 @@ def parse_asf_duration(header: bytes) -> Optional[float]:
         pos += size
     return None
 
+
 # WO-937: two real, confirmed delegated media shapes this dispatch had no
 # recipe for at all, even though the underlying file is real and playable
 # -- both route to `_probe_direct_file()` below, the same recipe an
@@ -1135,7 +1136,9 @@ async def _probe_asf_header(
                         break
                     data.extend(chunk)
     except asyncio.TimeoutError:
-        return _dead(url, platform, method, start, "ranged GET on the media file timed out")
+        return _dead(
+            url, platform, method, start, "ranged GET on the media file timed out"
+        )
     except aiohttp.ClientError as e:
         return _dead(
             url, platform, method, start, f"ranged GET on the media file failed: {e}"
