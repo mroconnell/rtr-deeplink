@@ -1,6 +1,7 @@
-# Drip handoff 2026-10-07g: 2 leads from rtr-findmeeting run run
+# Drip handoff 2026-10-07h: 2 leads from rtr-findmeeting run run
 
-These come from the Find Meeting run `run` (rtr-findmeeting `apply`). For each government below, the run found YouTube or Vimeo
+These come from the Find Meeting run `run` (rtr-findmeeting `apply`). That run folder is the CivicPlus platform-dispatch pilot
+(`data/pilot_civicplus_2026-10-06/run`), so the notes say "run run". For each government below, the run found YouTube or Vimeo
 links on the government's own website. No YouTube request was made.
 
 Every government here was checked first: no Archive page under 2 years old, and the address is not already on the drip list
