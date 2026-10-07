@@ -184,18 +184,6 @@ https://www.youtube.com/watch?v=RnwVAU4iBZ4		us:place:5422564
 https://www.youtube.com/watch?v=A8SqipRH24g		us:place:5501725
 https://www.youtube.com/watch?v=508A5hlwyz0		us:place:5586400
 https://www.youtube.com/watch?v=Mf3519T_XTg		us:place:0233140
-https://reflect-lmcc.cablecast.tv/CablecastPublicSite/show/57854?site=1	https://reflect-lmcc.cablecast.tv/CablecastPublicSite/	us:place:2738222
-https://reflect-lmcc.cablecast.tv/CablecastPublicSite/show/57805?site=1	https://reflect-lmcc.cablecast.tv/CablecastPublicSite/	us:place:2760016
-https://reflect-lmcc.cablecast.tv/CablecastPublicSite/show/57870?site=1	https://reflect-lmcc.cablecast.tv/CablecastPublicSite/	us:place:2762014
-https://reflect-lmcc.cablecast.tv/CablecastPublicSite/show/57851?site=1	https://reflect-lmcc.cablecast.tv/CablecastPublicSite/	us:place:2756770
-https://reflect-surryco-nc.cablecast.tv/internetchannel/show/2008	https://reflect-surryco-nc.cablecast.tv/CablecastPublicSite/	us:county:37171
-https://videoplayer.telvue.com/player/fMWo4eSQjGIGe8vIKeK2-vo4wt2rKKj2/media/1045739	https://videoplayer.telvue.com/player/fMWo4eSQjGIGe8vIKeK2-vo4wt2rKKj2/videos	us:county:55121
-https://vicksburg-ms.granicus.com/MediaPlayer.php?view_id=2&clip_id=1787
-https://laramiecounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=444
-https://cityofpowell.granicus.com/MediaPlayer.php?view_id=2&clip_id=1089
-https://cityofracine.granicus.com/MediaPlayer.php?view_id=1&clip_id=797
-https://tustin.granicus.com/MediaPlayer.php?view_id=2&clip_id=2960
-https://windsor-ca.granicus.com/MediaPlayer.php?view_id=2&clip_id=1861
 https://banningca.granicus.com/MediaPlayer.php?view_id=1&clip_id=350
 https://bedfordny.granicus.com/MediaPlayer.php?view_id=2&clip_id=236
 https://reflect-citylink-siouxfalls.cablecast.tv/internetchannel/show/3692	https://reflect-citylink-siouxfalls.cablecast.tv/CablecastPublicSite/	us:county:46099
@@ -993,3 +981,9 @@ https://windhamweb.granicus.com/MediaPlayer.php?view_id=2&clip_id=1169
 https://transylvaniacounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=8
 https://treasureislandfl.granicus.com/MediaPlayer.php?view_id=1&clip_id=1019
 https://unioncountync.granicus.com/MediaPlayer.php?view_id=1&clip_id=474
+https://vicksburg-ms.granicus.com/MediaPlayer.php?view_id=2&clip_id=1787
+https://laramiecounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=444
+https://cityofpowell.granicus.com/MediaPlayer.php?view_id=2&clip_id=1089
+https://cityofracine.granicus.com/MediaPlayer.php?view_id=1&clip_id=797
+https://tustin.granicus.com/MediaPlayer.php?view_id=2&clip_id=2960
+https://windsor-ca.granicus.com/MediaPlayer.php?view_id=2&clip_id=1861
