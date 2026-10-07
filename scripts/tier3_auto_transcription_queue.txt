@@ -990,3 +990,8 @@ https://windsor-ca.granicus.com/MediaPlayer.php?view_id=2&clip_id=1861
 https://reflect-trurotv.cablecast.tv/internetchannel/show/9033?channel=1		us:sd:2511730
 https://cowleycoks.portal.civicclerk.com/event/1069/media		us:county:20035
 https://vimeo.com/1223529996		us:place:3644787
+https://vimeo.com/1233006487		us:place:2018250
+https://vimeo.com/1233494766		us:place:2633420
+https://drive.google.com/file/d/1vWXko92M3MLgnwLlMNxbQUmrjEM20ctt/view?usp=sharing	https://wyomissingboro.org/188/Borough-Council	us:place:4286880
+https://4.files.edl.io/01f7/08/20/26/220238-98c33165-721d-48e7-863a-e5cb33c21efa.m4a		us:sd:0200570		2026-08-11
+https://content.myconnectsuite.com/api/documents/068bd87981c4441b9429de36e9047a2f.m4a	https://www.ezzellisd.org/boardoftrustees	us:sd:4818890
