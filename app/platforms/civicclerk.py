@@ -40,7 +40,13 @@ _EVENT_VIDEO_FIELDS = (
     "mediaSourcePathMp4",
     "externalMediaUrl",
     "youtubeVideoId",
+    "mobileMediaSourcePath",
+    "mobileMediaStreamPath",
 )
+# The API returns at most 15 events per page whatever $top says (measured live
+# 2026-10-06) and gives `@odata.nextLink` for the next page. One request per
+# page; 7 pages is about _PORTAL_LISTING_SCAN events.
+_PORTAL_LISTING_MAX_PAGES = 7
 
 # Events/{id}'s own categoryName is a real, independent grouping of the
 # committee/body -- confirmed live across multiple customers (WO-904):
@@ -762,14 +768,39 @@ class CivicClerkAssetFinder(AssetFinder):
             "$orderby": "startDateTime desc",
             "$filter": f"startDateTime lt {now}",
         }
+        events: list[dict] = []
+        next_url: str | None = f"{api_base}/Events"
+        next_params: dict | None = params
         async with aiohttp.ClientSession() as session:
-            async with session.get(
-                f"{api_base}/Events",
-                params=params,
-                timeout=aiohttp.ClientTimeout(total=20),
-            ) as resp:
-                resp.raise_for_status()
-                events = (await resp.json()).get("value") or []
+            for page in range(_PORTAL_LISTING_MAX_PAGES):
+                if not next_url or len(events) >= _PORTAL_LISTING_SCAN:
+                    break
+                try:
+                    async with session.get(
+                        next_url,
+                        params=next_params,
+                        timeout=aiohttp.ClientTimeout(total=20),
+                    ) as resp:
+                        resp.raise_for_status()
+                        body = await resp.json()
+                except Exception:
+                    # A later page failing keeps what earlier pages gave us.
+                    if page == 0:
+                        raise
+                    logger.warning(
+                        "CivicClerk Events page %s failed for %s; using %s events",
+                        page + 1,
+                        subdomain,
+                        len(events),
+                        exc_info=True,
+                    )
+                    break
+                events.extend(body.get("value") or [])
+                next_url = body.get("@odata.nextLink")
+                next_params = None  # the nextLink already carries its query
+                if next_url and not next_url.startswith(f"{api_base}/"):
+                    break  # never follow a link off this tenant's API
+        events = events[:_PORTAL_LISTING_SCAN]
 
         def candidate(e: dict) -> CalendarCandidate:
             return {
@@ -778,7 +809,13 @@ class CivicClerkAssetFinder(AssetFinder):
                 "url": f"https://{subdomain}.portal.civicclerk.com/event/{e['id']}/media",
             }
 
-        with_video = [e for e in events if any(e.get(f) for f in _EVENT_VIDEO_FIELDS)]
+        def has_video(e: dict) -> bool:
+            return bool(e.get("hasMedia")) or any(e.get(f) for f in _EVENT_VIDEO_FIELDS)
+
+        # Newest first (the API already sorts this way; kept explicit), then
+        # recordings only when any exist.
+        events.sort(key=lambda e: e.get("startDateTime") or "", reverse=True)
+        with_video = [e for e in events if has_video(e)]
         chosen = (with_video or events)[:_PORTAL_LISTING_MAX]
         if not chosen:
             raise ValueError(f"No meetings found on CivicClerk portal {url}")
