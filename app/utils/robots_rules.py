@@ -94,8 +94,12 @@ def parse_rules(text: str, token: str = PRODUCT_TOKEN) -> list[Rule]:
     rules: list[Rule] = []
     in_agents = False
     started = False
-    for raw in (text or "").splitlines():
-        line = raw.split("#", 1)[0].strip()
+    # A UTF-8 byte order mark (documents-on-demand.com tenants serve one) would glue itself
+    # to the first field name ("\ufeffuser-agent"), leave no group, and read as allow-all.
+    # Strip it from the text start and from each line.
+    for raw in (text or "").lstrip("\ufeff").splitlines():
+        line = raw.replace("\ufeff", "", 1) if raw.startswith("\ufeff") else raw
+        line = line.split("#", 1)[0].strip()
         if ":" not in line:
             continue
         key, _, value = line.partition(":")
