@@ -201,7 +201,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (30)
   [HUMAN] Run the re-transcription queue for the pre-voice-filter…
   [HUMAN] Other Cablecast pages with no `external_id` may be twins of a…
   [HUMAN] The bare `/j/victoria` slug may be pinned to the wrong…
-  Pin audit follow-up (WO-1186): 22 research rows, 19 Archive pages and…
+  Pin audit follow-up (WO-1186): 24 research rows and 9 rtr-discovery…
   Vimeo blocks Render: every caption fetch gets a challenge page, so no…
   Existing Invintus pages need one re-resolve after WO-1065 deploys, to…
   After WO-1056 and WO-1057 deploy, re-resolve archived pages so…
@@ -2195,13 +2195,13 @@ of human step they need.
   - **Constraint**: don't auto-flip this one — it's exactly the kind of judgment call the collision report exists to surface, not resolve.
   - **History**: `BACKLOG_DONE.md`'s WO-109/WO-112 writeup; WO-940 (2026-09-22, this repo's `BACKLOG_DONE.md`).
 
-### Pin audit follow-up (WO-1186): 22 research rows, 19 Archive pages and 9 rtr-discovery records still name the wrong government `[HUMAN]`
+### Pin audit follow-up (WO-1186): 24 research rows and 9 rtr-discovery records still name the wrong government; one Granville host is unsettled `[HUMAN]`
 
-- **Issue**: Ryan settled all 52 high pin-audit rows on 2026-10-06. The 17 pin edits and 1 queue line shipped in WO-1186. The fixes for other systems are listed, not applied, in `reports/pin_audit_2026-10-06/ambiguous/handoff_other_stores.csv` (one row per fix, with the right gov_id and the evidence).
-- **Impact**: Archive pages stay filed under the wrong government (Sunnyside NL, Lambton QC, Wyandotte OK and others) until re-keyed. Wrong research rows can seed a wrong pin again on the next sweep.
-- **Next action**: an rtr-business session applies the research-row and `wo171_channel_verdicts.csv` lines; an Archive session re-keys the 19 pages (`POST /internal/jurisdiction/override`); an rtr-discovery session fixes the ledger rows (several may update by themselves once the pin change is deployed, since rtr-discovery copies pins).
-- **Constraint**: the pin edits only take effect after a deploy. Re-key the Archive pages after that, or a re-ingest could file them under the old pin again.
-- **History**: `BACKLOG_DONE.md` WO-1185 (the audit) and WO-1186 (the pin fixes).
+- **Issue**: the pin and Archive halves of the 2026-10-06 pin audit are done (17 pin rows; 17 Archive pages re-keyed on 2026-10-07, 2 already right). Still open, listed one per row in `reports/pin_audit_2026-10-06/ambiguous/handoff_other_stores.csv`: 22 `jurisdiction_coverage.csv` rows, 2 `wo171_channel_verdicts.csv` rows (North Miami, De Soto), and 9 rtr-discovery ledger records. Separately, `www.townofgranvilleny.gov` is pinned to Granville village NY, but its name says Town of Granville, whose own YouTube channel now files under the town.
+- **Impact**: a wrong research row can seed a wrong pin again on the next sweep, and the WO-171 rows can rebuild the two bad channel pins.
+- **Next action**: an rtr-business session applies the 24 research lines; an rtr-discovery session fixes the ledger rows (check first: several may have updated by themselves from the deployed pins); Ryan says whose site townofgranvilleny.gov is.
+- **Constraint**: re-keyed pages keep their old web addresses (for example `sunnyside-nl-...`). Renaming them is an optional by-hand step (`POST /internal/admin/reslug-page` plus a `_SLUG_REDIRECTS` entry).
+- **History**: `BACKLOG_DONE.md` WO-1185 (the audit) and WO-1186 (the fixes).
 
 ### Vimeo blocks Render: every caption fetch gets a challenge page, so no Vimeo meeting gets a transcript on the server `[HUMAN]` `[WAIT]`
 
