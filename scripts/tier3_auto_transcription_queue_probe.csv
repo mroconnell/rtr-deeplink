@@ -10495,3 +10495,11 @@ https://rocklin-ca.granicus.com/MediaPlayer.php?view_id=1&clip_id=415,granicus,h
 https://sanmiguelcountyco.granicus.com/MediaPlayer.php?view_id=1&clip_id=597,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-06T22:49:04+00:00,,0
 https://southwhitehall.granicus.com/MediaPlayer.php?view_id=1&clip_id=54,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-06T22:49:08+00:00,,0
 https://play.champds.com/northmiamifl/event/620,champds,hls-master+variant,2080.77,,,1,accept,,3.03,2026-10-07T03:40:00+00:00
+https://www.lac-sainte-marie.com/images/proces-verbaux-videos/2026-01-14-pv-video.mp4,direct_file,head+ffprobe,1177.98,2026-01-15,158130241,1,accept,,8.26,2026-10-07T04:10:51+00:00
+https://saintgabrieldebrandon.com/storage/app/media/municipalite/seances-du-conseil/Dictaphone-14-02-2022.m4a,direct_file,head+ffprobe,1125.80,2022-02-15,,1,accept,,12.26,2026-10-07T04:11:08+00:00
+https://www.saint-alexis-des-monts.ca/upload/seances-du-conseil/2026-02-02_seance_ordinaire.mp3,direct_file,head+ffprobe,2104.32,2026-02-03,35657452,1,accept,,8.35,2026-10-07T04:13:45+00:00
+https://mun-stedg.qc.ca/wp2019v2/wp-content/uploads/seance-ordinaire-du-5-juillet-2021-nettoye.mp3?_=1,direct_file,head+ffprobe,5213.45,2021-07-07,36494670,1,accept,,9.00,2026-10-07T04:14:01+00:00
+https://drive.google.com/file/d/16fNEVHDVx-4M5hWmcQRGStBF1StuH-mu/view?usp=sharing,direct_file,,,,,0,accept,length probe blocked by robots; queued with length unknown (Ryan 2026-10-07),,2026-10-07T00:00:00+00:00
+https://www.dropbox.com/scl/fi/3qiy9q80gyc15hzw5bb7j/Special-Meeting-May-2025.mp4?rlkey=jll7hnwv649oi7hqcr8objjr4&st=6pqvwr0o&dl=0,direct_file,,,,,0,accept,length probe blocked by robots; queued with length unknown (Ryan 2026-10-07),,2026-10-07T00:00:00+00:00
+https://4.files.edl.io/1a54/10/14/25/143031-0db128d6-db67-490b-af0d-1a35abc4169d.m4a,direct_file,,,,,0,accept,length probe blocked by robots; queued with length unknown (Ryan 2026-10-07),,2026-10-07T00:00:00+00:00
+https://files.smartsites.parentsquare.com/4718/board-audio_reg-exec_09-21-2026.mp3,direct_file,,,,,0,accept,length probe blocked by robots; queued with length unknown (Ryan 2026-10-07),,2026-10-07T00:00:00+00:00
