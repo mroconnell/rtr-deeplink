@@ -10540,3 +10540,4 @@ https://tustin.granicus.com/MediaPlayer.php?view_id=2&clip_id=2960,granicus,hls-
 https://windsor-ca.granicus.com/MediaPlayer.php?view_id=2&clip_id=1861,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.04,2026-10-07T13:57:11+00:00,,0
 https://reflect-trurotv.cablecast.tv/internetchannel/show/9033?channel=1,cablecast,cablecast-api,823.00,2026-09-21,,1,accept,,5.24,2026-10-07T14:31:53+00:00,findmeeting_apply_probe,0
 https://cowleycoks.portal.civicclerk.com/event/1069/media,civicclerk,head+ffprobe,1330.35,2026-09-01,575234340,1,accept,,12.18,2026-10-07T14:32:44+00:00,findmeeting_apply_probe,0
+https://vimeo.com/1223529996,vimeo,vimeo-oembed,2714.00,2026-09-02,,1,accept,,2.59,2026-10-07T14:32:15+00:00,findmeeting_apply_probe,0
