@@ -282,3 +282,148 @@ async def test_worker_extraction_hands_a_wmv_url_to_ffmpeg_unchanged(
     first = next(c for c in calls if c[0] == "ffmpeg")
     assert ENCLOSURE in first
     assert "-vn" in first and "libmp3lame" in first
+
+
+# --- stored-entry re-resolves must never fetch a Granicus page ------------------
+
+FEED_URL = "https://evansville.granicus.com/ViewPublisherRSS.php?view_id=1&mode=vod"
+
+
+@pytest.fixture
+def granicus_request_guard(monkeypatch):
+    FINDER_CALLS.clear()
+    """Fails the test if any aiohttp request goes to a granicus.com path
+    other than DownloadFile.php."""
+    import aiohttp
+    from urllib.parse import urlparse
+
+    seen = []
+
+    def check(url):
+        parsed = urlparse(str(url))
+        seen.append(str(url))
+        if parsed.netloc.lower().endswith("granicus.com"):
+            assert parsed.path.lower() == "/downloadfile.php", (
+                f"forbidden Granicus request: {url}"
+            )
+
+    class _Guard:
+        def __init__(self, *a, **k):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        def _req(self, url, *a, **k):
+            check(url)
+            raise aiohttp.ClientError("blocked by test")
+
+        get = head = post = _req
+
+    monkeypatch.setattr(aiohttp, "ClientSession", _Guard)
+    return seen
+
+
+FINDER_CALLS = []
+
+
+class _ExplodingFinder:
+    async def resolve(self, url):
+        FINDER_CALLS.append(url)
+        raise AssertionError(f"finder.resolve must not be called: {url}")
+
+
+async def test_reresolve_uses_frozen_enclosure_and_never_calls_a_finder(
+    granicus_request_guard,
+):
+    from app.platforms.reresolve import reresolve_for_transcription
+
+    result = await reresolve_for_transcription(
+        finder=_ExplodingFinder(),
+        platform="direct_file",
+        source_url=FEED_URL,
+        video_url=ENCLOSURE,
+    )
+    assert result.video_url == ENCLOSURE
+    assert result.source_url == FEED_URL
+    assert result.platform == "direct_file"
+    assert FINDER_CALLS == []
+    assert granicus_request_guard == []
+
+
+async def test_reresolve_never_resolves_a_granicus_feed_address(granicus_request_guard):
+    from app.platforms.reresolve import reresolve_for_transcription
+
+    with pytest.raises(Exception):
+        await reresolve_for_transcription(
+            finder=_ExplodingFinder(),
+            platform="granicus",
+            source_url=FEED_URL,
+            video_url=None,
+        )
+    assert FINDER_CALLS == []
+    assert granicus_request_guard == []
+
+
+async def test_recheck_archived_page_skips_a_feed_address(granicus_request_guard):
+    import app.main as app_main
+
+    out = await app_main._recheck_archived_page(FEED_URL, FEED_URL, "granicus")
+    assert out["error"] == "granicus_feed_not_rechecked"
+    assert granicus_request_guard == []
+
+
+async def test_worker_chunk_keeps_frozen_enclosure_for_a_feed_source_url(
+    monkeypatch, granicus_request_guard
+):
+    import worker.main as wm
+
+    async def _claim():
+        return {
+            "job_id": 9,
+            "chunk_index": 0,
+            "source_url": FEED_URL,
+            "platform": "direct_file",
+            "media_url": ENCLOSURE,
+            "total_chunks": 1,
+            "chunk_size_seconds": 900,
+            "probed_duration_seconds": 600.0,
+            "chunk_plan": None,
+            "partial_segments": [],
+        }
+
+    monkeypatch.setattr(wm.crud, "claim_next_chunk", _claim)
+    monkeypatch.setattr(wm, "get_finder", lambda p: _ExplodingFinder())
+    extracted = []
+
+    async def _extract(
+        media_url, *, start, duration, source_page_url, out_path, is_final_chunk=False
+    ):
+        extracted.append(media_url)
+        out_path.write_bytes(b"fake-audio")
+        return True, None
+
+    monkeypatch.setattr(wm, "extract_chunk_audio", _extract)
+    monkeypatch.setattr(wm, "should_cache_whole_audio", lambda *a, **k: False)
+
+    async def _report(job_id, **kw):
+        return {"status": "completed", "transcript_version_id": 1}
+
+    monkeypatch.setattr(wm.crud, "report_chunk_result", _report)
+
+    async def _noop(job_id):
+        pass
+
+    monkeypatch.setattr(wm, "_send_completion_email", _noop)
+
+    class _Engine:
+        async def transcribe_chunk(self, path):
+            return [{"start": 0.0, "end": 1.0, "text": "hi", "speaker": None}]
+
+    assert await wm.process_next_chunk(_Engine()) is True
+    assert extracted == [ENCLOSURE]
+    assert FINDER_CALLS == []
+    assert granicus_request_guard == []

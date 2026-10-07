@@ -584,6 +584,17 @@ def is_dropbox_url(url: str) -> bool:
 _ASF_EXTENSIONS = (".wmv", ".asf")
 
 
+def _is_granicus_host(url: str) -> bool:
+    host = urlparse(url).netloc.lower().split(":")[0]
+    return host == "granicus.com" or host.endswith(".granicus.com")
+
+
+def is_granicus_feed_url(url: str) -> bool:
+    """A Granicus RSS feed address (`ViewPublisherRSS.php`). It is a queue
+    line's identity, never something a stored-entry re-resolve fetches."""
+    return _is_granicus_host(url) and ("viewpublisherrss" in urlparse(url).path.lower())
+
+
 def is_granicus_download_file_url(url: str) -> bool:
     """True only for a Granicus feed enclosure: the `/DownloadFile.php`
     path on a granicus.com host (`https://<tenant>.granicus.com/
@@ -866,6 +877,17 @@ class DirectFileAssetFinder(AssetFinder):
 
     async def resolve(self, url: str) -> ResolvedMeeting:
         media_url = _resolve_direct_media_url(url)
+        if _is_granicus_host(media_url) and not is_asf_direct_media_url(media_url):
+            # Any other Granicus URL is a page (robots.txt-disallowed for
+            # bots): make no request.
+            return ResolvedMeeting(
+                platform=self.platform_name,
+                source_url=url,
+                video_warnings=[
+                    "direct_file: not fetching a Granicus page; only a "
+                    "DownloadFile.php enclosure is read"
+                ],
+            )
         if is_asf_direct_media_url(media_url):
             # A Granicus feed enclosure (or any .wmv/.asf): the URL is the
             # media file itself and Granicus answers bots on pages only

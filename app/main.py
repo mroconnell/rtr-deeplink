@@ -414,6 +414,12 @@ async def _recheck_archived_page(
     *would* change) but skips the push -- used by the backfill script to
     preview a run against real data without touching the Archive.
     """
+    from app.platforms.direct_file import is_granicus_feed_url
+
+    if is_granicus_feed_url(url):
+        # A stored Granicus feed address is a queue identity, not a page:
+        # never fetched (Granicus pages are robots.txt-disallowed for bots).
+        return {"error": "granicus_feed_not_rechecked", "platform": platform}
     try:
         finder = get_finder(platform)
     except UnsupportedPlatformError:

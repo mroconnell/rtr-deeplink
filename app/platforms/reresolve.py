@@ -41,6 +41,7 @@ import logging
 from typing import Optional
 
 from .base import detect_platform, get_finder
+from .direct_file import is_asf_direct_media_url, is_granicus_feed_url
 from .media_probe import transcription_media_url
 from .models import ResolvedMeeting
 
@@ -108,9 +109,24 @@ async def reresolve_for_transcription(
     fallback exists -- callers see the exact same failure shape as before
     this function existed for a page with no working fallback.
     """
+    if video_url and is_asf_direct_media_url(video_url):
+        # A Granicus feed enclosure (DownloadFile.php) or other .wmv/.asf
+        # file: stable, so use the frozen file as-is. source_url is the
+        # feed item's link or the feed address, which must never be
+        # re-resolved (Granicus pages are robots.txt-disallowed for bots).
+        return ResolvedMeeting(
+            platform=platform,
+            source_url=source_url,
+            video_url=video_url,
+            video_format="wmv",
+        )
     primary_exc: Optional[Exception] = None
     result: Optional[ResolvedMeeting] = None
     try:
+        if is_granicus_feed_url(source_url):
+            # Never hand a Granicus feed address to the Granicus page
+            # finder (or any finder): robots.txt disallows those pages.
+            raise ValueError(f"not re-resolving a Granicus feed address: {source_url}")
         result = await finder.resolve(source_url)
         if transcription_media_url(result):
             return result

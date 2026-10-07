@@ -66,6 +66,10 @@ from app.platforms.media_probe import (
     transcription_media_url,
 )
 from app.platforms.models import TranscriptSegment
+from app.platforms.direct_file import (
+    is_asf_direct_media_url,
+    is_granicus_feed_url,
+)
 from app.platforms.reresolve import reresolve_for_transcription
 from app.utils.retry import retry_async
 from app.utils.vtt_parser import detect_language_from_texts, is_likely_garbled
@@ -769,6 +773,11 @@ async def process_next_chunk(engine: TranscriptionEngine) -> bool:
         # extraction rather than giving up the chunk outright).
         media_url = claim["media_url"]
         try:
+            if is_asf_direct_media_url(media_url) or is_granicus_feed_url(source_url):
+                # A Granicus feed enclosure (DownloadFile.php) or other
+                # .wmv/.asf: stable, so keep the frozen file. source_url
+                # may be a Granicus feed address that must not be fetched.
+                raise UnsupportedPlatformError("frozen ASF/WMV media_url")
             finder = get_finder(platform)
             result = await finder.resolve(source_url)
             if transcription_media_url(result):
