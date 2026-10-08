@@ -184,8 +184,6 @@ https://www.youtube.com/watch?v=RnwVAU4iBZ4		us:place:5422564
 https://www.youtube.com/watch?v=A8SqipRH24g		us:place:5501725
 https://www.youtube.com/watch?v=508A5hlwyz0		us:place:5586400
 https://www.youtube.com/watch?v=Mf3519T_XTg		us:place:0233140
-https://sdmf.new.swagit.com/videos/356308		us:sd:5509060
-https://hudson.granicus.com/MediaPlayer.php?view_id=3&clip_id=5041		us:sd:3905002
 https://vimeo.com/1230000071/9594197ba7		us:sd:1302550
 https://vimeo.com/1225932215/3ff797b414	https://player.vimeo.com/video/1225932215?h=3ff797b414&autoplay=0&loop=0&title=0&byline=0&portrait=0&color&dnt=0	us:sd:1201740
 https://akronschools.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=659		us:sd:3904348
@@ -202,16 +200,6 @@ https://mapleton.civicweb.net/Portal/MeetingInformation.aspx?Id=371		ca:csd:3523
 https://vimeo.com/1226985227	https://vimeo.com/1226985227?share=copy&fl=sv&fe=ci	us:sd:2607560
 https://washingtonfl.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=211		us:county:12133
 https://vimeo.com/596543013/7c411dd1aa		us:county:13119
-https://cloud.castus.tv/vod/amesbury/video/6a165228799500000296b684?page=HOME	https://cloud.castus.tv/vod/amesbury	us:place:2501185
-https://cloud.castus.tv/vod/amesbury/video/68f7aa92aa1ade000281054d?page=HOME	https://cloud.castus.tv/vod/amesbury	us:sd:2501860
-https://cloud.castus.tv/vod/epping/video/69dd7f3a39837e00023cf46c?page=HOME	https://cloud.castus.tv/vod/epping	us:cousub:3301524660
-https://cloud.castus.tv/vod/epping/video/69330ab999a61200026f5c7d?page=HOME	https://cloud.castus.tv/vod/epping	us:sd:3302880
-https://cloud.castus.tv/vod/hampsteadcabletv/video/6a906494a1c4f700029d755a?page=HOME	https://cloud.castus.tv/vod/hampsteadcabletv	us:sd:3303480
-https://cloud.castus.tv/vod/lrpatv/video/6ab3ac44e7ef41000275e866?page=HOME	https://cloud.castus.tv/vod/lrpatv	us:county:33001
-https://cloud.castus.tv/vod/lrpatv/video/6a8f745de21d530002894fb7?page=HOME	https://cloud.castus.tv/vod/lrpatv	us:cousub:3300128740
-https://cloud.castus.tv/vod/lrpatv/video/6ab3ac8ae7ef41000275e86a?page=HOME	https://cloud.castus.tv/vod/lrpatv	us:place:3340180
-https://cloud.castus.tv/vod/manchestertv/video/6a7354f17b95c30002df7245?page=HOME	https://cloud.castus.tv/vod/manchestertv	us:place:3345140
-https://cloud.castus.tv/vod/manchestertv/video/695e92f45bae9b0002c25152?page=HOME	https://cloud.castus.tv/vod/manchestertv	us:sd:3304590
 https://cloud.castus.tv/vod/sudbury/video/6a7f580b4f1e100002501245?page=HOME	https://cloud.castus.tv/vod/sudbury	us:sd:2506930
 https://cloud.castus.tv/vod/tyngsborough/video/67e42921b3359f0008d890fa?page=HOME	https://cloud.castus.tv/vod/tyngsborough	us:sd:2511760
 https://cloud.castus.tv/vod/west-boylston/video/699a6324544490000263bdc4?page=HOME	https://cloud.castus.tv/vod/west-boylston	us:cousub:2502775155
@@ -1306,3 +1294,5 @@ https://www.rustonwa.org/documents/regular-city-council-meeting-october-6th-2026
 https://townofdutton.com/s/1025-audio-Meeting-Minutes_otter_ai.mp3	https://townofdutton.com/new-page	us:place:3022600
 https://townofparish-ny.us/wp-content/uploads/2025/02/Parish-town-board-regular-meeting-audio-Thursday-January-16-2025.mp3	https://townofparish-ny.us/index.php/minutes-2025/	us:cousub:3607556352
 https://vimeo.com/1227369039	https://alexandrianh.com/departments/selectmens-office/4335-2/	us:cousub:3300900580
+https://sdmf.new.swagit.com/videos/356308		us:sd:5509060
+https://hudson.granicus.com/MediaPlayer.php?view_id=3&clip_id=5041		us:sd:3905002
