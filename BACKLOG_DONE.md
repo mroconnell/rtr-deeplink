@@ -1,10 +1,10 @@
 # Backlog — done
 
-## [Done 2026-10-07] WO-1187 follow-up: webtv.coop walk, 115 videos ingested and 497 queued for Tier 3
+## [Done 2026-10-07] WO-1187 follow-up: webtv.coop walk, 115 videos ingested; Tier 3 held back except 1 per government
 
-**What was done.** Ryan said to ingest the captioned videos and route the rest. `scripts/webtv_coop_ingest.py` listed each pinned government channel (one request at a time, 3 seconds apart, no 429), resolved every video, and routed it. Captioned videos were ingested into the Archive with the channel's `gov_id`. Uncaptioned videos went to the Tier 3 queue with their `gov_id`. A video under 8 minutes is never queued (Ryan's rule).
+**What was done.** Ryan said to ingest the captioned videos and route the rest. `scripts/webtv_coop_ingest.py` listed each pinned government channel (one request at a time, 3 seconds apart, no 429), resolved every video, and routed it. Captioned videos were ingested into the Archive with the channel's `gov_id`. Uncaptioned videos were found and counted as Tier 3. **Ryan then said not to queue them: only 1 per government is in the queue** (6 lines: one each for Beaconsfield, Baie-D'Urfé, Pointe-Claire, Montréal-Est, Sainte-Anne-de-Bellevue and Montréal, where channels 6 and 7 share one gov_id). The other 491 are not queued; the walk ledger lists them. A video under 8 minutes is never queued (Ryan's rule).
 
-| Channel | Government | Videos | Ingested (captioned) | Queued for Tier 3 | Skipped (under 8 min) |
+| Channel | Government | Videos | Ingested (captioned) | Tier 3 (no caption file) | Skipped (under 8 min) |
 |---|---|---|---|---|---|
 | 1 | Beaconsfield | 119 | 53 | 65 | 1 |
 | 3 | Baie-D'Urfé | 106 | 0 | 106 | 0 |
