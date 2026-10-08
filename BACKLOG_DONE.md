@@ -1,6 +1,6 @@
 # Backlog — done
 
-## [Done 2026-10-07] WO-1187 follow-up: webtv.coop walk, 112 videos ingested and 497 queued for Tier 3
+## [Done 2026-10-07] WO-1187 follow-up: webtv.coop walk, 115 videos ingested and 497 queued for Tier 3
 
 **What was done.** Ryan said to ingest the captioned videos and route the rest. `scripts/webtv_coop_ingest.py` listed each pinned government channel (one request at a time, 3 seconds apart, no 429), resolved every video, and routed it. Captioned videos were ingested into the Archive with the channel's `gov_id`. Uncaptioned videos went to the Tier 3 queue with their `gov_id`. A video under 8 minutes is never queued (Ryan's rule).
 
@@ -13,7 +13,7 @@
 | 6 | Saint-Laurent (under Montréal) | 80 | 0 | 80 | 0 |
 | 7 | Sud-Ouest (under Montréal) | 68 | 0 | 68 | 0 |
 | 18 | Sainte-Anne-de-Bellevue | 10 | 0 | 10 | 0 |
-| Total | | 615 | 112 | 497 | 3 |
+| Total | | 615 | 115 | 497 | 3 |
 
 **Not done.** Channel 10 (English Montreal School Board) waits for the deploy of its minted row. No Tier 2 exists on this host. The walk did not check whether each video is a meeting; the few information sessions are queued like the rest.
 
