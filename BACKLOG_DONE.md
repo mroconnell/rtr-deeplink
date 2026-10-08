@@ -1,5 +1,21 @@
 # Backlog — done
 
+## [Done 2026-10-07] WO-1187 follow-up: webtv.coop channels 6, 7 and 10 pinned; English Montreal School Board minted
+
+**What was decided.** Ryan decided (relayed by the Quebec Breadth session) that the two Montréal borough channels file under the City of Montréal, and that the English Montreal School Board gets its own row as a school district.
+
+**What changed.**
+
+| Channel | Pinned to | Check made 2026-10-07 |
+|---|---|---|
+| 6 Saint-Laurent | `ca:csd:2466023` (Montréal) | Channel page lists videos titled "Conseil d'arrondissement de Saint-Laurent" |
+| 7 Sud-Ouest | `ca:csd:2466023` (Montréal) | Channel page lists videos titled "Conseil d'arrondissement du Sud-Ouest" |
+| 10 CSEM - EMSB | `rtr:ca:qc:english-montreal-school-board` (new) | The board's own page `emsb.qc.ca/emsb/about/governance/webcast` links the channel |
+
+The pin comments say the two boroughs are filed under the city by Ryan's decision. The new row is in `curated_governments.csv`, `school_district`, same shape as Upper Canada District School Board. The curated file has no domain column; the board's domain `emsb.qc.ca` is in the row's evidence text, read from the board's own page.
+
+**Still open.** Laval, Dorval, Rosemère and the Mercier-Hochelaga-Maisonneuve borough have no channel; they appear only in the site-wide list, so they can only be pinned video by video. The research file `jurisdiction_coverage.csv` was not touched; its EMSB row still needs its type there (written by the research session). Nothing was ingested.
+
 ## [Done 2026-10-07] WO-1187: Coop WebTV (webtv.coop) resolver for Montreal-area council video
 
 **What was done.** Added `app/platforms/webtv_coop.py`. Given a webtv.coop video link, it returns the stream address, the length, the date (from the title) and the captions. Both link shapes work: `/channel/video/<slug>/<key>/<n>` and `/video/<slug>/<key>`. `detect_platform()` routes the host. Five government channels are pinned in `tenant_overrides.csv`.

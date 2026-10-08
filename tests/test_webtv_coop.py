@@ -215,13 +215,13 @@ def test_pins_resolve_a_channel_to_its_government():
 def test_an_unpinned_channel_stays_unresolved():
     from app.utils.gov_registry.resolver import page_hints_for, resolve_government
 
-    # Channels 6 (Saint-Laurent) and 7 (Sud-Ouest) are Montreal boroughs
-    # with no id of their own in ca_csd.csv, so they are not pinned.
+    # Channel 12 (Production ISCA) is not a government (seen in the site
+    # menu 2026-10-07), so it has no pin.
     match = resolve_government(
         None,
         tenant_host="webtv.coop",
         path=f"/video/x/{KEY}",
-        page_hints=page_hints_for("webtv_coop", f"webtv_coop:{KEY}", "webtv_coop:6"),
+        page_hints=page_hints_for("webtv_coop", f"webtv_coop:{KEY}", "webtv_coop:12"),
     )
     assert match.tier == "blank"
 
@@ -254,3 +254,24 @@ def test_site_wide_page_title_and_nav_links_are_not_read_as_the_channel():
     )
     html += '<h1 class="no-indent media-title">2026-04-07 - Titre</h1>'
     assert WebtvCoopAssetFinder._title(html) == "2026-04-07 - Titre"
+
+
+@pytest.mark.parametrize(
+    "channel, gov_id",
+    [
+        ("webtv_coop:6", "ca:csd:2466023"),  # Saint-Laurent borough -> Montréal
+        ("webtv_coop:7", "ca:csd:2466023"),  # Sud-Ouest borough -> Montréal
+        ("webtv_coop:10", "rtr:ca:qc:english-montreal-school-board"),
+    ],
+)
+def test_borough_and_school_board_channels_are_pinned(channel, gov_id):
+    from app.utils.gov_registry.resolver import page_hints_for, resolve_government
+
+    match = resolve_government(
+        None,
+        tenant_host="webtv.coop",
+        path=f"/channel/video/x/{KEY}/{channel.split(':')[1]}",
+        page_hints=page_hints_for("webtv_coop", f"webtv_coop:{KEY}", channel),
+    )
+    assert match.gov_id == gov_id
+    assert match.tier == "pinned"
