@@ -200,18 +200,6 @@ https://mapleton.civicweb.net/Portal/MeetingInformation.aspx?Id=371		ca:csd:3523
 https://vimeo.com/1226985227	https://vimeo.com/1226985227?share=copy&fl=sv&fe=ci	us:sd:2607560
 https://washingtonfl.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=211		us:county:12133
 https://vimeo.com/596543013/7c411dd1aa		us:county:13119
-https://cloud.castus.tv/vod/sudbury/video/6a7f580b4f1e100002501245?page=HOME	https://cloud.castus.tv/vod/sudbury	us:sd:2506930
-https://cloud.castus.tv/vod/tyngsborough/video/67e42921b3359f0008d890fa?page=HOME	https://cloud.castus.tv/vod/tyngsborough	us:sd:2511760
-https://cloud.castus.tv/vod/west-boylston/video/699a6324544490000263bdc4?page=HOME	https://cloud.castus.tv/vod/west-boylston	us:cousub:2502775155
-https://cloud.castus.tv/vod/west-boylston/video/6913effabc4be7000247f113?page=HOME	https://cloud.castus.tv/vod/west-boylston	us:sd:2512390
-https://cloud.castus.tv/vod/weston/video/6a3a906970c97b000285f957?page=HOME	https://cloud.castus.tv/vod/weston	us:sd:2512750
-https://www.dropbox.com/scl/fi/rcfvo11lavfz6l23047hw/9-21-2026-Committee-Meeting.mp3?rlkey=fo0ihx2wdd206l6536341a3fk&st=hnwv1ryx&dl=0		us:place:3919778
-https://msdpiketownshipin.new.swagit.com/videos/237000		us:sd:1808910
-https://bishop-ca.granicus.com/MediaPlayer.php?view_id=1&clip_id=1831
-https://cityblm.granicus.com/MediaPlayer.php?view_id=1&clip_id=1249
-https://burrillville.granicus.com/MediaPlayer.php?view_id=2&clip_id=1470
-https://carsoncity.granicus.com/MediaPlayer.php?view_id=1&clip_id=2938
-https://commerce.granicus.com/MediaPlayer.php?view_id=2&clip_id=1303
 https://coosbay.granicus.com/MediaPlayer.php?view_id=1&clip_id=951
 https://delcopa.granicus.com/MediaPlayer.php?view_id=2&clip_id=652
 https://doravillega.granicus.com/MediaPlayer.php?view_id=1&clip_id=445
@@ -1296,3 +1284,9 @@ https://townofparish-ny.us/wp-content/uploads/2025/02/Parish-town-board-regular-
 https://vimeo.com/1227369039	https://alexandrianh.com/departments/selectmens-office/4335-2/	us:cousub:3300900580
 https://sdmf.new.swagit.com/videos/356308		us:sd:5509060
 https://hudson.granicus.com/MediaPlayer.php?view_id=3&clip_id=5041		us:sd:3905002
+https://msdpiketownshipin.new.swagit.com/videos/237000		us:sd:1808910
+https://bishop-ca.granicus.com/MediaPlayer.php?view_id=1&clip_id=1831
+https://cityblm.granicus.com/MediaPlayer.php?view_id=1&clip_id=1249
+https://burrillville.granicus.com/MediaPlayer.php?view_id=2&clip_id=1470
+https://carsoncity.granicus.com/MediaPlayer.php?view_id=1&clip_id=2938
+https://commerce.granicus.com/MediaPlayer.php?view_id=2&clip_id=1303
