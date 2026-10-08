@@ -1,5 +1,24 @@
 # Backlog — done
 
+## [Done 2026-10-07] WO-1187 follow-up: webtv.coop walk, 112 videos ingested and 497 queued for Tier 3
+
+**What was done.** Ryan said to ingest the captioned videos and route the rest. `scripts/webtv_coop_ingest.py` listed each pinned government channel (one request at a time, 3 seconds apart, no 429), resolved every video, and routed it. Captioned videos were ingested into the Archive with the channel's `gov_id`. Uncaptioned videos went to the Tier 3 queue with their `gov_id`. A video under 8 minutes is never queued (Ryan's rule).
+
+| Channel | Government | Videos | Ingested (captioned) | Queued for Tier 3 | Skipped (under 8 min) |
+|---|---|---|---|---|---|
+| 1 | Beaconsfield | 119 | 53 | 65 | 1 |
+| 3 | Baie-D'Urfé | 106 | 0 | 106 | 0 |
+| 4 | Pointe-Claire | 176 | 62 | 113 | 1 |
+| 5 | Montréal-Est | 56 | 0 | 55 | 1 |
+| 6 | Saint-Laurent (under Montréal) | 80 | 0 | 80 | 0 |
+| 7 | Sud-Ouest (under Montréal) | 68 | 0 | 68 | 0 |
+| 18 | Sainte-Anne-de-Bellevue | 10 | 0 | 10 | 0 |
+| Total | | 615 | 112 | 497 | 3 |
+
+**Not done.** Channel 10 (English Montreal School Board) waits for the deploy of its minted row. No Tier 2 exists on this host. The walk did not check whether each video is a meeting; the few information sessions are queued like the rest.
+
+**Note.** Archive page slugs repeat the date (`...-2026-10-06-2026-10-06-conseil-...`) because the title starts with it. Cosmetic.
+
 ## [Done 2026-10-07] WO-1187 follow-up: webtv.coop channels 6, 7 and 10 pinned; English Montreal School Board minted
 
 **What was decided.** Ryan decided (relayed by the Quebec Breadth session) that the two Montréal borough channels file under the City of Montréal, and that the English Montreal School Board gets its own row as a school district.
