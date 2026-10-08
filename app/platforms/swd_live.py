@@ -45,7 +45,9 @@ _MEETING_PATH_RE = re.compile(
     r"^/(?P<lang>fr|en)/(?P<tenant>[a-z0-9-]+)/archive/(?P<id>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/?$",
     re.IGNORECASE,
 )
-_TENANT_PATH_RE = re.compile(r"^/(?:fr|en)/(?P<tenant>[a-z0-9-]+)(?:/|$)", re.IGNORECASE)
+_TENANT_PATH_RE = re.compile(
+    r"^/(?:fr|en)/(?P<tenant>[a-z0-9-]+)(?:/|$)", re.IGNORECASE
+)
 _DATE_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})")
 
 # Seconds to wait between two requests to swd-live.com / api.swd-live.com (one at a time).
@@ -76,12 +78,20 @@ def event_id_from_url(url: str) -> Optional[str]:
 
 
 def _api_headers(tenant: str) -> dict:
-    return {"User-Agent": _USER_AGENT, "Accept": "application/json", "X-Tenant-Name": tenant}
+    return {
+        "User-Agent": _USER_AGENT,
+        "Accept": "application/json",
+        "X-Tenant-Name": tenant,
+    }
 
 
-async def _get_json(session: aiohttp.ClientSession, url: str, tenant: str) -> Optional[dict]:
+async def _get_json(
+    session: aiohttp.ClientSession, url: str, tenant: str
+) -> Optional[dict]:
     try:
-        async with session.get(url, headers=_api_headers(tenant), timeout=aiohttp.ClientTimeout(total=30)) as response:
+        async with session.get(
+            url, headers=_api_headers(tenant), timeout=aiohttp.ClientTimeout(total=30)
+        ) as response:
             if response.status == 429:
                 raise SwdRateLimited()
             if response.status != 200:
@@ -95,7 +105,9 @@ async def _get_json(session: aiohttp.ClientSession, url: str, tenant: str) -> Op
         return None
 
 
-async def list_archived(tenant: str, from_date: str, to_date: str) -> Optional[List[dict]]:
+async def list_archived(
+    tenant: str, from_date: str, to_date: str
+) -> Optional[List[dict]]:
     """The archived meetings of a tenant between two dates (`YYYY-MM-DD`), newest first as the API gives them; None when the API did not answer.
     Each item: `id`, `start_time`, `translations`, `category`. A walk script pages this by month, one request at a time."""
     url = f"{API_BASE}/events/list_archived/?from_date={from_date}&to_date={to_date}"
@@ -138,13 +150,17 @@ class SwdLiveAssetFinder(AssetFinder):
         external_id = f"swd_live:{tenant}:{event_id}"
         try:
             async with aiohttp.ClientSession() as session:
-                event = await _get_json(session, f"{API_BASE}/events/{event_id}/", tenant)
+                event = await _get_json(
+                    session, f"{API_BASE}/events/{event_id}/", tenant
+                )
         except SwdRateLimited:
             return ResolvedMeeting(
                 platform=self.platform_name,
                 source_url=url,
                 external_id=external_id,
-                video_warnings=["swd-live.com asked us to slow down (HTTP 429), so we stopped. Try again later."],
+                video_warnings=[
+                    "swd-live.com asked us to slow down (HTTP 429), so we stopped. Try again later."
+                ],
             )
         if not isinstance(event, dict):
             return ResolvedMeeting(
@@ -153,7 +169,9 @@ class SwdLiveAssetFinder(AssetFinder):
                 external_id=external_id,
                 video_warnings=["Could not load this swd-live.com meeting."],
             )
-        lang = (_MEETING_PATH_RE.match(urlparse(url).path).group("lang") or "fr").lower()
+        lang = (
+            _MEETING_PATH_RE.match(urlparse(url).path).group("lang") or "fr"
+        ).lower()
         video_url = (event.get("vod_blog_url") or "").strip() or None
         resolved = ResolvedMeeting(
             platform=self.platform_name,

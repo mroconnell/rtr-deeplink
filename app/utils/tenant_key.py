@@ -705,7 +705,9 @@ _TELVUE_BARE_TOKEN_RE = re.compile(r"^[A-Za-z0-9_-]{32}$")
 _BOXCAST_CHANNEL_HINT_RE = re.compile(r"^channel=boxcast:(.+)$", re.IGNORECASE)
 _CIVICMEDIA_CHANNEL_HINT_RE = re.compile(r"^channel=civicmedia:(\d+)$", re.IGNORECASE)
 _WEBTV_COOP_CHANNEL_HINT_RE = re.compile(r"^channel=webtv_coop:(\d+)$", re.IGNORECASE)
-_SWD_LIVE_CHANNEL_HINT_RE = re.compile(r"^channel=swd_live:([a-z0-9-]+)$", re.IGNORECASE)
+_SWD_LIVE_CHANNEL_HINT_RE = re.compile(
+    r"^channel=swd_live:([a-z0-9-]+)$", re.IGNORECASE
+)
 # How a pin may spell "exactly this tenant" in front of the bare key.
 _WHOLE_TENANT_PREFIXES = (
     "player/",

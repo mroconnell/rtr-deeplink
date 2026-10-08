@@ -7,7 +7,11 @@ import pytest
 
 from app.platforms import swd_live
 from app.platforms.base import detect_platform
-from app.platforms.swd_live import SwdLiveAssetFinder, event_id_from_url, tenant_from_url
+from app.platforms.swd_live import (
+    SwdLiveAssetFinder,
+    event_id_from_url,
+    tenant_from_url,
+)
 from app.utils.tenant_key import tenant_key
 
 from aiohttp_mock import FakeResponse, mock_session
@@ -26,7 +30,9 @@ def _route(url, fixture=None, status=200, text=None):
 
 
 async def test_resolve_a_committee_meeting_gives_the_mp4_the_date_and_no_captions():
-    with mock_session(_route(PLENARY_API, "event_committee_of_the_whole_2026-09-01.json")):
+    with mock_session(
+        _route(PLENARY_API, "event_committee_of_the_whole_2026-09-01.json")
+    ):
         result = await SwdLiveAssetFinder().resolve(PLENARY_URL)
 
     assert result.platform == "swd_live"
@@ -34,7 +40,9 @@ async def test_resolve_a_committee_meeting_gives_the_mp4_the_date_and_no_caption
     assert result.title == "Comité plénier public"
     assert result.date == "2026-09-01"
     assert result.video_format == "mp4"
-    assert result.video_url.startswith("https://villeswd.blob.core.windows.net/media/archive/2026/09%20Septembre/")
+    assert result.video_url.startswith(
+        "https://villeswd.blob.core.windows.net/media/archive/2026/09%20Septembre/"
+    )
     assert result.video_url.endswith(".mp4")
     assert result.video_channel == "swd_live:gatineau"
     # The broadcast window (4.4 h) is longer than the real file (3.9 h), so it is never offered as the length.
@@ -45,7 +53,9 @@ async def test_resolve_a_committee_meeting_gives_the_mp4_the_date_and_no_caption
 
 async def test_the_english_address_gives_the_english_title():
     url = f"https://www.swd-live.com/en/gatineau/archive/{PLENARY_ID}"
-    with mock_session(_route(PLENARY_API, "event_committee_of_the_whole_2026-09-01.json")):
+    with mock_session(
+        _route(PLENARY_API, "event_committee_of_the_whole_2026-09-01.json")
+    ):
         result = await SwdLiveAssetFinder().resolve(url)
     assert result.title == "Public Committee of the Whole"
 
@@ -53,15 +63,24 @@ async def test_the_english_address_gives_the_english_title():
 async def test_the_tenant_header_is_sent(monkeypatch):
     seen = []
     real = swd_live._api_headers
-    monkeypatch.setattr(swd_live, "_api_headers", lambda tenant: seen.append(tenant) or real(tenant))
-    with mock_session(_route(PLENARY_API, "event_committee_of_the_whole_2026-09-01.json")):
+    monkeypatch.setattr(
+        swd_live, "_api_headers", lambda tenant: seen.append(tenant) or real(tenant)
+    )
+    with mock_session(
+        _route(PLENARY_API, "event_committee_of_the_whole_2026-09-01.json")
+    ):
         await SwdLiveAssetFinder().resolve(PLENARY_URL)
     assert seen == ["gatineau"]
-    assert real("gatineau")["X-Tenant-Name"] == "gatineau" and "redtaperecordings" in real("gatineau")["User-Agent"]
+    assert (
+        real("gatineau")["X-Tenant-Name"] == "gatineau"
+        and "redtaperecordings" in real("gatineau")["User-Agent"]
+    )
 
 
 async def test_a_meeting_with_no_archived_video_is_a_plain_warning_not_an_error():
-    event = json.loads(load_fixture("swd_live", "event_committee_of_the_whole_2026-09-01.json"))
+    event = json.loads(
+        load_fixture("swd_live", "event_committee_of_the_whole_2026-09-01.json")
+    )
     event["vod_blog_url"] = ""
     with mock_session(_route(PLENARY_API, text=json.dumps(event))):
         result = await SwdLiveAssetFinder().resolve(PLENARY_URL)
@@ -70,13 +89,17 @@ async def test_a_meeting_with_no_archived_video_is_a_plain_warning_not_an_error(
 
 
 async def test_the_archive_list_page_is_not_a_single_meeting():
-    result = await SwdLiveAssetFinder().resolve("https://swd-live.com/fr/gatineau/archive")
+    result = await SwdLiveAssetFinder().resolve(
+        "https://swd-live.com/fr/gatineau/archive"
+    )
     assert result.video_url is None and result.external_id is None
     assert "not a single meeting" in result.video_warnings[0]
 
 
 async def test_the_live_page_is_never_fetched():
-    result = await SwdLiveAssetFinder().resolve("https://swd-live.com/fr/gatineau/broadcast")     # no mocked route: a request would raise
+    result = await SwdLiveAssetFinder().resolve(
+        "https://swd-live.com/fr/gatineau/broadcast"
+    )  # no mocked route: a request would raise
     assert result.video_url is None and result.video_warnings
 
 
@@ -90,22 +113,39 @@ async def test_a_429_stops_with_a_plain_warning():
 async def test_an_api_error_is_a_plain_warning(status):
     with mock_session(_route(PLENARY_API, status=status, text="")):
         result = await SwdLiveAssetFinder().resolve(PLENARY_URL)
-    assert result.video_url is None and result.video_warnings == ["Could not load this swd-live.com meeting."]
+    assert result.video_url is None and result.video_warnings == [
+        "Could not load this swd-live.com meeting."
+    ]
 
 
 async def test_list_archived_returns_the_months_meetings():
     with mock_session(_route(LIST_API, "list_archived_2026-09.json")):
         events = await swd_live.list_archived("gatineau", "2026-09-01", "2026-09-30")
     assert len(events) == 9
-    assert {e["category"]["category_code"] for e in events} == {"committee-of-the-whole", "executive-committee", "preparatory-caucus"}
+    assert {e["category"]["category_code"] for e in events} == {
+        "committee-of-the-whole",
+        "executive-committee",
+        "preparatory-caucus",
+    }
     assert events[0]["translations"]["fr"]["title"] == "Comité plénier public"
 
 
 def test_addresses_tenants_and_routing():
-    assert event_id_from_url(PLENARY_URL) == PLENARY_ID and event_id_from_url("https://swd-live.com/fr/gatineau/archive") is None
+    assert (
+        event_id_from_url(PLENARY_URL) == PLENARY_ID
+        and event_id_from_url("https://swd-live.com/fr/gatineau/archive") is None
+    )
     assert tenant_from_url("https://swd-live.com/en/mont-royal") == "mont-royal"
     assert tenant_from_url("https://swd-live.com/") is None
-    assert detect_platform(PLENARY_URL) == "swd_live" and detect_platform("https://www.swd-live.com/fr/gatineau/archive") == "swd_live"
+    assert (
+        detect_platform(PLENARY_URL) == "swd_live"
+        and detect_platform("https://www.swd-live.com/fr/gatineau/archive")
+        == "swd_live"
+    )
     assert tenant_key("https://swd-live.com/fr/gatineau/archive") == "gatineau"
-    assert tenant_key(PLENARY_URL) == tenant_key("https://www.swd-live.com/en/gatineau/broadcast") == "gatineau"
+    assert (
+        tenant_key(PLENARY_URL)
+        == tenant_key("https://www.swd-live.com/en/gatineau/broadcast")
+        == "gatineau"
+    )
     assert tenant_key("https://swd-live.com/fr/mont-royal") == "mont-royal"
