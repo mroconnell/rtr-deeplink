@@ -184,18 +184,6 @@ https://www.youtube.com/watch?v=RnwVAU4iBZ4		us:place:5422564
 https://www.youtube.com/watch?v=A8SqipRH24g		us:place:5501725
 https://www.youtube.com/watch?v=508A5hlwyz0		us:place:5586400
 https://www.youtube.com/watch?v=Mf3519T_XTg		us:place:0233140
-https://reflect-westernhills.cablecast.tv/internetchannel/show/1665	https://reflect-westernhills.cablecast.tv/CablecastPublicSite/	us:cousub:2301729710
-https://bloomfield-mi.cablecast.tv/show/2836?site=1	https://bloomfield-mi.cablecast.tv/	us:sd:2606090
-https://pub-uclg.escribemeetings.com/Meeting.aspx?Id=ade59b2f-4a7c-4b0e-861d-0e83e28da450		ca:cd:3507
-https://drive.google.com/file/d/1vrBSECS9G9gmziehdBx_p2IoipkRApl2/view?usp=sharing		us:sd:4700330
-https://boxcast.tv/view/facilities-committee-meeting-mx8bdhhhog329sn4sb1y		us:sd:4502340
-https://drive.google.com/file/d/1tbGdUyxCVOkvbPpzjmb8luAwd7HuZDZj/view?usp=sharing		us:sd:3407590
-https://harrisonburg-va.granicus.com/MediaPlayer.php?view_id=4&clip_id=1367		us:sd:5101860
-https://drive.google.com/file/d/1NHqZRe6YxrU-O9rj06rZXkjVGvMbR0_d/view?usp=sharing		us:sd:5501770
-https://drive.google.com/file/d/1mSCm_XMEIoAlo8moh4bBxmZsDjaRh7HH/view?usp=sharing		us:place:3525800
-https://drive.google.com/file/d/145uuL5lD9eegC_6isH1Q1ZSJ8oP6V0fg/view?usp=drive_link		us:sd:3172390
-https://drive.google.com/file/d/1o9B15ypctQbk7eqabKTjXkW_pNCt8Jgi/view?usp=share_link		us:sd:2922530
-https://videoplayer.telvue.com/player/P-mhk-Tgy5BJ93MCiUrO5mHLhFBBvfk4/media/940002		us:cousub:4202977344
 https://sdmf.new.swagit.com/videos/356308		us:sd:5509060
 https://hudson.granicus.com/MediaPlayer.php?view_id=3&clip_id=5041		us:sd:3905002
 https://vimeo.com/1230000071/9594197ba7		us:sd:1302550
@@ -1197,3 +1185,4 @@ https://webtv.coop/channel/video/2026-09-08-conseil-municipal-de-la-ville-de-bai
 https://webtv.coop/channel/video/2026-09-09-conseil-municipal-de-montral-est/ffca58a259d13d11d259b2f87ba3cf48/5	https://webtv.coop/channel/video/2026-09-09-conseil-municipal-de-montral-est/ffca58a259d13d11d259b2f87ba3cf48/5	ca:csd:2466007	2026-09-09 - Conseil municipal de Montréal-Est	2026-09-09
 https://webtv.coop/channel/video/2026-10-06-conseil-darrondissement-de-saint-laurent/e878b4a46ea40fa31736d3095a7cb9e9/6	https://webtv.coop/channel/video/2026-10-06-conseil-darrondissement-de-saint-laurent/e878b4a46ea40fa31736d3095a7cb9e9/6	ca:csd:2466023	2026-10-06 Conseil d'arrondissement de Saint-Laurent	2026-10-06
 https://webtv.coop/channel/video/2026-09-14-conseil-municipal-de-sainte-anne-de-bellevue/1fbe91e2851079541ac8772e50e9e8db/18	https://webtv.coop/channel/video/2026-09-14-conseil-municipal-de-sainte-anne-de-bellevue/1fbe91e2851079541ac8772e50e9e8db/18	ca:csd:2466117	2026-09-14 - Conseil municipal de Sainte-Anne-de-Bellevue	2026-09-14
+https://harrisonburg-va.granicus.com/MediaPlayer.php?view_id=4&clip_id=1367		us:sd:5101860

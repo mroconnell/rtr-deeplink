@@ -10888,3 +10888,20 @@ https://webtv.coop/channel/video/2023-05-23-conseil-municipal-de-beaconsfield/25
 https://webtv.coop/channel/video/2023-03-27-conseil-municipal-de-beaconsfield/a679bc0776045650f915a0b64763a04e/1,webtv_coop,hls-master+variant,3924.21,,,1,accept,,0.42,2026-10-08T00:34:07+00:00,bulk_ingest,0
 https://webtv.coop/channel/video/2023-02-20-conseil-municipal-de-beaconsfield/e21e5f9136215ae856367fb41d295c5d/1,webtv_coop,hls-master+variant,5179.46,,,1,accept,,0.44,2026-10-08T00:34:16+00:00,bulk_ingest,0
 https://webtv.coop/channel/video/2023-01-23-conseil-municipal-de-la-ville-de-beaconsfield/272a139dda3e25e4bb23e26d3d42e9b2/1,webtv_coop,hls-master+variant,4501.89,,,1,accept,,0.43,2026-10-08T00:34:25+00:00,bulk_ingest,0
+https://reflect-westernhills.cablecast.tv/internetchannel/show/1665,cablecast,cablecast-api,2122.00,2022-05-21,,1,accept,,0.21,2026-10-08T06:39:26+00:00,,0
+https://reflect-westernhills.cablecast.tv/internetchannel/show/1665,cablecast,cablecast-api,2122.00,2022-05-21,,1,accept,,0.05,2026-10-08T06:39:26+00:00,feed_tier3_auto_transcription,0
+https://bloomfield-mi.cablecast.tv/show/2836?site=1,cablecast,unknown-accepted,,,,0,accept,"length unknown, accepted (Cablecast): Cablecast API show record returned HTTP 404",0.09,2026-10-08T06:39:28+00:00,,0
+https://bloomfield-mi.cablecast.tv/show/2836?site=1,cablecast,unknown-accepted,,,,0,accept,"length unknown, accepted (Cablecast): Cablecast API show record returned HTTP 404",0.05,2026-10-08T06:39:28+00:00,feed_tier3_auto_transcription,0
+https://pub-uclg.escribemeetings.com/Meeting.aspx?Id=ade59b2f-4a7c-4b0e-861d-0e83e28da450,escribe,hls-master+variant,1551.93,,,1,accept,,0.33,2026-10-08T06:39:32+00:00,,0
+https://pub-uclg.escribemeetings.com/Meeting.aspx?Id=ade59b2f-4a7c-4b0e-861d-0e83e28da450,escribe,hls-master+variant,1551.93,,,1,accept,,0.19,2026-10-08T06:39:32+00:00,feed_tier3_auto_transcription,0
+https://drive.google.com/file/d/1vrBSECS9G9gmziehdBx_p2IoipkRApl2/view?usp=sharing,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.89,2026-10-08T06:39:36+00:00,,0
+https://boxcast.tv/view/facilities-committee-meeting-mx8bdhhhog329sn4sb1y,boxcast,hls-master+variant,4852.69,,,1,accept,,0.21,2026-10-08T06:39:38+00:00,,0
+https://boxcast.tv/view/facilities-committee-meeting-mx8bdhhhog329sn4sb1y,boxcast,hls-master+variant,4852.69,,,1,accept,,0.10,2026-10-08T06:39:38+00:00,feed_tier3_auto_transcription,0
+https://drive.google.com/file/d/1tbGdUyxCVOkvbPpzjmb8luAwd7HuZDZj/view?usp=sharing,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.41,2026-10-08T06:39:41+00:00,,0
+https://harrisonburg-va.granicus.com/MediaPlayer.php?view_id=4&clip_id=1367,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.12,2026-10-08T06:39:54+00:00,,0
+https://drive.google.com/file/d/1NHqZRe6YxrU-O9rj06rZXkjVGvMbR0_d/view?usp=sharing,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.83,2026-10-08T06:39:58+00:00,,0
+https://drive.google.com/file/d/1mSCm_XMEIoAlo8moh4bBxmZsDjaRh7HH/view?usp=sharing,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.31,2026-10-08T06:40:00+00:00,,0
+https://drive.google.com/file/d/145uuL5lD9eegC_6isH1Q1ZSJ8oP6V0fg/view?usp=drive_link,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.84,2026-10-08T06:40:03+00:00,,0
+https://drive.google.com/file/d/1o9B15ypctQbk7eqabKTjXkW_pNCt8Jgi/view?usp=share_link,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,1.24,2026-10-08T06:40:07+00:00,,0
+https://videoplayer.telvue.com/player/P-mhk-Tgy5BJ93MCiUrO5mHLhFBBvfk4/media/940002,telvue,telvue-page-json,4666.00,,,1,accept,,0.30,2026-10-08T06:40:10+00:00,,0
+https://videoplayer.telvue.com/player/P-mhk-Tgy5BJ93MCiUrO5mHLhFBBvfk4/media/940002,telvue,telvue-page-json,4666.00,,,1,accept,,0.24,2026-10-08T06:40:10+00:00,feed_tier3_auto_transcription,0
