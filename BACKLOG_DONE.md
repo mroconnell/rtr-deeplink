@@ -27,7 +27,7 @@
 | 18 | Sainte-Anne-de-Bellevue | 10 | 0 | 10 | 0 |
 | Total | | 615 | 115 | 497 | 3 |
 
-**Not done.** Channel 10 (English Montreal School Board) waits for the deploy of its minted row. No Tier 2 exists on this host. The walk did not check whether each video is a meeting; the few information sessions are queued like the rest.
+**Not done.** Channel 10 (English Montreal School Board) was walked 2026-10-08 after the deploy: 95 videos, 0 with a caption file, 94 Tier 3, 1 under 8 minutes; 1 Tier 3 line queued (`rtr:ca:qc:english-montreal-school-board`, 2026-09-23), the other 93 not queued. No Tier 2 exists on this host. The walk did not check whether each video is a meeting; the few information sessions are queued like the rest.
 
 **Note.** Archive page slugs repeat the date (`...-2026-10-06-2026-10-06-conseil-...`) because the title starts with it. Cosmetic.
 
