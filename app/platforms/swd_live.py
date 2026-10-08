@@ -25,7 +25,6 @@ Everything below was read from the real site on 2026-10-08 (Gatineau), never ass
 Politeness: one request at a time, 3 seconds apart, the project User-Agent, and a 429 stops the resolve at once with a plain warning.
 """
 
-import asyncio
 import logging
 import re
 from typing import List, Optional
