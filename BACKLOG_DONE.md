@@ -92,6 +92,18 @@ Channels 6 and 7 are Montréal boroughs with no id of their own; not pinned (liv
 
 **Not done here.** Research rows, Archive pages and rtr-discovery records; see the `BACKLOG.md` WO-1186 entry and `reports/pin_audit_2026-10-06/ambiguous/handoff_other_stores.csv`.
 
+**Archive re-keys, 2026-10-07.** Ryan ran `scripts/repair_wrong_pages.py` on the Archive's Render shell with the reviewed sheet `reports/pin_audit_2026-10-06/ambiguous/archive_rekeys.csv`.
+
+| Result | Count of rows |
+|---|---|
+| Re-keyed | 17 |
+| Already done, left alone | 2 |
+| Total | 19 |
+
+Two lessons for the next run. The Render web shell garbles a long paste (one 5 KB heredoc broke mid-row), so paste the sheet in pieces under about 750 characters, with only the required columns. And the Archive's shell sets `ARCHIVE_BASE_URL` to its internal address, which the tool's `--apply` guard reads as remote; pass `--base-url http://127.0.0.1:$PORT` there.
+
+**Other stores, 2026-10-07.** rtr-business commit 599789d6 fixed 24 `jurisdiction_coverage.csv` rows (22 from the audit plus the two Granville rows) and the North Miami and De Soto rows in `wo171_channel_verdicts.csv`, through `research/apply_pin_audit_2026-10-07.py` (lock, re-read, size floor, atomic rename). Twelve rows now have a blank `domain`; no replacement was guessed. The rtr-discovery ledger got its 9 fixes by direct SQL in one transaction (backup kept in the session scratchpad): 7 tenant rows and 117 candidate rows. `www.townofgranvilleny.gov` was re-pinned from Granville village to the Town of Granville: the site's own title is "Town of Granville, NY - Home".
+
 ## [Done 2026-10-06] WO-1185: pin audit, a free rule check that finds pins contradicting each other
 
 **Why this ran.** On 2026-10-05 `sunnyside.primegov.com` was found pinned to Sunnyside NL. Two other pins and the city's YouTube handle said Sunnyside WA, and nothing compared them. Ryan asked for a cheap check, rerun from time to time, that lists pins which contradict each other or look improbable. He chose rules first; Jev (the TypeSafe system-one classifier) comes later only if the rules leave too much undecided.
