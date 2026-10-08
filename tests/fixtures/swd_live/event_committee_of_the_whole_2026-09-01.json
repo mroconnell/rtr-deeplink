@@ -1,0 +1,75 @@
+{
+ "_fixture_source": "GET https://api.swd-live.com/api/v1/events/e96fb041-106e-4c38-9b99-d51eeddd4a38/ with X-Tenant-Name: gatineau, read live 2026-10-08",
+ "id": "e96fb041-106e-4c38-9b99-d51eeddd4a38",
+ "translations": {
+  "fr": {
+   "title": "Comité plénier public",
+   "description": ""
+  },
+  "en": {
+   "title": "Public Committee of the Whole",
+   "description": ""
+  }
+ },
+ "category": {
+  "id": "07de9c74-9d96-49a7-8ce5-d00fc25fc093",
+  "translations": {
+   "fr": {
+    "name": "Comité plénier",
+    "description": null
+   },
+   "en": {
+    "name": "Committee of the Whole",
+    "description": null
+   }
+  },
+  "color": "00bcff",
+  "category_code": "committee-of-the-whole"
+ },
+ "start_time": "2026-09-01T09:30:00-04:00",
+ "created": "2026-08-31T14:09:29.750830-04:00",
+ "modified": "2026-09-01T13:41:47.016175-04:00",
+ "streaming_type": "vimeo",
+ "ingest_url": null,
+ "stream_key": null,
+ "live_prepared": false,
+ "vod_url": "",
+ "playback_url": "https://vimeo.com/event/5632958/embed/interaction",
+ "vod_asset_url": null,
+ "vod_blog_url": "https://villeswd.blob.core.windows.net/media/archive/2026/09%20Septembre/Gatineau9%2C1%2C2026-plenier%20-%2001%20September%202026%20-%2009-29-36%20AM.mp4",
+ "vod_blog_thumbnail": null,
+ "archived": true,
+ "is_live": false,
+ "live_start_time": "2026-09-01T09:16:41.095588-04:00",
+ "live_end_time": "2026-09-01T13:41:47.016095-04:00",
+ "sections": [
+  {
+   "id": "5dec5137-5a6b-4cc3-a0c6-6df9b9645a6c",
+   "translations": {
+    "fr": {
+     "title": "Ordre du jour ",
+     "section_name": ""
+    },
+    "en": {
+     "title": "Agenda",
+     "section_name": ""
+    }
+   },
+   "position": 1,
+   "start_offset": null,
+   "end_offset": null,
+   "is_available": true,
+   "documents": [
+    {
+     "id": "10a70482-14f4-478a-a3f7-284dad20f013",
+     "file": "https://villeswd.blob.core.windows.net/media/documents/2026/08/31/2026-09-01-OJ-Public.docx",
+     "file_url": "https://villeswd.blob.core.windows.net/media/documents/2026/08/31/2026-09-01-OJ-Public.docx",
+     "file_name": "Ordre du jour",
+     "file_manual": "",
+     "uploaded_at": "2026-08-31T14:09:30.449944-04:00"
+    }
+   ]
+  }
+ ],
+ "statistics": []
+}

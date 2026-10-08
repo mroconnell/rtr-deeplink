@@ -284,6 +284,11 @@ CANARY_URLS: dict[str, list[str]] = {
     "webtv_coop": [
         "https://webtv.coop/channel/video/2026-10-06-conseil-de-la-ville-de-pointe-claire/1886702ad1fda24b99dcab99fe8a66ea/4"
     ],
+    # Gatineau, QC's real 2026-09-01 public committee-of-the-whole meeting on SWD Live -- confirmed live 2026-10-08: an archived MP4 (about
+    # 3.9 h) on the media host; no captions, so `has_real_content()` is satisfied by video + metadata, not segments.
+    "swd_live": [
+        "https://swd-live.com/fr/gatineau/archive/e96fb041-106e-4c38-9b99-d51eeddd4a38"
+    ],
     # Salisbury, NC's real 7/21/2026 City Council meeting -- the one city
     # in the WO-29 investigation confirmed (via a real browser) to have
     # populated English captions inside the Vimeo player. This adapter is

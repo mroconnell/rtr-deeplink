@@ -1,5 +1,17 @@
 # Backlog — done
 
+## [Done 2026-10-08] SWD Live (swd-live.com) resolver for Gatineau and Mont-Royal council video
+
+**What was done.** Added `app/platforms/swd_live.py`. Given a swd-live.com meeting link (`/fr/<tenant>/archive/<uuid>`), it returns the archived MP4 address, the date, the French or English title and the tenant (`video_channel` = `swd_live:<tenant>`); `list_archived(tenant, from, to)` lists a tenant's archived meetings for a walk script. `detect_platform()` routes the host, `tenant_key` reads the tenant from the path, and two pins are in `tenant_overrides.csv` (Gatineau `ca:csd:2481017`, Mont-Royal `ca:csd:2466072`). There is no walk or ingest script yet.
+
+**Checks made first (2026-10-07/08, one request at a time, 3 seconds apart, no 429).**
+- The site is a Next.js app: a plain fetch of the archive page is an empty shell. The page calls `api.swd-live.com/api/v1/events/...` with one header, `X-Tenant-Name: <tenant>`; without it the API answers 500. There is no robots.txt.
+- A meeting record has `vod_blog_url` (the MP4, on `villeswd.blob.core.windows.net`, `Accept-Ranges: bytes`), the category (council-meeting, executive-committee, committee-of-the-whole, preparatory-caucus, special-session, budget-study), an agenda document and no captions. The live stream is a Vimeo event and is never touched.
+- The broadcast window in the record is longer than the file (Gatineau 2026-09-01 plenary: window 4.42 h, file 3.88 h), so the length is NOT returned; the queue's length probe measures the file.
+- Size, read from the archive calendar: about 70 to 100 listed meetings a year for Gatineau (Nov 2019 onward). Mont-Royal's archive was not opened. The Wayback index holds nothing for the API or the media host, and SWD's own site lists no municipal clients; Gatineau and Mont-Royal are the only two known tenants.
+
+**Tests.** `tests/test_swd_live.py` (11, real answers saved in `tests/fixtures/swd_live/`), a canary row in `scripts/adapter_canary.py`, a coverage name in `archive/db/crud.py` and the shared-host list in `app/utils/gov_registry/registry.py`.
+
 ## [Done 2026-10-07] WO-1187 follow-up: webtv.coop walk, 115 videos ingested; Tier 3 held back except 1 per government
 
 **What was done.** Ryan said to ingest the captioned videos and route the rest. `scripts/webtv_coop_ingest.py` listed each pinned government channel (one request at a time, 3 seconds apart, no 429), resolved every video, and routed it. Captioned videos were ingested into the Archive with the channel's `gov_id`. Uncaptioned videos were found and counted as Tier 3. **Ryan then said not to queue them: only 1 per government is in the queue** (6 lines: one each for Beaconsfield, Baie-D'Urfé, Pointe-Claire, Montréal-Est, Sainte-Anne-de-Bellevue and Montréal, where channels 6 and 7 share one gov_id). The other 491 are not queued; the walk ledger lists them. A video under 8 minutes is never queued (Ryan's rule).

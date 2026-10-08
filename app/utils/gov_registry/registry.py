@@ -353,6 +353,9 @@ MULTI_GOV_HOSTS: FrozenSet[str] = frozenset(
         # matched against webtv_coop.py's `video_channel` (the
         # `/video/<slug>/<key>` address does not name its channel).
         "webtv.coop",
+        # SWD Live (swd-live.com, Service Web Diffusion): one tenant per customer, the first path segment after the language
+        # (`/fr/gatineau/archive/...`). Pins are `match=channel=swd_live:{tenant}`, matched against swd_live.py's `video_channel`.
+        "swd-live.com",
     }
 )
 
