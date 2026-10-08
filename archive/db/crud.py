@@ -5842,6 +5842,8 @@ DIRECT_PLATFORMS: dict[str, str] = {
     # governments. Direct video host; webtv_coop.py keeps its own platform
     # name on every result.
     "webtv_coop": "Coop WebTV (webtv.coop)",
+    # SWD Live (swd-live.com): Service Web Diffusion's council webcasts (Gatineau, Mont-Royal). Direct MP4 files; swd_live.py has its own platform.
+    "swd_live": "SWD Live (swd-live.com)",
     "escribe": "eScribe",
     "cablecast": "Cablecast",
     "champds": "CHAMP/ChampDS",

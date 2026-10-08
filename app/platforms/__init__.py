@@ -49,6 +49,7 @@ def register_all_finders() -> None:
     from .tvw import TVWAssetFinder
     from .utah_pmn import UtahPMNAssetFinder
     from .viebit import ViebitAssetFinder
+    from .swd_live import SwdLiveAssetFinder
     from .webtv_coop import WebtvCoopAssetFinder
     from .vimeo import VimeoAssetFinder
     from .wistia import WistiaAssetFinder
@@ -70,6 +71,7 @@ def register_all_finders() -> None:
     register(PrimeGovAssetFinder())
     register(ViebitAssetFinder())
     register(WebtvCoopAssetFinder())
+    register(SwdLiveAssetFinder())
     register(LimsAssetFinder())
     register(SlcAssetFinder())
     register(AuroraTvAssetFinder())

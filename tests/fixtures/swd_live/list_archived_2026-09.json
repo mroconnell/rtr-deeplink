@@ -1,0 +1,192 @@
+{
+ "_fixture_source": "GET https://api.swd-live.com/api/v1/events/list_archived/?from_date=2026-09-01&to_date=2026-09-30 with X-Tenant-Name: gatineau, read live 2026-10-08",
+ "success": true,
+ "code": "retrieved",
+ "message": "Request successful.",
+ "data": {
+  "enabled": true,
+  "count": 9,
+  "results": [
+   {
+    "id": "a5d9fa4c-f18b-4af6-a55f-4163e46a2280",
+    "start_time": "2026-09-29T09:00:00-04:00",
+    "vod_blog_thumbnail": null,
+    "translations": {
+     "fr": {
+      "title": "Comité plénier public",
+      "description": ""
+     },
+     "en": {
+      "title": "Public Plenary Committee",
+      "description": ""
+     }
+    },
+    "category": {
+     "id": "07de9c74-9d96-49a7-8ce5-d00fc25fc093",
+     "color": "00bcff",
+     "category_code": "committee-of-the-whole"
+    }
+   },
+   {
+    "id": "7921fea7-6e31-453e-9bd7-b10cea22ced0",
+    "start_time": "2026-09-29T08:45:00-04:00",
+    "vod_blog_thumbnail": null,
+    "translations": {
+     "fr": {
+      "title": "Comité exécutif public ",
+      "description": ""
+     },
+     "en": {
+      "title": "Public Executive Committee",
+      "description": ""
+     }
+    },
+    "category": {
+     "id": "1f01d63e-929a-415d-a2f2-6a8b97c25398",
+     "color": "fdc700",
+     "category_code": "executive-committee"
+    }
+   },
+   {
+    "id": "c40be5cb-5ee6-48db-9534-9f55a8012b3d",
+    "start_time": "2026-09-23T09:30:00-04:00",
+    "vod_blog_thumbnail": null,
+    "translations": {
+     "fr": {
+      "title": "Comité exécutif public",
+      "description": ""
+     },
+     "en": {
+      "title": "Public Executive Committee",
+      "description": ""
+     }
+    },
+    "category": {
+     "id": "1f01d63e-929a-415d-a2f2-6a8b97c25398",
+     "color": "fdc700",
+     "category_code": "executive-committee"
+    }
+   },
+   {
+    "id": "edd94960-edc3-49d8-b9d3-b5d4ced6800d",
+    "start_time": "2026-09-22T10:00:00-04:00",
+    "vod_blog_thumbnail": null,
+    "translations": {
+     "fr": {
+      "title": "Caucus préparatoire",
+      "description": ""
+     },
+     "en": {
+      "title": "Preparatory caucus",
+      "description": ""
+     }
+    },
+    "category": {
+     "id": "9a019bbc-6576-4c5a-b8ed-fc3d075081b1",
+     "color": "99a1af",
+     "category_code": "preparatory-caucus"
+    }
+   },
+   {
+    "id": "6cae3e17-8686-496a-9571-f4da6b434ed4",
+    "start_time": "2026-09-16T09:30:00-04:00",
+    "vod_blog_thumbnail": null,
+    "translations": {
+     "fr": {
+      "title": "Comité Exécutif",
+      "description": ""
+     },
+     "en": {
+      "title": "Executive Committee",
+      "description": ""
+     }
+    },
+    "category": {
+     "id": "1f01d63e-929a-415d-a2f2-6a8b97c25398",
+     "color": "fdc700",
+     "category_code": "executive-committee"
+    }
+   },
+   {
+    "id": "edf5a0fc-a181-4757-a385-058251a6ad8a",
+    "start_time": "2026-09-09T09:30:00-04:00",
+    "vod_blog_thumbnail": null,
+    "translations": {
+     "fr": {
+      "title": "Comité exécutif",
+      "description": ""
+     },
+     "en": {
+      "title": "Executive Committee",
+      "description": ""
+     }
+    },
+    "category": {
+     "id": "1f01d63e-929a-415d-a2f2-6a8b97c25398",
+     "color": "fdc700",
+     "category_code": "executive-committee"
+    }
+   },
+   {
+    "id": "39f35cfa-9caf-4505-ad26-8f1189a589fb",
+    "start_time": "2026-09-08T12:30:00-04:00",
+    "vod_blog_thumbnail": null,
+    "translations": {
+     "fr": {
+      "title": "Comité plénier",
+      "description": ""
+     },
+     "en": {
+      "title": "Plenary Session",
+      "description": ""
+     }
+    },
+    "category": {
+     "id": "07de9c74-9d96-49a7-8ce5-d00fc25fc093",
+     "color": "00bcff",
+     "category_code": "committee-of-the-whole"
+    }
+   },
+   {
+    "id": "57fa24b5-9591-453f-9a09-eff632bf68a1",
+    "start_time": "2026-09-02T09:30:00-04:00",
+    "vod_blog_thumbnail": null,
+    "translations": {
+     "fr": {
+      "title": "Comité exécutif",
+      "description": ""
+     },
+     "en": {
+      "title": "Executive Committee",
+      "description": ""
+     }
+    },
+    "category": {
+     "id": "1f01d63e-929a-415d-a2f2-6a8b97c25398",
+     "color": "fdc700",
+     "category_code": "executive-committee"
+    }
+   },
+   {
+    "id": "e96fb041-106e-4c38-9b99-d51eeddd4a38",
+    "start_time": "2026-09-01T09:30:00-04:00",
+    "vod_blog_thumbnail": null,
+    "translations": {
+     "fr": {
+      "title": "Comité plénier public",
+      "description": ""
+     },
+     "en": {
+      "title": "Public Committee of the Whole",
+      "description": ""
+     }
+    },
+    "category": {
+     "id": "07de9c74-9d96-49a7-8ce5-d00fc25fc093",
+     "color": "00bcff",
+     "category_code": "committee-of-the-whole"
+    }
+   }
+  ]
+ }
+}

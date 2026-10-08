@@ -1,0 +1,75 @@
+{
+ "_fixture_source": "GET https://api.swd-live.com/api/v1/events/e5960bb4-5a9d-46af-aef5-02581826bb1f/ with X-Tenant-Name: gatineau, read live 2026-10-08",
+ "id": "e5960bb4-5a9d-46af-aef5-02581826bb1f",
+ "translations": {
+  "fr": {
+   "title": "Comité exécutif public",
+   "description": ""
+  },
+  "en": {
+   "title": "Public Executive Committee Meeting",
+   "description": ""
+  }
+ },
+ "category": {
+  "id": "1f01d63e-929a-415d-a2f2-6a8b97c25398",
+  "translations": {
+   "fr": {
+    "name": "Comité exécutif",
+    "description": null
+   },
+   "en": {
+    "name": "Executive Committee",
+    "description": null
+   }
+  },
+  "color": "fdc700",
+  "category_code": "executive-committee"
+ },
+ "start_time": "2026-10-07T09:30:00-04:00",
+ "created": "2026-10-05T19:11:24.244060-04:00",
+ "modified": "2026-10-07T09:35:13.724203-04:00",
+ "streaming_type": "vimeo",
+ "ingest_url": null,
+ "stream_key": null,
+ "live_prepared": false,
+ "vod_url": "",
+ "playback_url": "https://vimeo.com/event/5632958/embed/interaction",
+ "vod_asset_url": null,
+ "vod_blog_url": "https://villeswd.blob.core.windows.net/media/archive/2026/10%20Octobre/ville_de_gatineau_7octobre.mp4",
+ "vod_blog_thumbnail": null,
+ "archived": true,
+ "is_live": false,
+ "live_start_time": "2026-10-07T09:21:31.054567-04:00",
+ "live_end_time": "2026-10-07T09:35:13.724069-04:00",
+ "sections": [
+  {
+   "id": "4b3d6f71-235e-43c4-85c7-47a2a11a7117",
+   "translations": {
+    "fr": {
+     "title": "Ordre du jour",
+     "section_name": ""
+    },
+    "en": {
+     "title": "Agenda",
+     "section_name": ""
+    }
+   },
+   "position": 1,
+   "start_offset": null,
+   "end_offset": null,
+   "is_available": true,
+   "documents": [
+    {
+     "id": "8e9198b1-0880-4f5d-ba2f-bc99aea32eb7",
+     "file": "https://villeswd.blob.core.windows.net/media/documents/2026/10/05/CE20261007-odj-pub.doc",
+     "file_url": "https://villeswd.blob.core.windows.net/media/documents/2026/10/05/CE20261007-odj-pub.doc",
+     "file_name": "CE20261007-odj-pub.doc",
+     "file_manual": "",
+     "uploaded_at": "2026-10-05T19:11:24.585121-04:00"
+    }
+   ]
+  }
+ ],
+ "statistics": []
+}
