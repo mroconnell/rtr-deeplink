@@ -1279,3 +1279,24 @@ https://saintjoachim.qc.ca/wp-content/uploads/video1575840054.mp4	https://saintj
 http://municipalite.saint-paul-de-la-croix.qc.ca/documents/autres/2024/240109_0114.MP3	https://municipalite.saint-paul-de-la-croix.qc.ca/vie_democratique/?id=crx-enregistrements_seances_du_conseil	ca:csd:2412035	Saint-Paul-de-la-Croix (Québec) — Enregistrements séances du conseil (enregistrement audio)		Conseil municipal
 https://st-remi-de-tingwick.qc.ca/wp-content/uploads/2023/01/2023_07_04_19_00_53.mp3	https://st-remi-de-tingwick.qc.ca/administration/seances-du-conseil/	ca:csd:2439020	Saint-Rémi-de-Tingwick (Québec) — Séances du conseil (enregistrement audio)		Conseil municipal
 https://sfxb.qc.ca/wp-content/uploads/2026/01/2026-01-12-Seance-extra-B2026.mp3	https://sfxb.qc.ca/vie-municipale/seances-du-conseil/	ca:csd:2442020	Saint-François-Xavier-de-Brompton (Québec) — Séances du conseil : 2026 01 12 Seance extra B2026 (enregistrement audio)	2026-01-12	Conseil municipal
+https://www.barnston-ouest.ca/upload/documents/Proces-verbaux/Conseil Janvier  2022.m4a	https://www.barnston-ouest.ca/fr/municipalite/proces-verbaux.php	ca:csd:2444045
+https://www.bouchette.ca/fichiersUpload/fichiers/20260202130101-nouvel-enregistrement-15.m4a	https://www.bouchette.ca/fr/conseil-municipal/proces-verbaux-et-ordres-du-jour/	ca:csd:2483050
+https://www.chesterville.net/fichiersUpload/fichiers/20211103141902-2021-pv-seance-ordinaire-du-7-juin-audio.m4a	https://www.chesterville.net/fr/municipalite/vie-municipale/seances-du-conseil/	ca:csd:2439030
+https://www.municipalite.duhamel.qc.ca/public_upload/images/10. 15 mai 2026.m4a	https://www.municipalite.duhamel.qc.ca/fr/municipalite/Conseil-municipal/seances-du-conseil	ca:csd:2480135
+https://www.egan-sud.ca/images/proces-verbaux/pv_2020-10-07.m4a	https://www.egan-sud.ca/index.php/conseil/proces-verbaux-et-ordres-du-jour	ca:csd:2483075
+https://www.kazabazua.ca/images/2024/PV_-_MINUTES/240604_0110.MP3	https://www.kazabazua.ca/index.php/fr/hotel-de-ville/proces-verbaux	ca:csd:2483015
+https://www.lepiphanie.ca/video/Seance-extraordinaire-Reglements-durbanisme-20250317_163152-Enregistrement-de-la-reunion.mp4	https://www.lepiphanie.ca/seance-du-conseil	ca:csd:2460037
+https://www.lowquebec.ca/fichiersUpload/fichiers/20230914191809-pv-2023-09-05.mp3	https://www.lowquebec.ca/fr/municipalite/vie-municipale/proces-verbaux-et-ordre-du-jour/	ca:csd:2483010
+https://www.mulgrave-derry.ca/fichiersUpload/fichiers/20260227101840-audio.mp3	https://www.mulgrave-derry.ca/fr/municipalite/vie-municipale/proces-verbaux/	ca:csd:2480085
+https://www.notredamedesbois.qc.ca/fichiersUpload/fichiers/20260716100831-audio1418367170.m4a	https://www.notredamedesbois.qc.ca/fr/ma-municipalite/conseil-municipal/proces-verbaux-et-ordre-du-jour/	ca:csd:2430010
+https://www.piopolis.quebec/fichiersUpload/fichiers/20220113111346-audio2272277022.m4a	https://www.piopolis.quebec/fr/vie-municipale/conseil-municipal/proces-verbaux-et-ordres-du-jour/	ca:csd:2430020
+https://www.isle-aux-grues.com/fichiersUpload/fichiers/20250310135051-aqmn-n9oupxtjauwznddzbj-8vh1nlaa3-ddo7mosv8xwh-tlpms04jdr-i2sqfhvm4xhapmzwv3swndf-y1bamjdfxmyyxxe-8b-twdfuemrwclhq.mp4	https://www.isle-aux-grues.com/fr/vie-municipale/conseil-municipal/proces-verbaux-et-ordres-du-jour/	ca:csd:2418070
+http://www.sainteluciedebeauregard.com/wp-content/uploads/2021/05/3-mai-2021-b.mp3	https://www.sainteluciedebeauregard.com/municipalite/conseil-municipal/proces-verbaux/	ca:csd:2418020
+https://www.strosaire.ca/fichiersUpload/fichiers/20221025104922-audio-de-la-seance-du-14-fevrier-2022.m4a	https://www.strosaire.ca/fr/vie-municipale/conseil-municipal/proces-verbaux-et-ordres-du-jour/	ca:csd:2439145
+https://www.terrasse-vaudreuil.ca/wp-content/uploads/2022/03/seance-ordinaire-8-mars-2022.m4a	https://www.terrasse-vaudreuil.ca/proces-verbaux/	ca:csd:2471075
+https://www.tingwick.ca/fichiersUpload/fichiers/20250408092817-250407-001-web.mp3	https://www.tingwick.ca/fr/vie-municipale/conseil-municipal/proces-verbaux-et-ordres-du-jour/	ca:csd:2439025
+https://upton.ca/wp-content/uploads/2021/01/2020-12-01.mp3	https://www.upton.ca/dates-des-seances-du-conseil-et-proces-verbaux/	ca:csd:2448038
+https://mrcriviereduloup.ca/documents/videos/2025/conseil_de_la_mrc-20251217_181354-enregistrement_de_la_reunion.mp4	https://mrcriviereduloup.ca/seances/	ca:cd:2412
+https://www.nouvellebeauce.com/wp-content/uploads/2020/11/Seance-25novembre2020.mp3	https://www.nouvellebeauce.com/a-propos-de-la-mrc/conseil-de-la-mrc/	ca:cd:2426
+https://www.mrcdecoaticook.qc.ca/votre-mrc/documents/proces-verbaux/16fevrier2022.mp3	https://www.mrcdecoaticook.qc.ca/votre-mrc/conseil.php	ca:cd:2444
+https://www.mrcvg.qc.ca/wp-content/uploads/2025/09/Ajournement-du-Conseil-administratif-du-4-octobre-2021.mp3	https://www.mrcvg.qc.ca/la-mrc/conseil/proces-verbaux/	ca:cd:2481
