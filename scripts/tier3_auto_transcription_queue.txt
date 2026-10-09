@@ -1290,3 +1290,6 @@ https://hudson.granicus.com/MediaPlayer.php?view_id=2&clip_id=5044
 https://jacksoncountygov.granicus.com/MediaPlayer.php?view_id=1&clip_id=3
 https://townoflandis.granicus.com/MediaPlayer.php?view_id=1&clip_id=64
 https://ledyardct.granicus.com/MediaPlayer.php?view_id=1&clip_id=2490
+https://saint-leonard-daston.net/wp/wp-content/uploads/2026/09/2026-09-08-Seance-audio.mp3	https://saint-leonard-daston.net/organisation-municipale/#seances-de-conseil	ca:csd:2450042	Saint-Léonard-d'Aston (Québec) — Séance du conseil du 8 septembre 2026 (enregistrement audio)	2026-09-08	Conseil municipal
+https://www.campbellsbay.ca/wp-content/uploads/2022/02/audio-council-feb-1-2022.mp3	https://www.campbellsbay.ca/minutes/	ca:csd:2484030	Campbell's Bay (Québec) — Council meeting of February 1, 2022 (audio recording)	2022-02-01	Municipal council
+https://municipalite.saint-valerien.qc.ca/wp-content/uploads/2026/10/2026-10-05_19-30-Ordinaire.mp4	https://municipalite.saint-valerien.qc.ca/proces-verbaux/	ca:csd:2410060	Saint-Valérien (Québec) — Séance du conseil du 5 octobre 2026 (enregistrement vidéo)	2026-10-05	Conseil municipal
