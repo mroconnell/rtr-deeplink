@@ -2,13 +2,17 @@
 real pages captured live on 2026-10-07 (Pointe-Claire, channel 4), trimmed;
 each file's first line names its source URL."""
 
+import html as html_lib
+
 import pytest
 
 from app.platforms import webtv_coop
 from app.platforms.base import detect_platform
 from app.platforms.webtv_coop import (
     WebtvCoopAssetFinder,
+    archive_post_slug,
     channel_from_url,
+    french_date,
     media_key_from_url,
 )
 from app.utils.tenant_key import tenant_key
@@ -275,3 +279,279 @@ def test_borough_and_school_board_channels_are_pinned(channel, gov_id):
     )
     assert match.gov_id == gov_id
     assert match.tier == "pinned"
+
+
+# --- Laval's own archive (archivesvilledelaval.webtv.coop), read 2026-10-09 ---
+
+LAVAL_HOST = "https://archivesvilledelaval.webtv.coop"
+LAVAL_URL = f"{LAVAL_HOST}/conseil-de-la-ville-de-laval-du-6-octobre-2026/"
+LAVAL_SEPT_URL = f"{LAVAL_HOST}/conseil-de-la-ville-de-laval-du-1er-septembre-2026/"
+LAVAL_OLD_URL = f"{LAVAL_HOST}/conseil-municipal-5-mai-2015/"
+LAVAL_KEY = "a9999590ff7d21e889e401248a94080d"
+LAVAL_STREAM = (
+    "https://5976193b91256.streamlock.net/vod/"
+    f"smil:{LAVAL_KEY}_1791351539.smil/playlist.m3u8?1791394336"
+)
+LAVAL_CHUNKLIST = (
+    "https://5976193b91256.streamlock.net/vod/"
+    f"smil:{LAVAL_KEY}_1791351539.smil/chunklist_w379132832_b628.m3u8?1791394336"
+)
+OLD_KEY = "ceb3f9c9f5b7f9919aae95ec0a8e2a5f"
+OLD_EMBED_URL = f"https://webtv.coop/media/embed?key={OLD_KEY}"
+
+
+def _fixture_route(url, name):
+    return FakeResponse(status=200, text=load_fixture("webtv_coop", name), url=url)
+
+
+def _laval_routes():
+    return {
+        LAVAL_URL: _fixture_route(LAVAL_URL, "laval_archive_meeting_2026-10-06.html"),
+        LAVAL_STREAM: _fixture_route(
+            LAVAL_STREAM, "laval_stream_master_2026-10-06.m3u8"
+        ),
+        LAVAL_CHUNKLIST: _fixture_route(
+            LAVAL_CHUNKLIST, "laval_stream_chunklist_2026-10-06.m3u8"
+        ),
+    }
+
+
+async def test_laval_recent_meeting_resolves_with_stream_length_and_no_captions():
+    with mock_session(_laval_routes()):
+        result = await WebtvCoopAssetFinder().resolve(LAVAL_URL)
+
+    assert result.platform == "webtv_coop"
+    assert result.external_id == f"webtv_coop:{LAVAL_KEY}"
+    assert result.title == "Conseil de la Ville de Laval du 6 octobre 2026"
+    assert result.date == "2026-10-06"
+    assert result.video_url == LAVAL_STREAM
+    assert result.video_format == "m3u8"
+    # The page has no length; it is the sum of the chunklist's #EXTINF lines.
+    assert result.video_duration_seconds == pytest.approx(15286.5, abs=1)
+    assert round(result.video_duration_seconds / 3600, 2) == 4.25
+    # The site names no channel: the government comes from the host pin.
+    assert result.video_channel is None
+    # No caption track on the page: no segments, plain warning (Tier 3).
+    assert result.segments == []
+    assert result.transcript_warnings == ["No captions found for this video."]
+    assert result.video_warnings == []
+
+
+async def test_laval_meeting_with_1er_in_the_date_and_a_missing_length_still_resolves():
+    # The chunklist answers 404: the length stays empty (never guessed), the
+    # video still resolves.
+    routes = {
+        LAVAL_SEPT_URL: _fixture_route(
+            LAVAL_SEPT_URL, "laval_archive_meeting_2026-09-01.html"
+        )
+    }
+    with mock_session(routes):
+        result = await WebtvCoopAssetFinder().resolve(LAVAL_SEPT_URL)
+    assert result.title == "Conseil de la Ville de Laval du 1er septembre 2026"
+    assert result.date == "2026-09-01"
+    assert result.external_id == "webtv_coop:d9b59e8b7b61c5b0ba9da4454b040b1e"
+    assert result.video_url.endswith(".smil/playlist.m3u8?1788361656")
+    assert result.video_duration_seconds is None
+
+
+async def test_laval_old_meeting_with_an_embed_reads_the_main_sites_embed_page():
+    routes = {
+        LAVAL_OLD_URL: _fixture_route(
+            LAVAL_OLD_URL, "laval_archive_meeting_2015-05-05_embed.html"
+        ),
+        OLD_EMBED_URL: _fixture_route(
+            OLD_EMBED_URL, "webtv_coop_embed_ceb3f9c9_2015-05-05.html"
+        ),
+    }
+    with mock_session(routes):
+        result = await WebtvCoopAssetFinder().resolve(LAVAL_OLD_URL)
+    assert result.external_id == f"webtv_coop:{OLD_KEY}"
+    assert result.title == "Séance du conseil municipal 5 mai 2015"
+    assert result.date == "2015-05-05"
+    assert result.video_format == "m3u8"
+    assert result.video_url.startswith(
+        f"https://5976193b91256.streamlock.net/vod/smil:{OLD_KEY}_"
+    )
+    assert result.video_duration_seconds == 12021.0
+    assert result.segments == []
+    assert result.transcript_warnings == ["No captions found for this video."]
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        f"{LAVAL_HOST}/",
+        f"{LAVAL_HOST}/feed/",
+        f"{LAVAL_HOST}/2026/10/",
+        f"{LAVAL_HOST}/category/conseil-municipal/",
+        f"{LAVAL_HOST}/en-direct/",
+    ],
+)
+async def test_laval_site_pages_that_are_not_one_meeting_make_no_request(url):
+    with mock_session({}):
+        result = await WebtvCoopAssetFinder().resolve(url)
+    assert result.video_url is None
+    assert "not a single video" in result.video_warnings[0]
+
+
+async def test_laval_page_with_no_player_gets_the_plain_warning():
+    url = f"{LAVAL_HOST}/une-page-sans-video/"
+    routes = {
+        url: FakeResponse(
+            status=200,
+            text='<h1 class="single-post-title entry-title">Une page</h1><p>Texte</p>',
+            url=url,
+        )
+    }
+    with mock_session(routes):
+        result = await WebtvCoopAssetFinder().resolve(url)
+    assert result.video_url is None
+    assert "not a single video" in result.video_warnings[0]
+
+
+async def test_laval_429_stops_with_a_plain_warning():
+    routes = {LAVAL_URL: FakeResponse(status=429, url=LAVAL_URL)}
+    with mock_session(routes):
+        result = await WebtvCoopAssetFinder().resolve(LAVAL_URL)
+    assert result.video_url is None
+    assert "429" in result.video_warnings[0]
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("Conseil de la Ville de Laval du 6 octobre 2026", "2026-10-06"),
+        ("Conseil de la Ville de Laval du 1er septembre 2026", "2026-09-01"),
+        ("Séance du conseil municipal 5 mai 2015", "2015-05-05"),
+        (
+            "Assemblée extraordinaire de la Ville de Laval du 27 avril 2026",
+            "2026-04-27",
+        ),
+        ("Conseil de la Ville de Laval du 11 août 2026", "2026-08-11"),
+        ("conseil du 11 aout 2026", "2026-08-11"),
+        ("conseil-de-la-ville-de-laval-du-1er-septembre-2026", "2026-09-01"),
+        ("Séance du 3 FÉVRIER 2021", "2021-02-03"),
+        ("séance du 14 fevrier 2021", "2021-02-14"),
+        ("Séance du 25 décembre 2020", "2020-12-25"),
+        ("Séance du 31 avril 2021", None),  # no such day: no date, not a guess
+        ("Séance du conseil municipal", None),
+        ("", None),
+        (None, None),
+    ],
+)
+def test_french_date(text, expected):
+    assert french_date(text) == expected
+
+
+def test_french_date_reads_every_month_with_and_without_accents():
+    names = [
+        "janvier", "février", "mars", "avril", "mai", "juin", "juillet",
+        "août", "septembre", "octobre", "novembre", "décembre",
+    ]  # fmt: skip
+    plain = [
+        "janvier", "fevrier", "mars", "avril", "mai", "juin", "juillet",
+        "aout", "septembre", "octobre", "novembre", "decembre",
+    ]  # fmt: skip
+    for number, (accented, bare) in enumerate(zip(names, plain), start=1):
+        want = f"2025-{number:02d}-02"
+        assert french_date(f"du 2 {accented} 2025") == want
+        assert french_date(f"du 2 {bare} 2025") == want
+
+
+def test_archive_post_slug():
+    assert archive_post_slug(LAVAL_URL) == (
+        "conseil-de-la-ville-de-laval-du-6-octobre-2026"
+    )
+    for not_a_post in (
+        f"{LAVAL_HOST}/",
+        f"{LAVAL_HOST}/feed/",
+        f"{LAVAL_HOST}/2026/",
+        f"{LAVAL_HOST}/2026/10/",
+        f"{LAVAL_HOST}/category/budget/",
+        f"{LAVAL_HOST}/en-direct/",
+        f"{LAVAL_HOST}/wp-json/wp/v2/posts",
+    ):
+        assert archive_post_slug(not_a_post) is None
+
+
+def test_laval_listing_and_feed_fixtures_show_the_size_of_the_archive():
+    import re
+
+    listing = load_fixture("webtv_coop", "laval_archive_listing.html")
+    months = re.findall(r"webtv\.coop/(\d{4}/\d{2})/'>", listing)
+    assert months[0] == "2026/10"
+    assert months[-1] == "2015/05"
+    assert len(months) == len(set(months)) == 135
+
+    feed = load_fixture("webtv_coop", "laval_archive_feed.xml")
+    links = re.findall(
+        r"<link>(https://archivesvilledelaval\.webtv\.coop/[^<]+)</link>", feed
+    )
+    assert len(links) == 10  # a WordPress feed shows its ten newest posts
+    assert all(archive_post_slug(link) for link in links)
+    titles = [
+        html_lib.unescape(t)
+        for t in re.findall(r"<item>\s*<title>(.*?)</title>", feed, re.S)
+    ]
+    assert len(titles) == 10
+    assert french_date(titles[0]) == "2026-10-07"  # Conseil d'ajournement
+    assert french_date(titles[1]) == "2026-10-06"
+    assert french_date(titles[-1]) == "2026-04-14"
+    # The newest ten posts run 2026-04-14 to 2026-10-07. One address is
+    # stale: the 2026-04-14 meeting lives at ".../du-10-mars-2026-2/", so a
+    # date in the title wins over one in the address.
+    assert links[-1].endswith("/conseil-de-la-ville-de-laval-du-10-mars-2026-2/")
+    assert french_date(links[-1]) == "2026-03-10"
+
+
+def test_laval_robots_txt_only_blocks_wp_admin():
+    robots = load_fixture("webtv_coop", "laval_archive_robots.txt")
+    disallowed = [
+        line.split(":", 1)[1].strip()
+        for line in robots.splitlines()
+        if line.lower().startswith("disallow")
+    ]
+    assert disallowed == ["/wp-admin/"]
+
+
+def test_detect_platform_routes_the_laval_archive_subdomain():
+    for url in (LAVAL_URL, LAVAL_SEPT_URL, LAVAL_OLD_URL, f"{LAVAL_HOST}/"):
+        assert detect_platform(url) == "webtv_coop"
+
+
+def test_laval_host_is_pinned_and_cannot_collide_with_the_channel_pins():
+    from app.utils.gov_registry.resolver import page_hints_for, resolve_government
+
+    match = resolve_government(
+        None,
+        tenant_host="archivesvilledelaval.webtv.coop",
+        path="/conseil-de-la-ville-de-laval-du-6-octobre-2026/",
+        page_hints=page_hints_for("webtv_coop", f"webtv_coop:{LAVAL_KEY}", None),
+    )
+    assert match.gov_id == "ca:csd:2465005"
+    assert match.tier == "pinned"
+
+    # The main site's channel pins still give their own governments, and the
+    # main site with no channel stays blank (the Laval pin is host-only).
+    pointe_claire = resolve_government(
+        None,
+        tenant_host="webtv.coop",
+        path=f"/channel/video/x/{KEY}/4",
+        page_hints=page_hints_for("webtv_coop", f"webtv_coop:{KEY}", None),
+    )
+    assert pointe_claire.gov_id == "ca:csd:2466097"
+    blank = resolve_government(
+        None,
+        tenant_host="webtv.coop",
+        path="/video/conseil-de-la-ville-de-laval-du-6-octobre-2026/" + LAVAL_KEY,
+        page_hints=page_hints_for("webtv_coop", f"webtv_coop:{LAVAL_KEY}", None),
+    )
+    assert blank.tier == "blank"
+    # Another subdomain of webtv.coop is not Laval.
+    other = resolve_government(
+        None,
+        tenant_host="autre.webtv.coop",
+        path="/une-seance/",
+        page_hints=page_hints_for("webtv_coop", "webtv_coop:x", None),
+    )
+    assert other.gov_id != "ca:csd:2465005"

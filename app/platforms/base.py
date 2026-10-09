@@ -518,6 +518,12 @@ def detect_platform(url: str) -> str:
         # Any webtv.coop path routes here; the adapter says plainly when a
         # page is not a single video.
         return "webtv_coop"
+    if netloc == "archivesvilledelaval.webtv.coop":
+        # Laval's own archive: a WordPress site on a webtv.coop subdomain,
+        # one post per meeting. Read live 2026-10-09 -- see webtv_coop.py
+        # (ARCHIVE_HOSTS). Not a channel on the main site; the host itself
+        # is pinned to Laval in tenant_overrides.csv.
+        return "webtv_coop"
     if "viebit.com" in netloc:
         # The real video platform underneath NYC Council's Legistar
         # instance, reached by delegation (see the legistar.council.nyc.gov

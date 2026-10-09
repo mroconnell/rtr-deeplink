@@ -1,0 +1,102 @@
+<!-- Real feed captured 2026-10-09 from https://archivesvilledelaval.webtv.coop/feed/ . Trimmed: each item keeps only its title, link, date, category and guid; the player and agenda text were cut. -->
+<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"
+	xmlns:content="http://purl.org/rss/1.0/modules/content/"
+	xmlns:wfw="http://wellformedweb.org/CommentAPI/"
+	xmlns:dc="http://purl.org/dc/elements/1.1/"
+	xmlns:atom="http://www.w3.org/2005/Atom"
+	xmlns:sy="http://purl.org/rss/1.0/modules/syndication/"
+	xmlns:slash="http://purl.org/rss/1.0/modules/slash/"
+	>
+
+<channel>
+	<title>Laval</title>
+	<atom:link href="https://archivesvilledelaval.webtv.coop/feed/" rel="self" type="application/rss+xml" />
+	<link>https://archivesvilledelaval.webtv.coop</link>
+	<description>Webdiffusions</description>
+	<lastBuildDate>Thu, 08 Oct 2026 22:46:04 +0000</lastBuildDate>
+	<language>fr-FR</language>
+	<sy:updatePeriod>
+	hourly	</sy:updatePeriod>
+	<sy:updateFrequency>
+	1	</sy:updateFrequency>
+	<generator>https://wordpress.org/?v=7.0.7</generator>
+
+<image>
+	<url>https://i0.wp.com/archivesvilledelaval.webtv.coop/wp-content/uploads/2021/02/fav225x225.png?fit=32%2C32&#038;ssl=1</url>
+	<title>Laval</title>
+	<link>https://archivesvilledelaval.webtv.coop</link>
+	<width>32</width>
+	<height>32</height>
+</image> 
+<site xmlns="com-wordpress:feed-additions:1">190133735</site>		<item>
+		<title>Conseil d&#8217;ajournement de la Ville de Laval du 7 octobre 2026</title>
+		<link>https://archivesvilledelaval.webtv.coop/conseil-dajournement-de-la-ville-de-laval-du-7-octobre-2026/</link>
+		<pubDate>Thu, 08 Oct 2026 22:46:04 +0000</pubDate>
+		<category><![CDATA[Conseil municipal]]></category>
+		<guid isPermaLink="false">https://archivesvilledelaval.webtv.coop/?p=2318</guid>
+	</item>
+	<item>
+		<title>Conseil de la Ville de Laval du 6 octobre 2026</title>
+		<link>https://archivesvilledelaval.webtv.coop/conseil-de-la-ville-de-laval-du-6-octobre-2026/</link>
+		<pubDate>Wed, 07 Oct 2026 17:34:10 +0000</pubDate>
+		<category><![CDATA[Conseil municipal]]></category>
+		<guid isPermaLink="false">https://archivesvilledelaval.webtv.coop/?p=2316</guid>
+	</item>
+	<item>
+		<title>Conseil de la Ville de Laval du 1er septembre 2026</title>
+		<link>https://archivesvilledelaval.webtv.coop/conseil-de-la-ville-de-laval-du-1er-septembre-2026/</link>
+		<pubDate>Wed, 02 Sep 2026 15:11:02 +0000</pubDate>
+		<category><![CDATA[Conseil municipal]]></category>
+		<guid isPermaLink="false">https://archivesvilledelaval.webtv.coop/?p=2308</guid>
+	</item>
+	<item>
+		<title>Conseil de la Ville de Laval du 11 août 2026</title>
+		<link>https://archivesvilledelaval.webtv.coop/conseil-de-la-ville-de-laval-du-11-aout-2026/</link>
+		<pubDate>Wed, 12 Aug 2026 15:11:33 +0000</pubDate>
+		<category><![CDATA[Conseil municipal]]></category>
+		<guid isPermaLink="false">https://archivesvilledelaval.webtv.coop/?p=2301</guid>
+	</item>
+	<item>
+		<title>Conseil de la Ville de Laval du 7 juillet 2026</title>
+		<link>https://archivesvilledelaval.webtv.coop/conseil-de-la-ville-de-laval-du-7-juillet-2026/</link>
+		<pubDate>Wed, 08 Jul 2026 18:31:29 +0000</pubDate>
+		<category><![CDATA[Conseil municipal]]></category>
+		<guid isPermaLink="false">https://archivesvilledelaval.webtv.coop/?p=2292</guid>
+	</item>
+	<item>
+		<title>Conseil d&#8217;ajournement de la Ville de Laval du 3 juin 2026</title>
+		<link>https://archivesvilledelaval.webtv.coop/conseil-dajournement-de-la-ville-de-laval-du-3-juin-2026/</link>
+		<pubDate>Thu, 04 Jun 2026 14:28:25 +0000</pubDate>
+		<category><![CDATA[Conseil municipal]]></category>
+		<guid isPermaLink="false">https://archivesvilledelaval.webtv.coop/?p=2284</guid>
+	</item>
+	<item>
+		<title>Conseil de la Ville de Laval du 2 juin 2026</title>
+		<link>https://archivesvilledelaval.webtv.coop/conseil-de-la-ville-de-laval-du-2-juin-2026/</link>
+		<pubDate>Wed, 03 Jun 2026 13:52:43 +0000</pubDate>
+		<category><![CDATA[Conseil municipal]]></category>
+		<guid isPermaLink="false">https://archivesvilledelaval.webtv.coop/?p=2282</guid>
+	</item>
+	<item>
+		<title>Conseil de la Ville de Laval du 5 mai 2026</title>
+		<link>https://archivesvilledelaval.webtv.coop/conseil-de-la-ville-de-laval-du-5-mai-2026/</link>
+		<pubDate>Wed, 06 May 2026 15:00:21 +0000</pubDate>
+		<category><![CDATA[Conseil municipal]]></category>
+		<guid isPermaLink="false">https://archivesvilledelaval.webtv.coop/?p=2274</guid>
+	</item>
+	<item>
+		<title>Assemblée extraordinaire de la Ville de Laval du 27 avril 2026</title>
+		<link>https://archivesvilledelaval.webtv.coop/assemblee-extraordinaire-de-la-ville-de-laval-du-27-avril-2026/</link>
+		<pubDate>Mon, 27 Apr 2026 20:18:14 +0000</pubDate>
+		<category><![CDATA[Conseil municipal]]></category>
+		<guid isPermaLink="false">https://archivesvilledelaval.webtv.coop/?p=2271</guid>
+	</item>
+	<item>
+		<title>Conseil de la Ville de Laval du 14 avril 2026</title>
+		<link>https://archivesvilledelaval.webtv.coop/conseil-de-la-ville-de-laval-du-10-mars-2026-2/</link>
+		<pubDate>Wed, 15 Apr 2026 15:17:16 +0000</pubDate>
+		<category><![CDATA[Conseil municipal]]></category>
+		<guid isPermaLink="false">https://archivesvilledelaval.webtv.coop/?p=2265</guid>
+	</item>
+</channel>
+</rss>
