@@ -11063,3 +11063,4 @@ https://cityblm.granicus.com/MediaPlayer.php?view_id=1&clip_id=1249,granicus,hls
 https://burrillville.granicus.com/MediaPlayer.php?view_id=2&clip_id=1470,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-08T23:34:26+00:00,,0
 https://carsoncity.granicus.com/MediaPlayer.php?view_id=1&clip_id=2938,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-08T23:34:30+00:00,,0
 https://commerce.granicus.com/MediaPlayer.php?view_id=2&clip_id=1303,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-08T23:34:34+00:00,,0
+https://city-slp-mn.cablecast.tv/show/2229,cablecast,hls-master+variant,1678.57,,,1,accept,,0.93,2026-10-05T20:53:11+00:00,bulk_ingest,0
