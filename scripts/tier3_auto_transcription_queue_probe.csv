@@ -11099,3 +11099,21 @@ https://videoplayer.telvue.com/player/nLAw9JV5_hXZrsKc9WFG0XWqFD8TOSoq/media/102
 https://videoplayer.telvue.com/player/nLAw9JV5_hXZrsKc9WFG0XWqFD8TOSoq/media/1021245,telvue,telvue-page-json,2592.00,,,1,accept,,0.32,2026-10-09T18:31:57+00:00,feed_tier3_auto_transcription,0
 https://videoplayer.telvue.com/player/Xr8MIp6iGKk9kd2-nGV5XvtU7qurHzBe/media/1022996,telvue,telvue-page-json,4035.00,,,1,accept,,0.26,2026-10-09T18:32:00+00:00,,0
 https://videoplayer.telvue.com/player/Xr8MIp6iGKk9kd2-nGV5XvtU7qurHzBe/media/1022996,telvue,telvue-page-json,4035.00,,,1,accept,,0.29,2026-10-09T18:32:00+00:00,feed_tier3_auto_transcription,0
+https://videoplayer.telvue.com/player/nLAw9JV5_hXZrsKc9WFG0XWqFD8TOSoq/media/1022120,telvue,telvue-page-json,2523.00,,,1,accept,,0.27,2026-10-09T22:54:15+00:00,,0
+https://videoplayer.telvue.com/player/nLAw9JV5_hXZrsKc9WFG0XWqFD8TOSoq/media/1022120,telvue,telvue-page-json,2523.00,,,1,accept,,0.23,2026-10-09T22:54:15+00:00,feed_tier3_auto_transcription,0
+https://videoplayer.telvue.com/player/5QlcS026fQy98qR8aFzKSh5DvYNq1NKn/media/1016367,telvue,telvue-page-json,4640.00,,,1,accept,,0.50,2026-10-09T22:54:18+00:00,,0
+https://videoplayer.telvue.com/player/BUJHRRxhCf0u3AtXMrx7Sx7CjdW8zUFT/media/1018079,telvue,telvue-page-json,3933.00,,,1,accept,,0.20,2026-10-09T22:54:21+00:00,,0
+https://videoplayer.telvue.com/player/BUJHRRxhCf0u3AtXMrx7Sx7CjdW8zUFT/media/1018079,telvue,telvue-page-json,3933.00,,,1,accept,,0.26,2026-10-09T22:54:22+00:00,feed_tier3_auto_transcription,0
+https://videoplayer.telvue.com/player/bHwwzKX3TkapuHPqY4J6DEAclNWGbbch/media/1045124,telvue,telvue-page-json,2995.00,,,1,accept,,0.23,2026-10-09T22:54:24+00:00,,0
+https://videoplayer.telvue.com/player/DczpPLv0_DQxyzqdZyE1r1a19QZz7VoL/media/1046433,telvue,telvue-page-json,5206.00,,,1,accept,,0.31,2026-10-09T22:54:27+00:00,,0
+https://videoplayer.telvue.com/player/DczpPLv0_DQxyzqdZyE1r1a19QZz7VoL/media/1046433,telvue,telvue-page-json,5206.00,,,1,accept,,0.23,2026-10-09T22:54:27+00:00,feed_tier3_auto_transcription,0
+https://videoplayer.telvue.com/player/LGze1WqTsE8jwTKC--4xu4kSh8jPjdoJ/media/1021210,telvue,telvue-page-json,6065.00,,,1,accept,,0.30,2026-10-09T22:54:30+00:00,,0
+https://videoplayer.telvue.com/player/LGze1WqTsE8jwTKC--4xu4kSh8jPjdoJ/media/1021210,telvue,telvue-page-json,6065.00,,,1,accept,,0.32,2026-10-09T22:54:30+00:00,feed_tier3_auto_transcription,0
+https://bv22.cablecast.tv/show/138,cablecast,unknown-accepted,,,,0,accept,"length unknown, accepted (Cablecast): Cablecast API show record returned HTTP 404",0.09,2026-10-09T22:54:32+00:00,,0
+https://bv22.cablecast.tv/show/138,cablecast,unknown-accepted,,,,0,accept,"length unknown, accepted (Cablecast): Cablecast API show record returned HTTP 404",0.03,2026-10-09T22:54:32+00:00,feed_tier3_auto_transcription,0
+https://cloud.castus.tv/vod/waterford-media/video/67b8873ec4729f0008416a96,castus,hls-master+variant,6086.00,,,1,accept,,0.36,2026-10-09T22:54:36+00:00,,0
+https://videoplayer.telvue.com/player/gruNXD8awNzhQM8eTu5kcyw9vSGPLB6s/media/836816,telvue,telvue-page-json,2411.00,,,1,accept,,0.23,2026-10-09T22:54:38+00:00,,0
+https://videoplayer.telvue.com/player/gruNXD8awNzhQM8eTu5kcyw9vSGPLB6s/media/836816,telvue,telvue-page-json,2411.00,,,1,accept,,0.28,2026-10-09T22:54:38+00:00,feed_tier3_auto_transcription,0
+https://placentia.granicus.com/MediaPlayer.php?view_id=3&clip_id=780,granicus,range-asf-header,,,,0,reject-dead,ranged GET on the media file returned HTTP 403,0.18,2026-10-09T22:54:43+00:00,,0
+https://saginaw.granicus.com/MediaPlayer.php?view_id=1&clip_id=275,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.23,2026-10-09T22:54:45+00:00,,0
+https://sandyutah.granicus.com/MediaPlayer.php?view_id=1&clip_id=986,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.05,2026-10-09T22:54:48+00:00,,0
