@@ -11076,3 +11076,6 @@ https://hudson.granicus.com/MediaPlayer.php?view_id=2&clip_id=5044,granicus,hls-
 https://jacksoncountygov.granicus.com/MediaPlayer.php?view_id=1&clip_id=3,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-09T06:44:11+00:00,,0
 https://townoflandis.granicus.com/MediaPlayer.php?view_id=1&clip_id=64,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-09T06:44:14+00:00,,0
 https://ledyardct.granicus.com/MediaPlayer.php?view_id=1&clip_id=2490,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-09T06:44:16+00:00,,0
+https://saint-leonard-daston.net/wp/wp-content/uploads/2026/09/2026-09-08-Seance-audio.mp3,direct_file,head+ffprobe,2883.98,2026-09-08,,1,accept,,0.00,2026-10-09T11:00:00+00:00
+https://www.campbellsbay.ca/wp-content/uploads/2022/02/audio-council-feb-1-2022.mp3,direct_file,head+ffprobe,2176.68,2022-02-01,,1,accept,,0.00,2026-10-09T11:00:00+00:00
+https://municipalite.saint-valerien.qc.ca/wp-content/uploads/2026/10/2026-10-05_19-30-Ordinaire.mp4,direct_file,head+ffprobe,4274.20,2026-10-05,,1,accept,,0.00,2026-10-09T11:00:00+00:00
