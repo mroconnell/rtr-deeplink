@@ -1,0 +1,5 @@
+gov_id,government,state,lane,lead_url,kind,meeting_source_has_no_video,run,all_youtube_addresses_seen,found_context
+ca:csd:2445043,Hatley,Quebec,youtube,https://www.youtube.com/watch?v=Z9vu8baNyXw,single_video,no,run,https://www.youtube.com/watch?v=Z9vu8baNyXw,"found on https://www.municipalitehatley.com/wp-json/wp/v2/posts?search=video&per_page=10&_fields=link,title,date,content"
+ca:csd:2419110,Saint-Michel-de-Bellechasse,Quebec,youtube,https://www.youtube.com/watch?v=_1SVjXDPznk,single_video,no,run,https://www.youtube.com/watch?v=_1SVjXDPznk,
+ca:csd:2467005,Saint-Mathieu,Quebec,youtube,https://www.youtube.com/watch?v=otrrxZm57rQ,single_video,no,run,https://www.youtube.com/watch?v=otrrxZm57rQ https://www.youtube.com/watch?v=j_84GcTlRIE,"found on https://saint-mathieu.com/wp-json/wp/v2/posts?search=video&per_page=10&_fields=link,title,date,content"
+ca:csd:2484065,Mansfield-et-Pontefract,Quebec,youtube,https://www.youtube.com/watch?v=9tdlK_SJw6c,single_video,no,run,https://www.youtube.com/watch?v=9tdlK_SJw6c https://www.youtube.com/watch?v=bCOkTt25NYM,found on https://mansfield-pontefract.com/
