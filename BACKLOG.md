@@ -192,7 +192,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (63)
   Granicus's video-only RSS listing needs a `view_id` nobody discovers…
   Legistar answers 410 Gone to a meeting link without its `GUID`, and…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (31)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (32)
   [HUMAN] Ryan decides which Granicus feeds from his two lead…
   [HUMAN] [LOGIN] WO-1055's live page moves and twin deletes wait for a…
   [HUMAN] WO-1165: 17 CivicMedia pages need a title refresh, a hand…
@@ -226,6 +226,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (31)
     [HUMAN] Town Square Television's 3 leftover Cablecast rows need a…
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
+  Laval's own archive: walk its ~260 meeting posts, then decide on the…
 
 Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (231)
   [NEEDS-AUDIT] Meeting Finder picks the wrong clip from a Granicus…
@@ -2557,6 +2558,14 @@ of human step they need.
     candidate-pool gap) is in `BACKLOG_DONE.md`. Full bug history — the
     unbounded-`limit` query fix and the WO-87 event-loop fix — is also
     there, WO-84 and WO-87.
+
+### Laval's own archive: walk its ~260 meeting posts, then decide on the 273 channel-less Laval videos on webtv.coop `[HUMAN]`
+
+- **Issue**: the webtv.coop adapter now reads Laval's own archive site (`archivesvilledelaval.webtv.coop`, a WordPress site, one post per meeting) and the host is pinned to Laval (`ca:csd:2465005`). Nothing has been walked, queued or ingested from it yet. See `BACKLOG_DONE.md`, "Laval's own archive".
+- **Impact**: the site's WordPress API counts 260 posts, 2015-05-05 to 2026-10-07 (not all are council meetings: the categories include ceremonies, press conferences and public consultations). No post has a caption track seen, so each one is Tier 3 (our own transcription). The recent ones are 3 to 4 hours long. Separately, 273 videos on the main webtv.coop site are titled "date + Laval" but carry no channel number, so they stay unpinned; they are NOT covered by this work.
+- **Next action**: Ryan decides what to do with the archive. If it is wanted: list the posts (the API `/wp-json/wp/v2/posts?per_page=100&page=N`, or the month pages), pick by the queue length rule, and route each as Tier 3. For the 273 main-site videos: decide whether to pin them by title or leave them.
+- **Constraint**: one request at a time, 3 seconds apart, stop on 429. Each meeting costs 3 requests to resolve (page, stream playlist, chunklist). Never fetch YouTube.
+- **History**: built 2026-10-09; findings in `BACKLOG_DONE.md`.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
 

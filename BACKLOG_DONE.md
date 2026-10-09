@@ -1,5 +1,25 @@
 # Backlog — done
 
+## [Done 2026-10-09] Laval's own archive (archivesvilledelaval.webtv.coop) read by the webtv.coop adapter and pinned to Laval
+
+**What was done.** Ryan said "do the subdomain". The webtv.coop adapter now reads a second page shape: Laval's own council-video site, a WordPress site on a webtv.coop subdomain with one post per meeting. The host is pinned to Laval (`ca:csd:2465005`) in `tenant_overrides.csv` as a whole-host row, and `detect_platform()` routes it to `webtv_coop`. Before this, the adapter answered "not a single video" for these pages.
+
+**What the site looks like (read 2026-10-09, one request at a time, 3 seconds apart, no 429, 9 requests after robots.txt).**
+- `robots.txt` blocks only `/wp-admin/`.
+- Recent posts (example 2026-10-06, "Conseil de la Ville de Laval du 6 octobre 2026") hold a JW Player block. The stream is an HLS address on the same Wowza host the main site uses (`...streamlock.net/vod/smil:<32-hex key>_<n>.smil/playlist.m3u8?<n>`). The page gives no length and no caption track.
+- The length comes from the stream's own playlists: the master playlist names its chunklists, and a chunklist lists every piece with its length. For 2026-10-06 they add up to 15,286.5 seconds (4.25 hours). That is two small text reads, no video.
+- Old posts (example 2015-05-05) hold an `<iframe>` to `https://webtv.coop/media/embed?key=<32-hex>`. That small page has the same player options as a main-site video page (stream, `videoDuration` 12,021 seconds), so the existing parsers read it. No caption track.
+- The date is French words in the title ("du 6 octobre 2026", "du 1er septembre 2026", "5 mai 2015"). `french_date()` reads them, with or without accents. A day that does not exist gives no date. Title first, then the address, then the embed's ISO-dated title.
+- One address does not match its title: the 2026-04-14 meeting lives at `.../du-10-mars-2026-2/`. The title wins.
+- Count (from the site's WordPress API header and its month list only; no meeting page was fetched for counting): 260 posts, oldest 2015-05-05, newest 2026-10-07; the month list shows 135 months with posts (none for July to September 2017). The `/feed/` shows only the newest 10 (2026-04-14 to 2026-10-07). Not every post is a council meeting.
+- Captions: none on any page seen. A meeting resolves with no segments and the plain warning "No captions found for this video." (Tier 3).
+
+**Meeting evidence helper.** `contains_date_evidence()` in `app/utils/video_hand_check.py` (English month names only) is NOT on this page's resolve path: `_needs_meeting_evidence()` in `resolve.py` applies only to direct files and Vimeo. No change made there. Laval titles also carry the meeting word "Conseil".
+
+**Not done.** Nothing walked, queued or ingested. The 273 "date + Laval" videos on the main webtv.coop site that have no channel number are not part of this; they stay unpinned. No deploy needed beyond the normal one for the pin to take effect.
+
+**Tests.** `tests/test_webtv_coop.py` (50 cases in the file, 30 of them new), real pages saved in `tests/fixtures/webtv_coop/laval_*` and `webtv_coop_embed_*`.
+
 ## [Done 2026-10-08] SWD Live (swd-live.com) resolver for Gatineau and Mont-Royal council video
 
 **What was done.** Added `app/platforms/swd_live.py`. Given a swd-live.com meeting link (`/fr/<tenant>/archive/<uuid>`), it returns the archived MP4 address, the date, the French or English title and the tenant (`video_channel` = `swd_live:<tenant>`); `list_archived(tenant, from, to)` lists a tenant's archived meetings for a walk script. `detect_platform()` routes the host, `tenant_key` reads the tenant from the path, and two pins are in `tenant_overrides.csv` (Gatineau `ca:csd:2481017`, Mont-Royal `ca:csd:2466072`). There is no walk or ingest script yet.

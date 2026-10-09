@@ -46,6 +46,27 @@ the spoken language from a translation (no live example with two files was
 checked, only the single-file ones), so we follow the order webtv.coop's
 own player shows and do not rank languages ourselves.
 
+Laval's own archive (`archivesvilledelaval.webtv.coop`, read 2026-10-09;
+fixtures `laval_archive_*`): a WordPress site on a webtv.coop subdomain, one
+post per meeting at `/<slug>/` (`/conseil-de-la-ville-de-laval-du-6-octobre-
+2026/`). It is a different page shape from the main site:
+
+* Recent posts hold a JW Player block: `file: "https://<id>.streamlock.net/
+  vod/smil:<32-hex key>_<n>.smil/playlist.m3u8?<n>"`, the same Wowza server
+  and the same key as the main site. The page gives NO length and NO caption
+  track. The length is the sum of the `#EXTINF` lines in the stream's
+  chunklist (master playlist, then its first chunklist: two small text
+  reads, no video). The 2026-10-06 meeting adds up to 4.25 h.
+* Old posts (2015-05-05) hold an `<iframe>` to `https://webtv.coop/media/
+  embed?key=<32-hex>`. That small page carries the same `"sources"` and
+  `videoDuration` the main site's video page does, so the main parsers read it.
+* The title is the `<h1>`; the date is French words in it ("du 6 octobre
+  2026", "du 1er septembre 2026", "5 mai 2015"), read by `french_date()`.
+* No page seen has a caption track: resolves with no segments and the plain
+  warning (Tier 3). The site never names its government; the host is pinned
+  in `tenant_overrides.csv` (Laval, ca:csd:2465005).
+* `robots.txt` blocks only `/wp-admin/`.
+
 Politeness: `robots.txt` blocks only `/api/` and dev files. Requests go out
 one at a time with an honest User-Agent, and a 429 stops the resolve at
 once with a plain warning.
@@ -56,6 +77,8 @@ import html as html_lib
 import json
 import logging
 import re
+import unicodedata
+from datetime import date as _date
 from typing import List, Optional, Tuple
 from urllib.parse import urljoin, urlparse
 
@@ -89,6 +112,41 @@ _TITLE_SUFFIX_RE = re.compile(
 )
 _DATE_RE = re.compile(r"^\s*(\d{4}-\d{2}-\d{2})")
 
+# Laval's own archive: a WordPress site on a webtv.coop subdomain. Add a
+# host here only after reading its pages (see the module docstring).
+ARCHIVE_HOSTS = frozenset({"archivesvilledelaval.webtv.coop"})
+# Single-segment paths on those sites that are not a meeting post.
+_ARCHIVE_NOT_POST_SEGMENTS = frozenset(
+    {
+        "feed", "comments", "category", "tag", "author", "page", "search",
+        "en-direct", "wp-json", "wp-admin", "wp-content", "wp-includes",
+    }
+)  # fmt: skip
+_JW_FILE_RE = re.compile(r'\bfile:\s*"(?P<src>[^"]+\.m3u8[^"]*)"')
+_SMIL_KEY_RE = re.compile(r"smil:(?P<key>[0-9a-f]{32})_", re.IGNORECASE)
+_EMBED_KEY_RE = re.compile(
+    r"<iframe\b[^>]*\bsrc=\"https://(?:www\.)?webtv\.coop/media/embed\?key="
+    r"(?P<key>[0-9a-f]{32})",
+    re.IGNORECASE,
+)
+_ARCHIVE_H1_RE = re.compile(
+    r'<h1 class="[^"]*entry-title[^"]*"[^>]*>(?P<title>.*?)</h1>', re.S
+)
+_ARCHIVE_TITLE_SUFFIX_RE = re.compile(r"\s+[-\u2013\u2014]\s+[^-\u2013\u2014]+$")
+_IFRAME_TITLE_RE = re.compile(r"<iframe\b[^>]*\btitle=\"([^\"]*)\"", re.IGNORECASE)
+_EXTINF_RE = re.compile(r"#EXTINF:(?P<seconds>\d+(?:\.\d+)?)")
+
+_FRENCH_MONTHS = {
+    "janvier": 1, "fevrier": 2, "mars": 3, "avril": 4, "mai": 5, "juin": 6,
+    "juillet": 7, "aout": 8, "septembre": 9, "octobre": 10, "novembre": 11,
+    "decembre": 12,
+}  # fmt: skip
+_FRENCH_DATE_RE = re.compile(
+    r"(?<![0-9a-z])(?P<day>\d{1,2})(?:er)?\s+(?P<month>"
+    + "|".join(_FRENCH_MONTHS)
+    + r")\s+(?P<year>\d{4})(?![0-9])"
+)
+
 # Seconds to wait between two requests to webtv.coop (one at a time).
 PAUSE_BETWEEN_REQUESTS_SECONDS = 3.0
 
@@ -102,6 +160,44 @@ class WebtvRateLimited(Exception):
 def is_webtv_coop_url(url: str) -> bool:
     host = (urlparse(url).hostname or "").lower()
     return host in (WEBTV_HOST, f"www.{WEBTV_HOST}")
+
+
+def is_archive_url(url: str) -> bool:
+    """True for a page on one of the WordPress archive sites in ARCHIVE_HOSTS."""
+    return (urlparse(url).hostname or "").lower() in ARCHIVE_HOSTS
+
+
+def archive_post_slug(url: str) -> Optional[str]:
+    """The post slug when the address is one meeting post (`/<slug>/`) on an
+    archive site, else None (home, month archive `/2026/10/`, feed, category,
+    live page, ...)."""
+    parts = [p for p in urlparse(url).path.split("/") if p]
+    if len(parts) != 1:
+        return None
+    slug = parts[0].lower()
+    if slug in _ARCHIVE_NOT_POST_SEGMENTS or slug.isdigit():
+        return None
+    return slug
+
+
+def french_date(text: Optional[str]) -> Optional[str]:
+    """`YYYY-MM-DD` from a French date in `text` ("du 6 octobre 2026", "1er
+    septembre 2026", "5 mai 2015"; accents optional, any case), else None.
+    A day that does not exist in that month gives None."""
+    folded = unicodedata.normalize("NFKD", (text or "").lower().replace("-", " "))
+    folded = "".join(ch for ch in folded if not unicodedata.combining(ch))
+    match = _FRENCH_DATE_RE.search(folded)
+    if not match:
+        return None
+    try:
+        found = _date(
+            int(match.group("year")),
+            _FRENCH_MONTHS[match.group("month")],
+            int(match.group("day")),
+        )
+    except ValueError:
+        return None
+    return found.isoformat()
 
 
 def media_key_from_url(url: str) -> Optional[str]:
@@ -129,6 +225,8 @@ class WebtvCoopAssetFinder(AssetFinder):
     platform_name = "webtv_coop"
 
     async def resolve(self, url: str) -> ResolvedMeeting:
+        if is_archive_url(url):
+            return await self._resolve_archive_post(url)
         key = media_key_from_url(url)
         if not key:
             return ResolvedMeeting(
@@ -196,6 +294,13 @@ class WebtvCoopAssetFinder(AssetFinder):
                 "We found this webtv.coop page but not a playable video stream on it."
             ]
 
+        self._apply_captions(resolved, loaded)
+        return resolved
+
+    @staticmethod
+    def _apply_captions(
+        resolved: ResolvedMeeting, loaded: List[Tuple[str, List[dict]]]
+    ) -> None:
         if loaded:
             primary_lang, primary_cues = loaded[0]
             resolved.segments = [TranscriptSegment(**c) for c in primary_cues]
@@ -214,7 +319,195 @@ class WebtvCoopAssetFinder(AssetFinder):
                 )
         else:
             resolved.transcript_warnings.append("No captions found for this video.")
+
+    async def _resolve_archive_post(self, url: str) -> ResolvedMeeting:
+        """One meeting post on a WordPress archive site (see the module
+        docstring). The government comes from the host pin, not the page."""
+        slug = archive_post_slug(url)
+        if not slug:
+            return ResolvedMeeting(
+                platform=self.platform_name,
+                source_url=url,
+                video_warnings=[
+                    "This is a webtv.coop archive page, but not a single video. "
+                    "Open the meeting itself and paste that link."
+                ],
+            )
+        host = (urlparse(url).hostname or "").lower()
+        fallback_id = f"webtv_coop:{host.split('.')[0]}:{slug}"
+        try:
+            async with aiohttp.ClientSession(
+                headers={"User-Agent": _USER_AGENT}
+            ) as session:
+                page = await self._fetch_text(session, url)
+                if page is None:
+                    return ResolvedMeeting(
+                        platform=self.platform_name,
+                        source_url=url,
+                        external_id=fallback_id,
+                        video_warnings=["Could not load this webtv.coop video page."],
+                    )
+                title = self._archive_title(page)
+                video_url: Optional[str] = None
+                duration: Optional[float] = None
+                key: Optional[str] = None
+                loaded: List[Tuple[str, List[dict]]] = []
+                iframe_title = None
+
+                jw = _JW_FILE_RE.search(page)
+                embed = _EMBED_KEY_RE.search(page)
+                if jw:
+                    # Recent shape: JW Player block, stream address in the page.
+                    video_url = self._json_string(jw.group("src"))
+                    smil = _SMIL_KEY_RE.search(video_url or "")
+                    key = smil.group("key").lower() if smil else None
+                    if video_url:
+                        await asyncio.sleep(PAUSE_BETWEEN_REQUESTS_SECONDS)
+                        duration = await self._hls_duration(session, video_url)
+                    # The page has no caption track (none seen on any page).
+                    for lang, track_url in self._tracks(page):
+                        await asyncio.sleep(PAUSE_BETWEEN_REQUESTS_SECONDS)
+                        cues = await self._fetch_vtt(session, track_url)
+                        if cues:
+                            loaded.append((lang, cues))
+                elif embed:
+                    # Old shape: iframe to the main site's embed page, which
+                    # carries the same player options as a main-site video page.
+                    key = embed.group("key").lower()
+                    iframe = _IFRAME_TITLE_RE.search(page)
+                    iframe_title = (
+                        html_lib.unescape(iframe.group(1)) if iframe else None
+                    )
+                    await asyncio.sleep(PAUSE_BETWEEN_REQUESTS_SECONDS)
+                    embed_html = await self._fetch_text(
+                        session, f"https://{WEBTV_HOST}/media/embed?key={key}"
+                    )
+                    if embed_html:
+                        video_url = self._hls_url(embed_html)
+                        duration = self._duration(embed_html)
+                        for lang, track_url in self._tracks(embed_html):
+                            await asyncio.sleep(PAUSE_BETWEEN_REQUESTS_SECONDS)
+                            cues = await self._fetch_vtt(session, track_url)
+                            if cues:
+                                loaded.append((lang, cues))
+                else:
+                    return ResolvedMeeting(
+                        platform=self.platform_name,
+                        source_url=url,
+                        external_id=fallback_id,
+                        title=title,
+                        video_warnings=[
+                            "This is a webtv.coop archive page, but not a single "
+                            "video. Open the meeting itself and paste that link."
+                        ],
+                    )
+        except WebtvRateLimited:
+            return ResolvedMeeting(
+                platform=self.platform_name,
+                source_url=url,
+                external_id=fallback_id,
+                video_warnings=[
+                    "webtv.coop asked us to slow down (HTTP 429), so we stopped. "
+                    "Try again later."
+                ],
+            )
+
+        resolved = ResolvedMeeting(
+            platform=self.platform_name,
+            source_url=url,
+            external_id=f"webtv_coop:{key}" if key else fallback_id,
+            title=title,
+            # French words in the title, then in the address, then the
+            # embed's own ISO-dated title ("2015-05-05 Laval").
+            date=french_date(title) or french_date(slug) or self._date(iframe_title),
+            video_url=video_url,
+            video_format="m3u8" if video_url else None,
+            video_duration_seconds=duration,
+        )
+        if not video_url:
+            resolved.video_warnings = [
+                "We found this webtv.coop page but not a playable video stream on it."
+            ]
+        self._apply_captions(resolved, loaded)
         return resolved
+
+    @staticmethod
+    def _json_string(raw: str) -> Optional[str]:
+        try:
+            return json.loads(f'"{raw}"')
+        except json.JSONDecodeError:
+            return None
+
+    @staticmethod
+    def _archive_title(html: str) -> Optional[str]:
+        match = _ARCHIVE_H1_RE.search(html)
+        if match:
+            return _strip_tags(match.group("title")) or None
+        match = _TITLE_TAG_RE.search(html)
+        if match:
+            # WordPress titles end "<post title> - <site name>".
+            return (
+                _ARCHIVE_TITLE_SUFFIX_RE.sub("", _strip_tags(match.group("title")))
+                or None
+            )
+        return None
+
+    @staticmethod
+    async def _hls_duration(
+        session: aiohttp.ClientSession, master_url: str
+    ) -> Optional[float]:
+        """Length in seconds: the master playlist names its chunklists; the
+        first chunklist lists every piece with its `#EXTINF` length and ends
+        with `#EXT-X-ENDLIST` when the recording is finished. Two small text
+        reads, no video. None when anything is missing (a live stream has no
+        end), never a guess."""
+        master = await WebtvCoopAssetFinder._fetch_playlist(session, master_url)
+        if not master:
+            return None
+        names = [
+            line.strip()
+            for line in master.splitlines()
+            if line.strip() and not line.startswith("#")
+        ]
+        if not names:
+            return None
+        await asyncio.sleep(PAUSE_BETWEEN_REQUESTS_SECONDS)
+        chunklist = await WebtvCoopAssetFinder._fetch_playlist(
+            session, urljoin(master_url, names[0])
+        )
+        if not chunklist or "#EXT-X-ENDLIST" not in chunklist:
+            return None
+        total = sum(float(m.group("seconds")) for m in _EXTINF_RE.finditer(chunklist))
+        return round(total, 2) if total > 0 else None
+
+    @staticmethod
+    async def _fetch_playlist(
+        session: aiohttp.ClientSession, playlist_url: str
+    ) -> Optional[str]:
+        try:
+            async with session.get(
+                playlist_url, timeout=aiohttp.ClientTimeout(total=30)
+            ) as response:
+                if response.status == 429:
+                    raise WebtvRateLimited()
+                if response.status != 200:
+                    logger.warning(
+                        "webtv.coop stream playlist HTTP %s for %s",
+                        response.status,
+                        playlist_url,
+                    )
+                    return None
+                text = await response.text()
+        except WebtvRateLimited:
+            raise
+        except Exception:
+            logger.warning(
+                "webtv.coop stream playlist fetch failed for %s",
+                playlist_url,
+                exc_info=True,
+            )
+            return None
+        return text if text.lstrip().startswith("#EXTM3U") else None
 
     @staticmethod
     def _hls_url(html: str) -> Optional[str]:
