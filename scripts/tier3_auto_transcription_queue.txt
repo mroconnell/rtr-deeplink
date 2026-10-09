@@ -200,18 +200,6 @@ https://mapleton.civicweb.net/Portal/MeetingInformation.aspx?Id=371		ca:csd:3523
 https://vimeo.com/1226985227	https://vimeo.com/1226985227?share=copy&fl=sv&fe=ci	us:sd:2607560
 https://washingtonfl.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=211		us:county:12133
 https://vimeo.com/596543013/7c411dd1aa		us:county:13119
-https://coosbay.granicus.com/MediaPlayer.php?view_id=1&clip_id=951
-https://delcopa.granicus.com/MediaPlayer.php?view_id=2&clip_id=652
-https://doravillega.granicus.com/MediaPlayer.php?view_id=1&clip_id=445
-https://edinburg.granicus.com/MediaPlayer.php?view_id=2&clip_id=842
-https://grandcounty-co.granicus.com/MediaPlayer.php?view_id=1&clip_id=1540
-https://grinnell.granicus.com/MediaPlayer.php?view_id=1&clip_id=614
-https://townofgypsum.granicus.com/MediaPlayer.php?view_id=3&clip_id=1157
-https://hazelcrest.granicus.com/MediaPlayer.php?view_id=1&clip_id=631
-https://hudson.granicus.com/MediaPlayer.php?view_id=2&clip_id=5044
-https://jacksoncountygov.granicus.com/MediaPlayer.php?view_id=1&clip_id=3
-https://townoflandis.granicus.com/MediaPlayer.php?view_id=1&clip_id=64
-https://ledyardct.granicus.com/MediaPlayer.php?view_id=1&clip_id=2490
 https://lexingtonnc.granicus.com/MediaPlayer.php?view_id=1&clip_id=687
 https://mansfieldtx.granicus.com/MediaPlayer.php?view_id=2&clip_id=2244
 https://cityofmelrose.granicus.com/MediaPlayer.php?view_id=3&clip_id=1
@@ -1290,3 +1278,15 @@ https://cityblm.granicus.com/MediaPlayer.php?view_id=1&clip_id=1249
 https://burrillville.granicus.com/MediaPlayer.php?view_id=2&clip_id=1470
 https://carsoncity.granicus.com/MediaPlayer.php?view_id=1&clip_id=2938
 https://commerce.granicus.com/MediaPlayer.php?view_id=2&clip_id=1303
+https://coosbay.granicus.com/MediaPlayer.php?view_id=1&clip_id=951
+https://delcopa.granicus.com/MediaPlayer.php?view_id=2&clip_id=652
+https://doravillega.granicus.com/MediaPlayer.php?view_id=1&clip_id=445
+https://edinburg.granicus.com/MediaPlayer.php?view_id=2&clip_id=842
+https://grandcounty-co.granicus.com/MediaPlayer.php?view_id=1&clip_id=1540
+https://grinnell.granicus.com/MediaPlayer.php?view_id=1&clip_id=614
+https://townofgypsum.granicus.com/MediaPlayer.php?view_id=3&clip_id=1157
+https://hazelcrest.granicus.com/MediaPlayer.php?view_id=1&clip_id=631
+https://hudson.granicus.com/MediaPlayer.php?view_id=2&clip_id=5044
+https://jacksoncountygov.granicus.com/MediaPlayer.php?view_id=1&clip_id=3
+https://townoflandis.granicus.com/MediaPlayer.php?view_id=1&clip_id=64
+https://ledyardct.granicus.com/MediaPlayer.php?view_id=1&clip_id=2490
