@@ -1278,3 +1278,4 @@ https://cityofmelrose.granicus.com/MediaPlayer.php?view_id=3&clip_id=1
 https://montbelvieu.granicus.com/MediaPlayer.php?view_id=2&clip_id=22
 https://saginaw.granicus.com/MediaPlayer.php?view_id=1&clip_id=275
 https://sandyutah.granicus.com/MediaPlayer.php?view_id=1&clip_id=986
+https://municipalites-du-quebec.ca/st-medard/pdf_procesverbaux/2026-10-02%20Seance%20oct.m4a	https://municipalites-du-quebec.ca/st-medard/proces-verbaux.php	ca:csd:2411025

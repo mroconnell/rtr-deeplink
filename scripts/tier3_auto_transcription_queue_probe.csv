@@ -11117,3 +11117,4 @@ https://videoplayer.telvue.com/player/gruNXD8awNzhQM8eTu5kcyw9vSGPLB6s/media/836
 https://placentia.granicus.com/MediaPlayer.php?view_id=3&clip_id=780,granicus,range-asf-header,,,,0,reject-dead,ranged GET on the media file returned HTTP 403,0.18,2026-10-09T22:54:43+00:00,,0
 https://saginaw.granicus.com/MediaPlayer.php?view_id=1&clip_id=275,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.23,2026-10-09T22:54:45+00:00,,0
 https://sandyutah.granicus.com/MediaPlayer.php?view_id=1&clip_id=986,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.05,2026-10-09T22:54:48+00:00,,0
+https://municipalites-du-quebec.ca/st-medard/pdf_procesverbaux/2026-10-02%20Seance%20oct.m4a,direct_file,head+ffprobe,4357.18,2026-10-05,37344426,1,accept,,14.26,2026-10-09T22:41:49+00:00
