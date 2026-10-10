@@ -11194,3 +11194,36 @@ http://50.77.30.235/CablecastPublicSite/show/6486?channel=1,cablecast,unknown-ac
 http://108.20.229.83/CablecastPublicSite/show/3551,cablecast,unknown-accepted,,,,0,accept,"length unknown, accepted (Cablecast): Cablecast API fetch failed: ",47.19,2026-10-10T14:44:05+00:00,,0
 http://173.166.104.124/CablecastPublicSite/show/3778,cablecast,cablecast-api,3473.00,2026-09-29,,1,accept,,47.68,2026-10-10T14:44:05+00:00,,0
 http://tv.dsctv.com/CablecastPublicSite/show/5512,cablecast,unknown-accepted,,,,0,accept,"length unknown, accepted (Cablecast): Cablecast API fetch failed: ",47.77,2026-10-10T14:44:06+00:00,,0
+https://player.vimeo.com/video/205208966,vimeo,vimeo-oembed,1498.00,2017-02-22,,1,accept,,0.08,2026-10-06T01:05:04+00:00,feed_tier3_auto_transcription,0
+https://vimeo.com/1225414475/f4353a4457,vimeo,vimeo-oembed,885.00,2026-09-09,,1,accept,,0.05,2026-10-06T01:08:20+00:00,feed_tier3_auto_transcription,0
+https://vimeo.com/1226952611/624e278e19,vimeo,vimeo-oembed,3407.00,2026-09-15,,1,accept,,0.05,2026-10-06T01:12:26+00:00,feed_tier3_auto_transcription,0
+https://vimeo.com/1206005514?fl=pl&fe=sh,vimeo,vimeo-oembed,5483.00,2026-06-30,,1,accept,,0.06,2026-10-06T01:16:34+00:00,feed_tier3_auto_transcription,0
+https://vimeo.com/1225805009,vimeo,vimeo-oembed,4938.00,2026-09-10,,1,accept,,0.05,2026-10-06T01:19:54+00:00,feed_tier3_auto_transcription,0
+https://vimeo.com/1182804943/1387309dde,vimeo,vimeo-oembed,3955.00,2026-04-13,,1,accept,,0.07,2026-10-06T01:23:34+00:00,feed_tier3_auto_transcription,0
+https://vimeo.com/showcase/11871214/embed2?video=1204021565,vimeo,vimeo-oembed,6544.00,2026-06-23,,1,accept,,0.05,2026-10-06T01:27:28+00:00,feed_tier3_auto_transcription,0
+https://vimeo.com/949562199?share=copy,vimeo,vimeo-oembed,3420.00,2024-05-23,,1,accept,,0.07,2026-10-06T01:30:39+00:00,feed_tier3_auto_transcription,0
+https://vimeo.com/384766771,vimeo,vimeo-oembed,1954.00,2020-01-14,,1,accept,,0.07,2026-10-06T01:37:46+00:00,feed_tier3_auto_transcription,0
+https://vimeo.com/729707486,vimeo,vimeo-oembed,2358.00,2022-07-13,,1,accept,,0.06,2026-10-06T01:41:02+00:00,feed_tier3_auto_transcription,0
+https://player.vimeo.com/video/268318865?byline=0,vimeo,vimeo-oembed,1080.00,2018-05-06,,1,accept,,0.06,2026-10-06T01:44:36+00:00,feed_tier3_auto_transcription,0
+https://player.vimeo.com/video/1150665534?dnt=1&app_id=122963,vimeo,vimeo-oembed,2348.00,2025-12-31,,1,accept,,0.06,2026-10-06T01:48:22+00:00,feed_tier3_auto_transcription,0
+https://vimeo.com/1220959316,vimeo,vimeo-oembed,3927.00,2026-08-24,,1,accept,,0.07,2026-10-06T01:51:38+00:00,feed_tier3_auto_transcription,0
+https://vimeo.com/565286481,vimeo,vimeo-oembed,2468.00,2021-06-20,,1,accept,,0.05,2026-10-06T01:55:36+00:00,feed_tier3_auto_transcription,0
+https://vimeo.com/1196671672,vimeo,vimeo-oembed,16103.00,2026-05-29,,1,accept,,0.06,2026-10-06T01:59:21+00:00,feed_tier3_auto_transcription,0
+https://vimeo.com/499615398,vimeo,vimeo-oembed,2853.00,2021-01-12,,1,accept,,0.05,2026-10-06T02:07:02+00:00,feed_tier3_auto_transcription,0
+https://player.vimeo.com/video/66344864,vimeo,vimeo-oembed,1336.00,2013-05-16,,1,accept,,0.06,2026-10-06T02:10:45+00:00,feed_tier3_auto_transcription,0
+https://player.vimeo.com/video/1065982250?badge=0&autopause=0&player_id=0&app_id=58479,vimeo,vimeo-oembed,1716.00,2025-03-14,,1,accept,,0.06,2026-10-06T02:14:28+00:00,feed_tier3_auto_transcription,0
+https://player.vimeo.com/video/1181201857?badge=0&autopause=0&player_id=0&app_id=58479,vimeo,vimeo-oembed,1802.00,2026-04-08,,1,accept,,0.08,2026-10-06T02:18:03+00:00,feed_tier3_auto_transcription,0
+https://vimeo.com/1223404594,vimeo,vimeo-oembed,3351.00,2026-09-02,,1,accept,,0.06,2026-10-06T02:21:56+00:00,feed_tier3_auto_transcription,0
+https://vimeo.com/1203684350/36740eaa6a,vimeo,vimeo-oembed,7227.00,2026-06-22,,1,accept,,0.07,2026-10-06T02:25:08+00:00,feed_tier3_auto_transcription,0
+https://vimeo.com/1200185258/15024681b7,vimeo,vimeo-oembed,1730.00,2026-06-10,,1,accept,,0.06,2026-10-06T02:29:04+00:00,feed_tier3_auto_transcription,0
+https://vimeo.com/1210517080,vimeo,vimeo-oembed,5594.00,2026-07-16,,1,accept,,0.07,2026-10-06T02:36:26+00:00,feed_tier3_auto_transcription,0
+https://vimeo.com/652083906/721342eeb9,vimeo,vimeo-oembed,2414.00,2021-12-01,,1,accept,,0.06,2026-10-06T02:39:38+00:00,feed_tier3_auto_transcription,0
+https://vimeo.com/1209877446,vimeo,vimeo-oembed,1492.00,2026-07-14,,1,accept,,0.06,2026-10-06T02:43:28+00:00,feed_tier3_auto_transcription,0
+https://vimeo.com/1208629392,vimeo,vimeo-oembed,873.00,2026-07-09,,1,accept,,0.06,2026-10-06T02:46:48+00:00,feed_tier3_auto_transcription,0
+https://vimeo.com/963645675/b12ae62e00,vimeo,vimeo-oembed,8652.00,2024-06-20,,1,accept,,0.15,2026-10-06T02:50:03+00:00,feed_tier3_auto_transcription,0
+https://vimeo.com/1208112286,vimeo,vimeo-oembed,2262.00,2026-07-08,,1,accept,,0.07,2026-10-06T02:54:03+00:00,feed_tier3_auto_transcription,0
+https://vimeo.com/672636196/6d763e448f,vimeo,vimeo-oembed,952.00,2022-02-02,,1,accept,,0.07,2026-10-06T02:58:08+00:00,feed_tier3_auto_transcription,0
+https://vimeo.com/1226697028,vimeo,vimeo-oembed,6631.00,2026-09-14,,1,accept,,0.06,2026-10-06T03:01:52+00:00,feed_tier3_auto_transcription,0
+https://vimeo.com/440063667,vimeo,vimeo-oembed,3968.00,2020-07-20,,1,accept,,0.07,2026-10-06T03:05:13+00:00,feed_tier3_auto_transcription,0
+https://vimeo.com/1138505216,vimeo,vimeo-oembed,14754.00,2025-11-19,,1,accept,,0.09,2026-10-06T03:09:16+00:00,feed_tier3_auto_transcription,0
+https://player.vimeo.com/video/1129030971?h=4e0a44e244,vimeo,vimeo-oembed,3231.00,2025-10-20,,1,accept,,0.06,2026-10-06T03:16:45+00:00,feed_tier3_auto_transcription,0
