@@ -274,6 +274,13 @@ but silent for 11 hours. That event now raises an alert too.
 **Start it with its output captured**, not sent to `/dev/null`:
 `... youtube_drip.py --lanes ... > ~/.rtr/youtube_drip/stdout.log 2>&1`.
 
+**An audio job has a time limit (WO-1188).** One Whisper job in the `audio`
+lane may run at most 4 hours (`AUDIO_JOB_TIMEOUT_SECONDS`). Past that, the
+drip gives up waiting, strikes the page out (pushed back 4 hours, then
+longer) and moves on to the next lane. The Whisper thread itself cannot be
+killed from the drip, so it may still finish in the background and use the
+CPU; the page stays in the queue.
+
 ## When to tell Ryan
 
 - Any new line in `alerts.log` that you cannot explain.

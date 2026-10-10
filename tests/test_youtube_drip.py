@@ -1104,3 +1104,22 @@ def test_the_drip_log_handler_is_put_back_if_a_library_removes_it(
     finally:
         root.removeHandler(handler)
         handler.close()
+
+
+# WO-1188: an audio (Whisper) job that runs past the limit must not hold the
+# drip. It is struck out, pushed back, and the lane returns "touched".
+def test_lane_audio_timeout_strikes_item_and_returns(tmp_path, monkeypatch):
+    from scripts import transcribe_backlog_locally as tbl
+
+    drip = _drip(tmp_path, lanes=("audio",))
+    drip.state.data["audio_queue"] = [{"slug": "slow"}]
+    drip.audio_job_timeout = 0.05
+    monkeypatch.setattr(drip, "_get_engine", lambda: None)
+
+    async def never_finishes(*a, **k):
+        await asyncio.sleep(5)
+
+    monkeypatch.setattr(tbl, "process_one", never_finishes)
+    assert asyncio.run(drip.lane_audio(None)) == (True, None)
+    assert drip.state.is_deferred("audio|slow")
+    assert drip.state.data["audio_queue"] == [{"slug": "slow"}]

@@ -197,6 +197,9 @@ STRIKE_DEFER_AFTER_ERRORS = 2
 STRIKE_DEFER_AFTER_BLOCKS = 3
 STRIKE_RETRY_BASE_SECONDS = 4 * 3600.0
 STRIKE_RETRY_MAX_SECONDS = 48 * 3600.0
+# WO-1188: one audio (Whisper) job may hold the tick this long, no longer.
+# A 3-hour meeting takes about 1-2 hours on this Mac, so 4 hours is slack.
+AUDIO_JOB_TIMEOUT_SECONDS = 4 * 3600.0
 AUDIO_DOWNLOADS_PER_DAY = 3
 # WO-1168: how long the direct lane trusts its own cached backlog count
 # before re-checking GET /internal/transcription-backlog (a full Archive
@@ -782,6 +785,7 @@ class Drip:
         self._engine = None
         self.alerts_path: Optional[Path] = None
         self.current_item: Optional[str] = None
+        self.audio_job_timeout = AUDIO_JOB_TIMEOUT_SECONDS
 
     # -- block bookkeeping
     def _block(
@@ -1265,14 +1269,28 @@ class Drip:
             return False, None
         self.current_item = f"audio|{page['slug']}"
         self.state.bump("audio_downloads")
-        result = await tbl.process_one(
-            session,
-            self._get_engine(),
-            page,
-            dry_run=self.dry_run,
-            chunk_seconds_override=None,
-            promote=True,
-        )
+        try:
+            result = await asyncio.wait_for(
+                tbl.process_one(
+                    session,
+                    self._get_engine(),
+                    page,
+                    dry_run=self.dry_run,
+                    chunk_seconds_override=None,
+                    promote=True,
+                ),
+                timeout=self.audio_job_timeout,
+            )
+        except asyncio.TimeoutError:
+            # The Whisper thread itself cannot be killed from here and may
+            # finish in the background; the page stays in the queue, struck
+            # out and pushed back, and the other lanes get their turn.
+            self._item_failed(
+                "audio job timed out",
+                f"over {self.audio_job_timeout / 3600:.0f}h",
+                1,
+            )
+            return True, None
         status, detail = (
             result["status"],
             " ".join(str(result.get("detail") or "").split()),
