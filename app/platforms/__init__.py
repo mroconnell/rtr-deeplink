@@ -15,6 +15,7 @@ def register_all_finders() -> None:
     from .ca_legislature import CaliforniaLegislatureAssetFinder
     from .cablecast import CablecastAssetFinder
     from .castus import CastusAssetFinder
+    from .catstv import CatsTvAssetFinder
     from .champds import ChampDSAssetFinder
     from .clerkbase import ClerkBaseAssetFinder
     from .civicclerk import CivicClerkAssetFinder
@@ -88,6 +89,7 @@ def register_all_finders() -> None:
     register(SpectrumStreamAssetFinder())
     register(OpenMediaAssetFinder())
     register(CastusAssetFinder())
+    register(CatsTvAssetFinder())
     register(SuiteOneAssetFinder())
     register(VimeoAssetFinder())
     register(ChicagoElmsAssetFinder())

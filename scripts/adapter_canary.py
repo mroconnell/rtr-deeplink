@@ -289,6 +289,8 @@ CANARY_URLS: dict[str, list[str]] = {
     "swd_live": [
         "https://swd-live.com/fr/gatineau/archive/e96fb041-106e-4c38-9b99-d51eeddd4a38"
     ],
+    # Bloomington, IN's real 2026-10-07 City Council meeting on CATS -- confirmed live 2026-10-10: a 3 h 18 m .m4v and a 1,722-cue WebVTT file.
+    "catstv": ["https://catstv.net/m.php?q=16544"],
     # Salisbury, NC's real 7/21/2026 City Council meeting -- the one city
     # in the WO-29 investigation confirmed (via a real browser) to have
     # populated English captions inside the Vimeo player. This adapter is
