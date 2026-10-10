@@ -1257,3 +1257,27 @@ https://sandyutah.granicus.com/MediaPlayer.php?view_id=1&clip_id=986
 https://municipalites-du-quebec.ca/st-medard/pdf_procesverbaux/2026-10-02%20Seance%20oct.m4a	https://municipalites-du-quebec.ca/st-medard/proces-verbaux.php	ca:csd:2411025
 https://myseminole.granicus.com/MediaPlayer.php?view_id=1&clip_id=573
 https://cityofwestpark.granicus.com/MediaPlayer.php?view_id=1&clip_id=209
+https://nbctc.cablecast.tv/CablecastPublicSite/show/4404?channel=1	https://nbctc.cablecast.tv/CablecastPublicSite/show/4404?channel=1	us:cousub:2500300555	Adams Selectmen's Meeting - 9-16-26 REPLAY
+https://nbctc.cablecast.tv/CablecastPublicSite/show/4529?channel=1	https://nbctc.cablecast.tv/CablecastPublicSite/show/4529?channel=1	us:cousub:2500314010	Clarksburg Selectmen's Meeting - 10-5-26
+https://cloud.castus.tv/vod/pepperell/video/6abd1e234c9a7700021589a9?page=ALL	https://cloud.castus.tv/vod/pepperell/video/6abd1e234c9a7700021589a9?page=ALL	us:cousub:2501752805	Select Board
+https://marthasvineyard.cablecast.tv/internetchannel/show/17218	https://marthasvineyard.cablecast.tv/internetchannel/show/17218	us:cousub:2500721150	Edgartown SB 9.14.26
+https://marthasvineyard.cablecast.tv/internetchannel/show/17203	https://marthasvineyard.cablecast.tv/internetchannel/show/17203	us:cousub:2500778235	West Tisbury SB 9.9.26
+https://northbridgetv.org/CablecastPublicSite/show/5278?channel=1	https://northbridgetv.org/CablecastPublicSite/show/5278?channel=1	us:cousub:2502746925	Board of Selectmen Meeting - 09/28/2026
+https://vod.easthamptonmedia.org/CablecastPublicSite/show/23916?channel=1	https://vod.easthamptonmedia.org/CablecastPublicSite/show/23916?channel=1	us:cousub:2501562745	Southampton Select Board 9/22/26
+http://sctvmc.float-zone.com/CablecastPublicSite/show/12301	http://sctvmc.float-zone.com/CablecastPublicSite/show/12301	us:cousub:2500959245	Board of Selectmen 9-28-2026
+http://71.184.118.35/CablecastPublicSite/show/13253	http://71.184.118.35/CablecastPublicSite/show/13253	us:cousub:2502167945	SelectBoard_09-29-26
+http://198.0.187.202/internetchannel/show/15636	http://198.0.187.202/internetchannel/show/15636	us:cousub:2502102935	Avon Select Board Meeting 10-1-26
+https://reflect-awcm.cablecast.tv/internetchannel/show/6758	https://reflect-awcm.cablecast.tv/internetchannel/show/6758	us:cousub:2502701885	Ashburnham Select Board Meeting 9-21-2026
+https://marthasvineyard.cablecast.tv/internetchannel/show/17166	https://marthasvineyard.cablecast.tv/internetchannel/show/17166	us:cousub:2500701585	Aquinnah SB 8.17.26
+https://nbctc.cablecast.tv/CablecastPublicSite/show/4358?channel=1	https://nbctc.cablecast.tv/CablecastPublicSite/show/4358?channel=1	us:cousub:2500313345	Town of Cheshire Selectmen's Meeting - 9-1-26
+https://nbctc.cablecast.tv/CablecastPublicSite/show/4374?channel=1	https://nbctc.cablecast.tv/CablecastPublicSite/show/4374?channel=1	us:place:2546225	North Adams City Council - 9-8-26 REPLAY
+https://videoplayer.telvue.com/player/Mzn4uOy-GIuW4rtdO2jlZmP3EE1WywoM/playlists/3356/media/1048379	https://videoplayer.telvue.com/player/Mzn4uOy-GIuW4rtdO2jlZmP3EE1WywoM/playlists/3356/media/1048379	us:cousub:2502318455	East Bridgewater Select Board Meeting 9-28-26
+https://marthasvineyard.cablecast.tv/internetchannel/show/17168	https://marthasvineyard.cablecast.tv/internetchannel/show/17168	us:cousub:2500713800	Chilmark SB + Planning 8.24.26
+https://lcac.tv/CablecastPublicSite/show/6681	https://lcac.tv/CablecastPublicSite/show/6681	us:cousub:2502734795	Select Board Meeting August 4 2026
+https://cloud.castus.tv/vod/waycam/video/6967effd8c6f230002616238?page=HOME	https://cloud.castus.tv/vod/waycam/video/6967effd8c6f230002616238?page=HOME	us:cousub:2501773790	Select Board 2026-01-14
+https://videoplayer.telvue.com/player/wCwBAXHtGCN-aqYz22Xuje-5ELUZawSc/media/1046395	https://videoplayer.telvue.com/player/wCwBAXHtGCN-aqYz22Xuje-5ELUZawSc/media/1046395	us:cousub:2501379740	2026-09-14 Select Board
+http://schedule.hanoverctv.org/CablecastPublicSite/show/4011	http://schedule.hanoverctv.org/CablecastPublicSite/show/4011	us:cousub:2502328285	Hanover Selectboard 7-20-26
+http://173.166.104.124/CablecastPublicSite/show/3778	http://173.166.104.124/CablecastPublicSite/show/3778	us:cousub:2500940430	Select Board 9-29-2026
+http://50.77.30.235/CablecastPublicSite/show/6486?channel=1	http://50.77.30.235/CablecastPublicSite/show/6486?channel=1	us:cousub:2502116495	SELECT BOARD - September 23 2026
+http://108.20.229.83/CablecastPublicSite/show/3551	http://108.20.229.83/CablecastPublicSite/show/3551	us:place:2556000	Planning Board 9-22-2026
+http://tv.dsctv.com/CablecastPublicSite/show/5512	http://tv.dsctv.com/CablecastPublicSite/show/5512	us:cousub:2502117405	Dover Selectmen's Meeting 9/3/2026
