@@ -5844,6 +5844,8 @@ DIRECT_PLATFORMS: dict[str, str] = {
     "webtv_coop": "Coop WebTV (webtv.coop)",
     # SWD Live (swd-live.com): Service Web Diffusion's council webcasts (Gatineau, Mont-Royal). Direct MP4 files; swd_live.py has its own platform.
     "swd_live": "SWD Live (swd-live.com)",
+    # CATS (catstv.net): Bloomington IN community access TV; direct .m4v files and WebVTT captions. catstv.py has its own platform.
+    "catstv": "CATS (catstv.net)",
     "escribe": "eScribe",
     "cablecast": "Cablecast",
     "champds": "CHAMP/ChampDS",

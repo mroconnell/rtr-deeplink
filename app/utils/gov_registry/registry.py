@@ -356,6 +356,9 @@ MULTI_GOV_HOSTS: FrozenSet[str] = frozenset(
         # SWD Live (swd-live.com, Service Web Diffusion): one tenant per customer, the first path segment after the language
         # (`/fr/gatineau/archive/...`). Pins are `match=channel=swd_live:{tenant}`, matched against swd_live.py's `video_channel`.
         "swd-live.com",
+        # CATS (catstv.net, Bloomington IN): one station, many governments. Pins are `match=channel=cats:{code}` (the body code in the video file name,
+        # lower case), matched against catstv.py's `video_channel`; the meeting address (`m.php?q=<n>`) does not name its body.
+        "catstv.net",
     }
 )
 
