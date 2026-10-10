@@ -508,6 +508,10 @@ def detect_platform(url: str) -> str:
         # adapter. See telvue.py's own docstring for the real page
         # structure this was built against.
         return "telvue"
+    if netloc == "catstv.net" or netloc == "www.catstv.net":
+        # CATS (Community Access Television Services, Bloomington IN): one station, many governments. Confirmed live 2026-10-10 -- see catstv.py.
+        # Any catstv.net path routes here; the adapter says plainly when a page is not a single meeting.
+        return "catstv"
     if netloc == "swd-live.com" or netloc == "www.swd-live.com":
         # SWD Live (Service Web Diffusion): council webcasts for Gatineau and Mont-Royal. Confirmed live 2026-10-08 -- see swd_live.py.
         # Any swd-live.com path routes here; the adapter says plainly when a page is not a single meeting.

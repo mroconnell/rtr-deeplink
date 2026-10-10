@@ -99,6 +99,7 @@ _HOST_ALIASES: Dict[str, str] = {
     "playapi.champds.com": "play.champds.com",
     "www.webtv.coop": "webtv.coop",
     "www.swd-live.com": "swd-live.com",
+    "www.catstv.net": "catstv.net",
 }
 
 
@@ -325,6 +326,13 @@ def _swd_live(url: str) -> Optional[str]:
     return match.group(1).lower() if match else None
 
 
+# --- CATS (catstv.py): one station, many governments. A meeting is `/m.php?q=<n>` and its address does not name the body, so there is no key to read
+# from the address (None, like a BoxCast `/view/` link); catstv.py reads the body code from the video file name and sends it as `video_channel` =
+# `cats:{code}`.
+def _catstv(url: str) -> Optional[str]:
+    return None
+
+
 # Host -> key rule for every shared website with a defined key.
 KEYED_SHARED_HOSTS: Dict[str, Callable[[str], Optional[str]]] = {
     "play.champds.com": _champds,
@@ -344,6 +352,7 @@ KEYED_SHARED_HOSTS: Dict[str, Callable[[str], Optional[str]]] = {
     "wms.civplus.tikiliveapi.com": civicmedia_chid,
     "webtv.coop": _webtv_coop,
     "swd-live.com": _swd_live,
+    "catstv.net": _catstv,
 }
 
 
@@ -708,6 +717,7 @@ _WEBTV_COOP_CHANNEL_HINT_RE = re.compile(r"^channel=webtv_coop:(\d+)$", re.IGNOR
 _SWD_LIVE_CHANNEL_HINT_RE = re.compile(
     r"^channel=swd_live:([a-z0-9-]+)$", re.IGNORECASE
 )
+_CATSTV_CHANNEL_HINT_RE = re.compile(r"^channel=cats:([a-z0-9_]+)$", re.IGNORECASE)
 # How a pin may spell "exactly this tenant" in front of the bare key.
 _WHOLE_TENANT_PREFIXES = (
     "player/",
@@ -717,6 +727,7 @@ _WHOLE_TENANT_PREFIXES = (
     "channel=civicmedia:",
     "channel=webtv_coop:",
     "channel=swd_live:",
+    "channel=cats:",
     "clientid=",
     "location_id=",
     "id=",
@@ -762,6 +773,10 @@ def pin_tenant_key(host: str, match: Optional[str]) -> Optional[str]:
     if host == "swd-live.com" and hint:
         # SWD Live's tenant pin, `channel=swd_live:{tenant}`: matched against the adapter's `video_channel` page hint and against any
         # `/<lang>/{tenant}/...` address by its tenant.
+        return hint.group(1).lower()
+    hint = _CATSTV_CHANNEL_HINT_RE.match(match)
+    if host == "catstv.net" and hint:
+        # CATS's body pin, `channel=cats:{code}`: matched against the adapter's `video_channel` page hint (the meeting address does not name its body).
         return hint.group(1).lower()
     if re.match(r"^[A-Za-z_]+=", match):
         url = f"https://{host}/{_QUERY_PIN_PATH.get(host, '')}?{match}"

@@ -1,5 +1,27 @@
 # Backlog — done
 
+## [Done 2026-10-10] CATS (catstv.net, Bloomington IN) resolver: one station, eight governments pinned
+
+**What was done.** Ryan asked for adapter support after the 2026-10-10 research (rtr-business `research/CATS_RCCD_BREADTH_2026-10-10.md`). Added `app/platforms/catstv.py`. Given a CATS meeting link (`catstv.net/m.php?q=<n>`), it returns the .m4v address, the title, the date, the source's own runtime and the WebVTT captions as segments. The body code in the video file name (`B_CC_261007.m4v` -> `B_CC`) goes out as `video_channel` = `cats:b_cc`, and eight pins in `tenant_overrides.csv` (`match=channel=cats:<code>`) tie that to a government. A code with no pin stays unattributed on purpose.
+
+**What the site looks like (read 2026-10-10).**
+- Plain HTML, no script. No robots.txt (404). The page holds `<source src>` (video), `<track kind="captions" src>` (VTT), `p.video-name`, `p.video-date`, `p.video-duration`. A `_transcript.txt` sits beside the VTT; the adapter reads the VTT because it carries times.
+- Only some meetings have captions (Bloomington 102 of 604 listed, Ellettsville 37 of 349, MCCSC 16 of 204). With no `<track>` a meeting resolves with no segments and the warning "No captions found for this video." (Tier 3).
+- The body is not named in its own field, so the file name code is the only handle.
+
+**Live check, 8 meetings (2026-10-10, 2 seconds apart).**
+
+| Result | Count of 8 |
+|---|---:|
+| Resolved with video, date, title, runtime and captions, no warnings | 8 |
+| Pinned to the expected government | 8 |
+
+Pinned codes: `b_cc` Bloomington city, `m_cs` and `m_cs_ws` Monroe County, `e_etc` Ellettsville, `m_mccsc` MCCSC, `m_rbb` Richland-Bean Blossom, `m_mcpl` Monroe County Public Library (`rtr:us:in:monroe-county-public-library`), `m_wrd` Waste Reduction District (`rtr:us:in:monroe-county-waste-reduction-district`). The two `rtr:` ids are slugs with no Census of Governments id yet (TBD).
+
+**Not done.** Nothing walked, queued or ingested. Other CATS body codes (planning commission `B_BPC`, the other boards on the station's body list) have no pin yet, so they resolve unattributed until pinned. Riverside Community College District (rccd.edu) is not part of this: it is direct VTT + MP4 files, handled by the direct-file adapter. Lake Lemon Conservancy District has 3 meetings and no captions.
+
+**Tests.** `tests/test_catstv.py` (8 cases), real pages and the first 6 KB of a real VTT in `tests/fixtures/catstv/`. Canary URL added to `scripts/adapter_canary.py`.
+
 ## [Done 2026-10-09] Laval's own archive (archivesvilledelaval.webtv.coop) read by the webtv.coop adapter and pinned to Laval
 
 **What was done.** Ryan said "do the subdomain". The webtv.coop adapter now reads a second page shape: Laval's own council-video site, a WordPress site on a webtv.coop subdomain with one post per meeting. The host is pinned to Laval (`ca:csd:2465005`) in `tenant_overrides.csv` as a whole-host row, and `detect_platform()` routes it to `webtv_coop`. Before this, the adapter answered "not a single video" for these pages.

@@ -1,0 +1,437 @@
+<!DOCTYPE html>  
+<html lang="en" class="no-js">
+  <head>  
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>CATS - Bloomington City Council 10/7</title>  
+    <link rel="stylesheet" href="css/style-responsive.css?v=20260422e" />
+    <link rel="stylesheet" href="css/print.css" media="print" />   
+    <link rel="stylesheet" href="css/jquery-ui-1.8.18.custom.css" />   
+    <link type="text/css" href="skin/cats/jplayer.blue.monday.css?v=20260325b" rel="stylesheet" />
+    
+    <script src="js/modernizr.js"></script>
+    
+    <script language="javascript" src="js/jquery-1.7.2.min.js"></script>
+    <script language="javascript" src="js/jquery-ui-1.8.18.custom.min.js"></script>
+    <script language="javascript" src="js/jquery.jplayer.min.js?v=2.9.2"></script>
+    <script language="javascript" src="js/cats.js?v=20260327"></script>
+    
+<script language="javascript" src="js/spin.min.js"></script>
+
+    
+    <script language="javascript">
+      
+
+      $(document).ready(function() {
+      $(' #aSubmitSearchBox ').click( function() { $(this).closest('form').submit(); } )
+      } );
+      
+const videobaseurl = 'https://catstv.blob.core.windows.net/videoarchive';
+$.jPlayer.timeFormat.showHour = true;
+  var starttime = 0;
+  
+  $(document).ready(function() {
+    $("#jquery_jplayer_1").jPlayer( {
+        ready: function () {
+            $(this).jPlayer("setMedia", {
+		m4v: "https://catstv.blob.core.windows.net/videoarchive/B_CC_261007.m4v",
+		poster: "images/cats_black_screen.png"
+            } ).jPlayer('pause', starttime).jPlayer('play', starttime);
+        } ,
+        size: {
+	    width: "100%",
+	    height: "100%",
+	    cssClass: "jp-video-270p"
+        } ,
+        swfPath: "js",
+        supplied: "m4v"
+    } );
+ var target = document.getElementById('divVideoLoading')
+ var spinner = new Spinner(opts).spin(target);
+      ;
+
+    $(document).on('click', 'video:visible', function() { $('li#liPlayPause a:visible').first().click(); });
+} );
+
+
+$(document).ready(function() {
+
+$('td.result-view a:not(.selected)').click(function() {
+ $('td.result-view a').removeClass('selected').html('View &gt;');
+ $(this).addClass('selected').html('Playing');
+ $('#jquery_jplayer_1').jPlayer('setMedia', { 
+ m4v: 'https://catstv.blob.core.windows.net/videoarchive' + '/' + $(this).data('m4v')
+} ).jPlayer('play');
+ $('#divMediaDetail p.video-name').text($(this).data('name'));
+ $('#divMediaDetail p.video-date').text($(this).data('date'));
+ $('#divMediaDetail p.video-duration').text($(this).data('duration'));
+ 
+ var showViewAgendaButton = ($(this).data('hasagenda') === true) ? true : false;
+ $('#dialogMeetingAgenda pre').text(' ');
+ if (showViewAgendaButton) {
+   $('#dialogMeetingAgenda pre').text($(this).closest('tr').find('td.result-agenda').text() );
+ }
+
+ $('#divMediaDetail #aViewAgenda').toggle(showViewAgendaButton);
+ return false;
+} );
+
+  $('#aViewAgenda').click(function() {
+  $('#dialogMeetingAgenda').dialog( { title:"Meeting Agenda", width:900 } );
+  return false;
+  } );
+
+  $('a.permalink-options').click(function() {
+  var url = $(this).closest('.info-section').find('.video-permalink').text();
+  $('#inputCopyPermalink').val(url);
+  $('#dialogPermalinkOptions').dialog( { title:"Permalink Options", width:900 } );
+  return false;
+  } );
+
+} );
+
+
+
+
+      
+    </script>
+    
+    
+    <style type="text/css">
+      
+    </style>
+
+    
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZJYE57CEZ6"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-ZJYE57CEZ6');
+    </script>
+    
+    
+  </head>  
+  <body class="govt wide single-video responsive html5video">
+    <a class="sr-only sr-only-focusable" href="#main">Skip to main content</a>
+    <a class="sr-only sr-only-focusable" href="#divMediaDetail">Skip to video information</a>
+    <div id="divEverything">
+      <header id="divBanner">
+	<div id="divAboveNav" class="center-maker">
+	  <hgroup>
+	    <h1>CATS</h1>
+	    <h2>COMMUNITY ACCESS TELEVISION SERVICES</h2>
+	  </hgroup>
+	  <a href="/"><img  id="imgMainLogo" src="images/banner_logo.png" alt="CATS - Community Access Television Services" /></a>
+	  
+	  <div id="divSearchBox">
+	    <form action="government.php" method="get">
+	      <input type="hidden" name="issearch" value="banner" />
+
+	      <label for="inputSearchBox" class="sr-only">Search video archive</label>
+	      <input id="inputSearchBox" name="webquery" type="search" placeholder="Search Video Archive" />
+
+	      <button type="submit" id="buttonSubmitSearchBox" class="grey-quasi-button show-js-only">
+		<span class="sr-only">Search</span>
+		&gt;
+	      </button>
+	    </form>
+	  </div>
+	  <button
+	    id="buttonToggleMainMenu"
+	    type="button"
+	    aria-controls="divMainMenu"
+	    aria-expanded="false"
+	    aria-label="Open main menu"
+	    >
+	    <img src="images/318-hamburger.png" alt="" aria-hidden="true">
+	  </button>
+	</div>
+	<nav id="divMainMenu">
+	  <div id="divCenterNav" class="center-maker">
+	    <ul id="ulMainMenu">
+	      <li class="has-image"><a href="http://mcpl.info"><img src="images/MCPL.png" alt="MCPL" /></a></li>
+	      <li class="select-home"><a href="/">Home</a></li>
+	      <li class="select-channels"><a href="channels.php?channel=city">What's On</a></li>
+	      <li class="select-govt"><a href="government.php">Video Archive</a></li>
+	      <li class="select-services"><a href="services.php">Services</a></li>
+	      <li class="select-about"><a href="about.php">About CATS</a></li>
+	    </ul>
+	    
+	    <ul id="ulMainMenuRight">
+	      <li class="select-youtube"><a href="https://www.youtube.com/@communityaccesstelevisions9400" style="" target="_blank"><img alt="YouTube" src="images/YouTube-Logo-CATS.svg" style="" /></a></li>
+	      <li class="select-live"><a href="livestream.php">Watch CATS <span class="red-highlight">Live</span></a></li>
+	    </ul>
+	  </div>
+	</nav>
+      </header>
+
+      <main id="main" tabindex="-1">
+      
+<section id="divHomeBox" class="media-box">
+  <div class="center-maker">
+    <div id="divHomeBoxContent" >
+      
+<ul id="ulHomeBoxMenu">
+  <li class="selected"><a href="government.php">CATS Archive</a></li>
+</ul>
+
+      <div id="divHomeBoxMediaPlayer">
+	<div id="jp_container_1" class="jp-video ">
+	  <div class="jp-type-single">
+	    <div id="jquery_html5player_1" class="html5-player stopped">
+	      <video id="videoMain" width="100%" height="auto" onclick="playPause();" poster="https://catstv.blob.core.windows.net/videoarchive/B_CC_261007-0.jpg" crossorigin="anonymous" >
+		<source src="https://catstv.blob.core.windows.net/videoarchive/B_CC_261007.m4v" type="video/mp4" />
+				<track default kind="captions" src="https://catstv.blob.core.windows.net/videoarchive/B_CC_261007_subtitles.vtt" />
+			      </video>
+	      <div id="play-button-overlay"></div>
+	    </div>
+	    <div class="jp-gui">
+	      <div id="divVideoLoading">
+		<div id="divVideoLoadingTitle">Loading, please wait</div>
+	      </div>
+              <div class="jp-video-play" style="display: none;">
+		<div id="divPrePlayTitle"></div> <!-- <br />Line two of title -->
+		<button type="button" class="jp-video-play-icon"><span class="sr-only">play</span></button>
+              </div>
+              <div class="jp-interface" style="">
+		<div class="jp-progress">
+		  <label for="progressBar" class="sr-only">Seek in video</label>
+		  <input id="progressBar" type="range" min="0" value="0" step="0.1" style="width: 100%;" aria-describedby="divTimingInfo">
+		</div>
+		<div class="jp-controls-holder">
+		  <ul class="jp-controls jp-toggles">
+		    <li id="liJumpBackward" class="jump backward"><button type="button" class="jp-jumpbackward"><span class="sr-only">back 15 seconds</span></button></li>
+		    <li id="liPlayPause"><button type="button" class="jp-play"><span class="sr-only">play</span></button></li>
+		    <li id="liJumpForward" class="jump forward"><button type="button" class="jp-jumpforward"><span class="sr-only">forward 15 seconds</span></button></li>
+		    <li><button type="button" class="jp-stop"><span class="sr-only">stop</span></button></li>
+		    <li id="liTimingInfo">
+		      <div id="divTimingInfo">
+			<div class="jp-current-time"></div>
+			/ 
+			<div class="jp-duration"></div>
+		      </div>
+		    </li>
+		    <li id="liCatsMediaBranding">
+		      <div id="divCatsMediaBranding">
+			<img src="skin/cats/catsmediabranding.png" alt="" aria-hidden="true" />
+		      </div>
+		    </li>
+		    <li id="liVolumeControl">
+		      <button type="button" class="jp-mute"><span class="sr-only">mute</span></button>
+		      <button type="button" class="jp-volume-max"><span class="sr-only">max volume</span></button>
+		      <label for="volumeBar" class="sr-only">Volume</label>
+		      <input id="volumeBar" type="range" min="0" max="1" step="0.05" value="1" aria-valuetext="100%">
+		    </li> 
+		    <li id="liPlaybackRate">
+		      <button
+			type="button" class="jp-playback-rate"
+			id="btnPlaybackRate"
+			aria-controls="playbackRatePanel"
+			aria-expanded="false"
+			aria-haspopup="dialog"
+			>
+			<span class="sr-only">Playback speed</span>
+			<span aria-hidden="true" id="playbackRateLabel">1.0x</span>
+		      </button>
+		    </li>
+		    <li id="liClosedCaptions">
+		      <button type="button" class="jp-cc" title="closed captions">CC</button>
+		    </li>
+		    <li id="liFullScreen">
+		      <button type="button" class="jp-full-screen"><span class="sr-only">full screen</span></button>
+		    </li>
+		  </ul>
+		</div>
+		<div class="jp-playback-rate" id="playbackRatePanel" role="dialog" aria-label="Playback speed" hidden>
+		  <fieldset class="playback-rate-fieldset">
+		    <legend class="sr-only">Playback speed</legend>
+
+		    <ul class="playback-rate-list">
+		      <li>
+			<label class="playback-rate-option">
+			  <input class="sr-only" type="radio" name="playbackRate" value="0.5">
+			  <span aria-hidden="true">0.5x</span>
+			</label>
+		      </li>
+		      <li>
+			<label class="playback-rate-option">
+			  <input class="sr-only" type="radio" name="playbackRate" value="0.75">
+			  <span aria-hidden="true">0.75x</span>
+			</label>
+		      </li>
+		      <li>
+			<label class="playback-rate-option">
+			  <input class="sr-only" type="radio" name="playbackRate" value="1.0" checked>
+			  <span aria-hidden="true">1.0x</span>
+			</label>
+		      </li>
+		      <li>
+			<label class="playback-rate-option">
+			  <input class="sr-only" type="radio" name="playbackRate" value="1.25">
+			  <span aria-hidden="true">1.25x</span>
+			</label>
+		      </li>
+		      <li>
+			<label class="playback-rate-option">
+			  <input class="sr-only" type="radio" name="playbackRate" value="1.5">
+			  <span aria-hidden="true">1.5x</span>
+			</label>
+		      </li>
+		      <li>
+			<label class="playback-rate-option">
+			  <input class="sr-only" type="radio" name="playbackRate" value="1.75">
+			  <span aria-hidden="true">1.75x</span>
+			</label>
+		      </li>
+		      <li>
+			<label class="playback-rate-option">
+			  <input class="sr-only" type="radio" name="playbackRate" value="2.0">
+			  <span aria-hidden="true">2.0x</span>
+			</label>
+		      </li>
+		    </ul>
+		  </fieldset>
+		</div>
+
+		<div class="jp-title">
+		  <ul>
+		    <li></li>
+		  </ul>
+		</div>
+              </div>
+	    </div>
+	    <div class="jp-no-solution">
+              <span>Update Required</span>
+              To play the media you will need to update your browser to a recent version.
+	    </div>
+	  </div>
+	</div>
+      </div>
+
+      
+<section id="divMediaDetail" tabindex="-1">
+  <div class="info-section video-name">
+    <h2>Title</h2>
+        <p id="hSF16544" class="video-name">Bloomington City Council 10/7</p>
+    
+  </div>
+  <div class="info-section video-date">
+    <h2>Date</h2>
+    <p class="video-date">Wed, October 7, 2026</p>
+  </div>
+  <div class="info-section video-duration">
+    <h2>Runtime</h2>
+    <p class="video-duration">03:18:18</p>
+  </div>
+  <div class="info-section video-permalink">
+    <h2>Permalink</h2>
+    <p class="video-permalink">https://catstv.net/m.php?q=16544</p>
+    <a id="aPermalinkOptions" class="permalink-options" href="#">options</a>
+  </div>
+  <div class="info-section video-agenda">
+    <h2>Documents</h2>
+    <p class="video-agenda">
+        <a id="aDocuments" class="grey-quasi-button" href="https://bloomington.in.gov/council/meetings" target="_blank">Meeting Documents</a>
+            </p>
+  </div>
+  
+    <div class="info-section video-transcript">
+    <h2>Transcript</h2>
+    <p class="video-permalink">
+      <a href="https://catstv.blob.core.windows.net/videoarchive/B_CC_261007_subtitles.vtt" target="_blank">VTT</a>
+            <a href="https://catstv.blob.core.windows.net/videoarchive/B_CC_261007_transcript.txt" target="_blank">TXT</a>
+          </p>
+  </div>
+  </section>
+
+
+<div id="dialogMeetingAgenda" style="display: none;"><pre style="max-height: 400px; overflow-y: auto; "></pre></div>
+<div id="dialogPermalinkOptions" style="display: none;">
+  <p>To share this video, copy the URL below. You can use the "Start at" feature to specify where playback will begin when someone follows your link.</p>
+  <p><label><input id="checkboxStartAt" type="checkbox" value="" /> Start at</label>
+    <label for="inputStartTime" class="sr-only">Start time (minutes:seconds)</label>
+    <input id="inputStartTime" type="text" value="" disabled autocomplete="off" />
+  </p>
+  <p>
+    <label for="inputCopyPermalink" class="sr-only">Link to selected video at specified start time</label>
+    <input id="inputCopyPermalink" type="text" value="" readonly />
+    <button id="buttonCopyPermalink">Copy</button>
+    <span class="copy-status">permalink copied to clipboard</span>
+  </p>
+</div>
+
+    </div>
+  </div>
+</section>
+
+
+<section id="divMainContent">
+  <div class="center-maker">
+    <nav id="divChannelSelector">
+      <ul>
+		<li><a href="government.php">Search Government Meetings</a></li>
+	<li ><a href="government.php?issearch=yes&webquery=&minyear=2025&minmonth=10&maxyear=2026&maxmonth=10&meeterid=category-B">City of Bloomington Meetings</a></li>
+	<li ><a href="government.php?issearch=yes&webquery=&minyear=2025&minmonth=10&maxyear=2026&maxmonth=10&meeterid=category-M">Monroe County Meetings</a></li>
+	      </ul>
+    </nav>
+  </div>
+</section>
+
+
+
+      </main>
+
+      <footer class="site-footer">
+	<div class="center-maker-preshrunk">	
+	  <p>
+	    <span>Community  Access Television Services</span>
+	    <span class="no-small">&bull;</span>
+	    <span><a href="http://mcpl.info">Monroe County Public Library</a></span><br/>
+	    <span>303 E. Kirkwood Ave.</span>
+	    <span class="no-small">&bull;</span>
+	    <span>Bloomington, IN 47408</span>
+	    <span class="no-small">&bull;</span>
+	    <span>(812) 349-3111</span>
+	  </p>
+	</div>
+      </footer>
+
+    </div>
+    <script>
+      jQuery(document).ready(function() {
+	  jQuery('a#aToggleMainMenu').click(function() { jQuery('#divMainMenu').slideToggle(); return false; });
+	  jQuery('button#buttonToggleMainMenu').on('click', function (e) {
+	      e.preventDefault();
+
+	      const btn  = jQuery(this);
+	      const menu = jQuery('#divMainMenu');
+
+	      const isOpen = btn.attr('aria-expanded') === 'true';
+
+	      btn.attr('aria-expanded', String(!isOpen));
+	      btn.attr('aria-label', isOpen ? 'Open menu' : 'Close menu');
+
+	      menu.slideToggle();
+	  });
+	  jQuery('button#buttonToggleSubMenu').on('click', function (e) {
+	      e.preventDefault();
+
+	      const btn  = jQuery(this);
+	      const menu = jQuery('#divChannelSelector');
+
+	      const isOpen = btn.attr('aria-expanded') === 'true';
+
+	      btn.attr('aria-expanded', String(!isOpen));
+	      btn.attr('aria-label', isOpen ? 'Open page sub-menu' : 'Close page sub-menu');
+
+	      menu.slideToggle();
+	  });
+	  jQuery('a#aToggleChannelSelector').click(function() { jQuery('#divChannelSelector').slideToggle(); return false; });
+      });
+    </script>
+    
+  </body>  
+</html> 
