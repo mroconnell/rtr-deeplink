@@ -200,18 +200,6 @@ https://mapleton.civicweb.net/Portal/MeetingInformation.aspx?Id=371		ca:csd:3523
 https://vimeo.com/1226985227	https://vimeo.com/1226985227?share=copy&fl=sv&fe=ci	us:sd:2607560
 https://washingtonfl.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=211		us:county:12133
 https://vimeo.com/596543013/7c411dd1aa		us:county:13119
-https://myseminole.granicus.com/MediaPlayer.php?view_id=1&clip_id=573
-https://smyrna.granicus.com/MediaPlayer.php?view_id=2&clip_id=2415
-https://cityofwestpark.granicus.com/MediaPlayer.php?view_id=1&clip_id=209
-https://videoplayer.telvue.com/player/K7GwWRKcflblIGcjsBrMUaRgZXdWGnP3/media/1040858	https://videoplayer.telvue.com/player/K7GwWRKcflblIGcjsBrMUaRgZXdWGnP3/videos	rtr:us:il:fondulac-park-district
-https://videoplayer.telvue.com/player/K7GwWRKcflblIGcjsBrMUaRgZXdWGnP3/media/1048323	https://videoplayer.telvue.com/player/K7GwWRKcflblIGcjsBrMUaRgZXdWGnP3/videos	rtr:us:il:fondulac-public-library-district
-https://videoplayer.telvue.com/player/quZf-EQCG6gA_HQ2TDTZJaPSGY50XqVy/media/1046520	https://videoplayer.telvue.com/player/quZf-EQCG6gA_HQ2TDTZJaPSGY50XqVy/videos	us:sd:4205860
-https://videoplayer.telvue.com/player/6t4JFD38pkivJz72qlakWmYVbn6wB-u_/media/1042833	https://videoplayer.telvue.com/player/6t4JFD38pkivJz72qlakWmYVbn6wB-u_/videos	us:sd:5000425
-https://videoplayer.telvue.com/player/GNduNoua2rBThhw6N4PRP9OCSPf6B2ru/media/1046553	https://videoplayer.telvue.com/player/GNduNoua2rBThhw6N4PRP9OCSPf6B2ru/videos	rtr:us:pa:state-college-borough-water-authority
-https://videoplayer.telvue.com/player/GNduNoua2rBThhw6N4PRP9OCSPf6B2ru/media/1031147	https://videoplayer.telvue.com/player/GNduNoua2rBThhw6N4PRP9OCSPf6B2ru/videos	rtr:us:pa:university-area-joint-authority
-https://videoplayer.telvue.com/player/iE0p5N2b-Se5BhxS-3KDrHfUWzLHfku2/media/1029054	https://videoplayer.telvue.com/player/iE0p5N2b-Se5BhxS-3KDrHfUWzLHfku2/videos	rtr:us:ma:shrewsbury-housing-authority
-https://videoplayer.telvue.com/player/yycCAZPb0NN3zj2o5qio-YFMNC43NjCG/media/1044891	https://videoplayer.telvue.com/player/yycCAZPb0NN3zj2o5qio-YFMNC43NjCG/videos	rtr:us:ma:fitchburg-housing-authority
-https://videoplayer.telvue.com/player/sC8tLrxdhpB-glnrjAZCtQ9j-SiG_2lw/media/1032268	https://videoplayer.telvue.com/player/sC8tLrxdhpB-glnrjAZCtQ9j-SiG_2lw/videos	rtr:us:ma:billerica-housing-authority
 https://videoplayer.telvue.com/player/wuZKb9gwEY7sMACIIsr7VSJglB35kNZA/media/1044758	https://videoplayer.telvue.com/player/wuZKb9gwEY7sMACIIsr7VSJglB35kNZA/videos	rtr:us:ca:coastside-county-water-district
 https://videoplayer.telvue.com/player/ta-8oL0q68i2d15NiIqIA62AjjgGbw7B/media/1044909	https://videoplayer.telvue.com/player/ta-8oL0q68i2d15NiIqIA62AjjgGbw7B/videos	rtr:us:nj:deal-lake-commission
 https://videoplayer.telvue.com/player/wuZKb9gwEY7sMACIIsr7VSJglB35kNZA/media/1041541	https://videoplayer.telvue.com/player/wuZKb9gwEY7sMACIIsr7VSJglB35kNZA/videos	rtr:us:ca:granada-community-services-district
@@ -1279,3 +1267,5 @@ https://montbelvieu.granicus.com/MediaPlayer.php?view_id=2&clip_id=22
 https://saginaw.granicus.com/MediaPlayer.php?view_id=1&clip_id=275
 https://sandyutah.granicus.com/MediaPlayer.php?view_id=1&clip_id=986
 https://municipalites-du-quebec.ca/st-medard/pdf_procesverbaux/2026-10-02%20Seance%20oct.m4a	https://municipalites-du-quebec.ca/st-medard/proces-verbaux.php	ca:csd:2411025
+https://myseminole.granicus.com/MediaPlayer.php?view_id=1&clip_id=573
+https://cityofwestpark.granicus.com/MediaPlayer.php?view_id=1&clip_id=209
