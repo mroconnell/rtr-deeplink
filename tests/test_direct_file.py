@@ -1011,3 +1011,48 @@ async def test_resolve_rccd_without_caption_file_warns_and_keeps_video():
     assert result.video_url == RCCD_VIDEO_URL
     assert result.segments == []
     assert "caption file" in result.transcript_warnings[0]
+
+
+# rccd.edu serves an incomplete certificate chain; the missing link ships in
+# app/platforms/certs/ (README.md there has the source and fingerprint).
+def test_rccd_extra_certificate_is_the_one_the_ca_published():
+    import hashlib
+    import ssl
+
+    from app.platforms import direct_file
+
+    der = ssl.PEM_cert_to_DER_cert(direct_file._RCCD_EXTRA_CERT.read_text())
+    assert hashlib.sha256(der).hexdigest().upper() == (
+        "9B913476EAB476E21E0887DBCDE44345D1359D28116B83B7CD3E87BD807EBF68"
+    )
+
+
+def test_rccd_ssl_context_keeps_verification_on_and_adds_the_certificate():
+    import ssl
+
+    from app.platforms import direct_file
+
+    context = direct_file._rccd_ssl_context()
+    assert context.verify_mode == ssl.CERT_REQUIRED
+    assert context.check_hostname is True
+    common_names = {
+        value
+        for cert in context.get_ca_certs()
+        for rdn in cert["subject"]
+        for key, value in rdn
+        if key == "commonName"
+    }
+    assert "emSign Root TLS CA - G1" in common_names
+
+
+async def test_only_rccd_links_get_the_extra_certificate():
+    from app.platforms import direct_file
+
+    rccd = direct_file._session_for(RCCD_VIDEO_URL)
+    other = direct_file._session_for("https://example.org/a.mp4")
+    try:
+        assert rccd.connector._ssl is direct_file._rccd_ssl_context()
+        assert other.connector._ssl is not direct_file._rccd_ssl_context()
+    finally:
+        await rccd.close()
+        await other.close()

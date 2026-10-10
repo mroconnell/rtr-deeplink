@@ -242,7 +242,10 @@ Two more share-link shapes, each confirmed live 2026-09-30 by HEAD.
    video/audio Content-Type check and is reported as unconfirmed.
 """
 
+import functools
 import re
+import ssl
+from pathlib import Path
 from typing import List, Optional, Tuple
 from urllib.parse import (
     parse_qsl,
@@ -255,6 +258,7 @@ from urllib.parse import (
 )
 
 import aiohttp
+import certifi
 
 from .base import AssetFinder
 from .media_scan import media_type
@@ -827,6 +831,32 @@ def is_laserfiche_url(url: str) -> bool:
     return bool(_is_laserfiche_weblink_url(url) or _is_laserfiche_edoc_url(url))
 
 
+_RCCD_HOSTS = ("rccd.edu", "www.rccd.edu")
+_RCCD_EXTRA_CERT = (
+    Path(__file__).parent / "certs" / "emsign_root_tls_ca_g1_cross_signed.pem"
+)
+
+
+@functools.lru_cache(maxsize=1)
+def _rccd_ssl_context() -> ssl.SSLContext:
+    """certifi's trust store plus the one certificate rccd.edu leaves out of
+    its chain (`certs/README.md`). Verification stays on."""
+    context = ssl.create_default_context(cafile=certifi.where())
+    context.load_verify_locations(cafile=str(_RCCD_EXTRA_CERT))
+    return context
+
+
+def _session_for(url: str) -> "aiohttp.ClientSession":
+    """The plain session every probe here uses, except that a link on
+    rccd.edu connects with `_rccd_ssl_context()` (it serves an incomplete
+    certificate chain; no other host is touched)."""
+    host = (urlparse(url).hostname or "").lower()
+    connector = (
+        aiohttp.TCPConnector(ssl=_rccd_ssl_context()) if host in _RCCD_HOSTS else None
+    )
+    return aiohttp.ClientSession(headers={"User-Agent": _UA}, connector=connector)
+
+
 # RCCD (Riverside Community College District, CA) posts each Citizens'
 # Bond Oversight Committee meeting as a pair on one host and folder:
 # `.../{MM}_{DD}_{YYYY}_video.mp4` and `.../{MM}_{DD}_{YYYY}_transcript.vtt`
@@ -1060,9 +1090,7 @@ class DirectFileAssetFinder(AssetFinder):
             return (content_type if status == 200 else None), None
         if not is_dropbox_url(media_url):
             try:
-                async with aiohttp.ClientSession(
-                    headers={"User-Agent": _UA}
-                ) as session:
+                async with _session_for(media_url) as session:
                     async with session.head(
                         media_url,
                         allow_redirects=True,
@@ -1087,7 +1115,7 @@ class DirectFileAssetFinder(AssetFinder):
         `_laserfiche_classify_media()`: a compressed byte range is a real
         server bug on some hosts."""
         try:
-            async with aiohttp.ClientSession(headers={"User-Agent": _UA}) as session:
+            async with _session_for(media_url) as session:
                 async with session.get(
                     media_url,
                     headers={
@@ -1193,7 +1221,7 @@ class DirectFileAssetFinder(AssetFinder):
         `Content-Encoding` at all) -- host-specific, not a general
         Laserfiche WebLink behavior, but harmless to send everywhere."""
         try:
-            async with aiohttp.ClientSession(headers={"User-Agent": _UA}) as session:
+            async with _session_for(media_url) as session:
                 async with session.get(
                     media_url,
                     headers={"Range": "bytes=0-63", "Accept-Encoding": "identity"},
@@ -1215,7 +1243,7 @@ class DirectFileAssetFinder(AssetFinder):
         outcome when the `docid - 1` guess misses (see module
         docstring), not a bug."""
         try:
-            async with aiohttp.ClientSession(headers={"User-Agent": _UA}) as session:
+            async with _session_for(caption_url) as session:
                 async with guarded_get(
                     session,
                     caption_url,
