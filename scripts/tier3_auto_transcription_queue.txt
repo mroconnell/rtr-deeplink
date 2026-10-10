@@ -200,18 +200,6 @@ https://mapleton.civicweb.net/Portal/MeetingInformation.aspx?Id=371		ca:csd:3523
 https://vimeo.com/1226985227	https://vimeo.com/1226985227?share=copy&fl=sv&fe=ci	us:sd:2607560
 https://washingtonfl.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=211		us:county:12133
 https://vimeo.com/596543013/7c411dd1aa		us:county:13119
-https://videoplayer.telvue.com/player/MFXsvSYzjQOlecorW3Sq8GyBkhIm0OQN/media/1046420	https://videoplayer.telvue.com/player/MFXsvSYzjQOlecorW3Sq8GyBkhIm0OQN/videos	us:cousub:5002155600
-https://videoplayer.telvue.com/player/MFXsvSYzjQOlecorW3Sq8GyBkhIm0OQN/media/1045780	https://videoplayer.telvue.com/player/MFXsvSYzjQOlecorW3Sq8GyBkhIm0OQN/videos	us:cousub:5002157250
-https://videoplayer.telvue.com/player/wuZKb9gwEY7sMACIIsr7VSJglB35kNZA/media/1042146	https://videoplayer.telvue.com/player/wuZKb9gwEY7sMACIIsr7VSJglB35kNZA/videos	rtr:us:ca:sewer-authority-mid-coastside
-https://videoplayer.telvue.com/player/MFXsvSYzjQOlecorW3Sq8GyBkhIm0OQN/media/1046656	https://videoplayer.telvue.com/player/MFXsvSYzjQOlecorW3Sq8GyBkhIm0OQN/videos	rtr:us:vt:southwest-vermont-cooperative-educational-service-area
-https://videoplayer.telvue.com/player/MFXsvSYzjQOlecorW3Sq8GyBkhIm0OQN/media/1035268	https://videoplayer.telvue.com/player/MFXsvSYzjQOlecorW3Sq8GyBkhIm0OQN/videos	us:cousub:5002175925
-https://videoplayer.telvue.com/player/KMbmAuf4r8nSBbHRsA_yT9tSfELz0zVZ/media/457092	https://videoplayer.telvue.com/player/KMbmAuf4r8nSBbHRsA_yT9tSfELz0zVZ/videos	us:place:4281832
-https://videoplayer.telvue.com/player/q7D_V5L-tyPxVhi3t2I9JQQll2kXxih5/media/744277	https://videoplayer.telvue.com/player/q7D_V5L-tyPxVhi3t2I9JQQll2kXxih5/videos	us:place:0683850
-https://videoplayer.telvue.com/player/LGze1WqTsE8jwTKC--4xu4kSh8jPjdoJ/media/1047807	https://videoplayer.telvue.com/player/LGze1WqTsE8jwTKC--4xu4kSh8jPjdoJ/videos	rtr:us:ma:wellesley-housing-authority
-https://bayfieldcounty.wi.gov/CivicMedia?VID=August-9-2017-52	https://bayfieldcounty.wi.gov/CivicMedia?CID=Board-of-Supervisors-3	us:county:55007
-https://drive.usercontent.google.com/download?id=1dHIHjMENUePKxMLJI0woirgG0sidbTg3&export=download&confirm=t		us:sd:0903420
-https://drive.usercontent.google.com/download?id=1HZXugwu7qW5jH0CPvrMf3OLLzyqImOwp&export=download&confirm=t		us:sd:3414100
-https://boisecityid.iqm2.com/Citizens/Detail_Meeting.aspx?ID=5412		us:place:1608830
 https://fishkilltownny.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1932		us:cousub:3602725978
 https://barstowcityca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3171		us:place:0604030
 https://cumberland.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1782		us:county:34011
@@ -1281,3 +1269,4 @@ http://173.166.104.124/CablecastPublicSite/show/3778	http://173.166.104.124/Cabl
 http://50.77.30.235/CablecastPublicSite/show/6486?channel=1	http://50.77.30.235/CablecastPublicSite/show/6486?channel=1	us:cousub:2502116495	SELECT BOARD - September 23 2026
 http://108.20.229.83/CablecastPublicSite/show/3551	http://108.20.229.83/CablecastPublicSite/show/3551	us:place:2556000	Planning Board 9-22-2026
 http://tv.dsctv.com/CablecastPublicSite/show/5512	http://tv.dsctv.com/CablecastPublicSite/show/5512	us:cousub:2502117405	Dover Selectmen's Meeting 9/3/2026
+https://boisecityid.iqm2.com/Citizens/Detail_Meeting.aspx?ID=5412		us:place:1608830
