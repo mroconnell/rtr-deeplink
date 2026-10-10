@@ -827,6 +827,37 @@ def is_laserfiche_url(url: str) -> bool:
     return bool(_is_laserfiche_weblink_url(url) or _is_laserfiche_edoc_url(url))
 
 
+# RCCD (Riverside Community College District, CA) posts each Citizens'
+# Bond Oversight Committee meeting as a pair on one host and folder:
+# `.../{MM}_{DD}_{YYYY}_video.mp4` and `.../{MM}_{DD}_{YYYY}_transcript.vtt`
+# (2026-10-10: the 2026-07-09 pair both answer 200/206). Scoped to this one
+# host on purpose: the caption URL is only a candidate, and is kept only if
+# the fetched body really starts with WEBVTT. rccd.edu also serves an
+# incomplete certificate chain (see the PR that added this); nothing here
+# turns certificate checking off.
+_RCCD_VIDEO_RE = re.compile(
+    r"^(?P<dir>/.*/)(?P<mm>\d{2})_(?P<dd>\d{2})_(?P<yyyy>\d{4})_video\.mp4$",
+    re.IGNORECASE,
+)
+
+
+def _rccd_sibling(url: str) -> Optional[Tuple[str, str]]:
+    """`(caption_url, iso_date)` for an rccd.edu `{MM}_{DD}_{YYYY}_video.mp4`
+    link, else None. The date is read from the file name of the link given,
+    never built from a calendar."""
+    parts = urlparse(url)
+    if (parts.hostname or "").lower() not in ("rccd.edu", "www.rccd.edu"):
+        return None
+    match = _RCCD_VIDEO_RE.match(parts.path)
+    if not match:
+        return None
+    stem = f"{match['mm']}_{match['dd']}_{match['yyyy']}"
+    caption_url = parts._replace(
+        path=f"{match['dir']}{stem}_transcript.vtt", query="", fragment=""
+    ).geturl()
+    return caption_url, f"{match['yyyy']}-{match['mm']}-{match['dd']}"
+
+
 def _laserfiche_sibling_caption_url(url: str) -> Optional[str]:
     """The WebVTT caption file Laserfiche WebLink stores next to a Zoom
     cloud-recording video, or None if `url` isn't a recognized
@@ -972,6 +1003,22 @@ class DirectFileAssetFinder(AssetFinder):
                 else _media_format(media_url, content_type)
             ),
         )
+        rccd = _rccd_sibling(media_url)
+        if rccd is not None:
+            caption_url, iso_date = rccd
+            resolved.date = iso_date
+            cues, language = await self._fetch_laserfiche_captions(caption_url)
+            if cues:
+                resolved.segments = [TranscriptSegment(**cue) for cue in cues]
+                resolved.transcript_language = language
+                if language and language != "en":
+                    resolved.transcript_warnings = [
+                        f"These captions appear to be in '{language}', not 'en'."
+                    ]
+            else:
+                resolved.transcript_warnings = [
+                    "We couldn't find a caption file next to this rccd.edu video."
+                ]
         isilive = parse_isilive_file_url(url)
         if isilive is not None:
             await self._add_isilive_captions(resolved, *isilive)

@@ -38,6 +38,7 @@ from app.platforms.direct_file import (
     _is_laserfiche_edoc_url,
     _is_laserfiche_weblink_url,
     _laserfiche_sibling_caption_url,
+    _rccd_sibling,
     _resolve_direct_media_url,
     is_direct_file_url,
 )
@@ -947,3 +948,66 @@ async def test_civicplus_finder_hands_recording_to_direct_file(monkeypatch):
         result = await CivicPlusAssetFinder().resolve(CP_OCTET_URL)
     assert result.platform == "direct_file"
     assert result.video_format == "mp4"
+
+
+# --- RCCD (Riverside Community College District, CA), 2026-10-10 --------
+#
+# Real pair, checked live 2026-10-10: the video answers a ranged GET with
+# 206 and the VTT answers 200 (`text/vtt`, 40,010 bytes, 358 cues). The
+# fixture is the first 30 cues of that real VTT.
+
+RCCD_VIDEO_URL = "https://rccd.edu/committees/cboc/agendas/2026/07_09_2026_video.mp4"
+RCCD_CAPTION_URL = (
+    "https://rccd.edu/committees/cboc/agendas/2026/07_09_2026_transcript.vtt"
+)
+
+
+def test_rccd_sibling_reads_caption_url_and_date_from_the_link_given():
+    assert _rccd_sibling(RCCD_VIDEO_URL) == (RCCD_CAPTION_URL, "2026-07-09")
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://example.org/committees/cboc/agendas/2026/07_09_2026_video.mp4",
+        # the oddly spelled real filename on another RCCD row: not matched,
+        # never repaired by guessing
+        "https://rccd.edu/committees/cboc/agendas/2026/04_16_2026_vidoe.mp4",
+        "https://rccd.edu/committees/cboc/agendas/2026/07_09_2026_agenda.pdf",
+    ],
+)
+def test_rccd_sibling_is_none_for_other_shapes(url):
+    assert _rccd_sibling(url) is None
+
+
+async def test_resolve_rccd_attaches_real_captions_and_date():
+    vtt_body = load_fixture("direct_file", "captions_rccd_cboc_2026_07_09_head.vtt")
+    routes = {
+        RCCD_CAPTION_URL: FakeResponse(
+            status=200, text=vtt_body, headers={"Content-Type": "text/vtt"}
+        ),
+    }
+    head_routes = {
+        RCCD_VIDEO_URL: FakeResponse(status=200, headers={"Content-Type": "video/mp4"}),
+    }
+    with mock_session(routes, head_routes=head_routes):
+        result = await DirectFileAssetFinder().resolve(RCCD_VIDEO_URL)
+    assert result.platform == "direct_file"
+    assert result.video_url == RCCD_VIDEO_URL
+    assert result.video_format == "mp4"
+    assert result.date == "2026-07-09"
+    assert len(result.segments) == 30
+    assert result.segments[0].text.startswith("Contreras, Andy: The bowl")
+    assert result.transcript_warnings == []
+
+
+async def test_resolve_rccd_without_caption_file_warns_and_keeps_video():
+    routes = {RCCD_CAPTION_URL: FakeResponse(status=404)}
+    head_routes = {
+        RCCD_VIDEO_URL: FakeResponse(status=200, headers={"Content-Type": "video/mp4"}),
+    }
+    with mock_session(routes, head_routes=head_routes):
+        result = await DirectFileAssetFinder().resolve(RCCD_VIDEO_URL)
+    assert result.video_url == RCCD_VIDEO_URL
+    assert result.segments == []
+    assert "caption file" in result.transcript_warnings[0]
