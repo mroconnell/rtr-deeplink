@@ -1257,3 +1257,15 @@ https://sandyutah.granicus.com/MediaPlayer.php?view_id=1&clip_id=986
 https://municipalites-du-quebec.ca/st-medard/pdf_procesverbaux/2026-10-02%20Seance%20oct.m4a	https://municipalites-du-quebec.ca/st-medard/proces-verbaux.php	ca:csd:2411025
 https://myseminole.granicus.com/MediaPlayer.php?view_id=1&clip_id=573
 https://cityofwestpark.granicus.com/MediaPlayer.php?view_id=1&clip_id=209
+https://nbctc.cablecast.tv/CablecastPublicSite/show/4404?channel=1	https://nbctc.cablecast.tv/CablecastPublicSite/show/4404?channel=1	us:cousub:2500300555	Adams Selectmen's Meeting - 9-16-26 REPLAY
+https://nbctc.cablecast.tv/CablecastPublicSite/show/4529?channel=1	https://nbctc.cablecast.tv/CablecastPublicSite/show/4529?channel=1	us:cousub:2500314010	Clarksburg Selectmen's Meeting - 10-5-26
+https://cloud.castus.tv/vod/pepperell/video/6abd1e234c9a7700021589a9?page=ALL	https://cloud.castus.tv/vod/pepperell/video/6abd1e234c9a7700021589a9?page=ALL	us:cousub:2501752805	Select Board
+https://marthasvineyard.cablecast.tv/internetchannel/show/17218	https://marthasvineyard.cablecast.tv/internetchannel/show/17218	us:cousub:2500721150	Edgartown SB 9.14.26
+https://marthasvineyard.cablecast.tv/internetchannel/show/17203	https://marthasvineyard.cablecast.tv/internetchannel/show/17203	us:cousub:2500778235	West Tisbury SB 9.9.26
+https://northbridgetv.org/CablecastPublicSite/show/5278?channel=1	https://northbridgetv.org/CablecastPublicSite/show/5278?channel=1	us:cousub:2502746925	Board of Selectmen Meeting - 09/28/2026
+https://vod.easthamptonmedia.org/CablecastPublicSite/show/23916?channel=1	https://vod.easthamptonmedia.org/CablecastPublicSite/show/23916?channel=1	us:cousub:2501562745	Southampton Select Board 9/22/26
+http://sctvmc.float-zone.com/CablecastPublicSite/show/12301	http://sctvmc.float-zone.com/CablecastPublicSite/show/12301	us:cousub:2500959245	Board of Selectmen 9-28-2026
+http://71.184.118.35/CablecastPublicSite/show/13253	http://71.184.118.35/CablecastPublicSite/show/13253	us:cousub:2502167945	SelectBoard_09-29-26
+http://198.0.187.202/internetchannel/show/15636	http://198.0.187.202/internetchannel/show/15636	us:cousub:2502102935	Avon Select Board Meeting 10-1-26
+https://reflect-awcm.cablecast.tv/internetchannel/show/6758	https://reflect-awcm.cablecast.tv/internetchannel/show/6758	us:cousub:2502701885	Ashburnham Select Board Meeting 9-21-2026
+https://marthasvineyard.cablecast.tv/internetchannel/show/17166	https://marthasvineyard.cablecast.tv/internetchannel/show/17166	us:cousub:2500701585	Aquinnah SB 8.17.26

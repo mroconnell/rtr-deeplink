@@ -11157,3 +11157,28 @@ https://videoplayer.telvue.com/player/wuZKb9gwEY7sMACIIsr7VSJglB35kNZA/media/104
 https://videoplayer.telvue.com/player/wuZKb9gwEY7sMACIIsr7VSJglB35kNZA/media/1046560,telvue,telvue-page-json,4014.00,,,1,accept,,0.26,2026-10-10T13:03:56+00:00,feed_tier3_auto_transcription,0
 https://videoplayer.telvue.com/player/q7D_V5L-tyPxVhi3t2I9JQQll2kXxih5/media/626441,telvue,telvue-page-json,364.00,,,0,accept,,0.28,2026-10-10T13:03:58+00:00,,0
 https://videoplayer.telvue.com/player/q7D_V5L-tyPxVhi3t2I9JQQll2kXxih5/media/626441,telvue,telvue-page-json,364.00,,,0,accept,,0.29,2026-10-10T13:03:59+00:00,feed_tier3_auto_transcription,0
+https://vimeo.com/1233857080,vimeo,vimeo-oembed,7637.00,2026-10-07,,1,accept,,0.10,2026-10-10T14:32:03+00:00,bulk_ingest,0
+https://vimeo.com/1226029819,vimeo,vimeo-oembed,7708.00,2026-09-11,,1,accept,,0.14,2026-10-10T14:32:10+00:00,bulk_ingest,0
+https://vimeo.com/1221879105,vimeo,vimeo-oembed,4231.00,2026-08-27,,1,accept,,0.07,2026-10-10T14:32:18+00:00,bulk_ingest,0
+https://vimeo.com/showcase/12040345?video=1225766342,vimeo,vimeo-oembed,9407.00,2026-09-10,,1,accept,,0.06,2026-10-10T14:32:25+00:00,bulk_ingest,0
+https://vimeo.com/channels/shselectboard/1233789970,vimeo,vimeo-oembed,7508.00,2026-10-07,,1,accept,,0.28,2026-10-10T14:32:33+00:00,bulk_ingest,0
+https://vimeo.com/1233756929,vimeo,vimeo-oembed,2183.00,2026-10-07,,1,accept,,0.14,2026-10-10T14:32:41+00:00,bulk_ingest,0
+https://vimeo.com/1233441530,vimeo,vimeo-oembed,6174.00,2026-10-06,,1,accept,,0.10,2026-10-10T14:32:48+00:00,bulk_ingest,0
+http://tightrope.georgetownma.gov/internetchannel/show/8567,cablecast,captions,10083.34,,,0,accept,"length lookup failed (length unknown, accepted (Cablecast): Cablecast API fetch failed: ); used last caption end",15.68,2026-10-10T14:33:16+00:00,bulk_ingest,0
+https://videoplayer.telvue.com/player/bHwwzKX3TkapuHPqY4J6DEAclNWGbbch/media/1041512,telvue,telvue-page-json,5607.00,,,1,accept,,0.43,2026-10-10T14:33:23+00:00,bulk_ingest,0
+https://nbctc.cablecast.tv/CablecastPublicSite/show/4404?channel=1,cablecast,cablecast-api,2946.00,2026-09-16,,1,accept,,0.69,2026-10-10T14:33:57+00:00,,0
+https://cloud.castus.tv/vod/pepperell/video/6abd1e234c9a7700021589a9?page=ALL,castus,hls-master+variant,5395.00,,,1,accept,,1.05,2026-10-10T14:33:59+00:00,,0
+https://nbctc.cablecast.tv/CablecastPublicSite/show/4529?channel=1,cablecast,cablecast-api,2613.00,2026-10-05,,1,accept,,0.51,2026-10-10T14:34:00+00:00,,0
+https://marthasvineyard.cablecast.tv/internetchannel/show/17218,cablecast,cablecast-api,2021.00,2026-09-14,,1,accept,,0.58,2026-10-10T14:34:01+00:00,,0
+https://northbridgetv.org/CablecastPublicSite/show/5278?channel=1,cablecast,cablecast-api,5181.00,2026-09-28,,1,accept,,1.32,2026-10-10T14:34:01+00:00,,0
+https://marthasvineyard.cablecast.tv/internetchannel/show/17203,cablecast,cablecast-api,2498.00,2026-09-09,,1,accept,,0.47,2026-10-10T14:34:02+00:00,,0
+https://vod.easthamptonmedia.org/CablecastPublicSite/show/23916?channel=1,cablecast,cablecast-api,5452.00,2026-09-22,,1,accept,,1.20,2026-10-10T14:34:03+00:00,,0
+http://sctvmc.float-zone.com/CablecastPublicSite/show/12301,cablecast,cablecast-api,4211.00,2026-09-27,,1,accept,,1.33,2026-10-10T14:34:04+00:00,,0
+http://71.184.118.35/CablecastPublicSite/show/13253,cablecast,unknown-accepted,,,,0,accept,"length unknown, accepted (Cablecast): Cablecast API fetch failed: Cannot connect to host 71.184.118.35:443 ssl:True [SSLCertVerificationError: (1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signed certificate (_ssl.c:1035)')]",1.00,2026-10-10T14:34:05+00:00,,0
+http://198.0.187.202/internetchannel/show/15636,cablecast,unknown-accepted,,,,0,accept,"length unknown, accepted (Cablecast): Cablecast API fetch failed: ",16.00,2026-10-10T14:34:23+00:00,,0
+https://vimeo.com/1229948162,vimeo,vimeo-oembed,5493.00,2026-09-24,,1,accept,,0.07,2026-10-10T14:38:04+00:00,bulk_ingest,0
+https://watch.pittsfieldtv.net/internetchannel/show/56885,cablecast,cablecast-api,9365.00,2026-09-22,,1,accept,,0.30,2026-10-10T14:38:08+00:00,bulk_ingest,0
+https://hamiltonwenham.cablecast.tv/internetchannel/show/6326,cablecast,cablecast-api,9377.00,2026-09-22,,1,accept,,0.19,2026-10-10T14:38:12+00:00,bulk_ingest,0
+https://vimeo.com/1229371542,vimeo,vimeo-oembed,5215.00,2026-09-22,,1,accept,,0.15,2026-10-10T14:38:20+00:00,bulk_ingest,0
+https://reflect-awcm.cablecast.tv/internetchannel/show/6758,cablecast,cablecast-api,3745.00,2026-09-21,,1,accept,,0.50,2026-10-10T14:38:29+00:00,,0
+https://marthasvineyard.cablecast.tv/internetchannel/show/17166,cablecast,cablecast-api,4288.00,2026-08-17,,1,accept,,0.68,2026-10-10T14:38:29+00:00,,0
