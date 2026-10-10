@@ -11182,3 +11182,15 @@ https://hamiltonwenham.cablecast.tv/internetchannel/show/6326,cablecast,cablecas
 https://vimeo.com/1229371542,vimeo,vimeo-oembed,5215.00,2026-09-22,,1,accept,,0.15,2026-10-10T14:38:20+00:00,bulk_ingest,0
 https://reflect-awcm.cablecast.tv/internetchannel/show/6758,cablecast,cablecast-api,3745.00,2026-09-21,,1,accept,,0.50,2026-10-10T14:38:29+00:00,,0
 https://marthasvineyard.cablecast.tv/internetchannel/show/17166,cablecast,cablecast-api,4288.00,2026-08-17,,1,accept,,0.68,2026-10-10T14:38:29+00:00,,0
+https://nbctc.cablecast.tv/CablecastPublicSite/show/4358?channel=1,cablecast,cablecast-api,3042.00,2026-09-01,,1,accept,,0.67,2026-10-10T14:43:16+00:00,,0
+https://marthasvineyard.cablecast.tv/internetchannel/show/17168,cablecast,cablecast-api,2632.00,2026-08-24,,1,accept,,0.71,2026-10-10T14:43:16+00:00,,0
+https://videoplayer.telvue.com/player/Mzn4uOy-GIuW4rtdO2jlZmP3EE1WywoM/playlists/3356/media/1048379,telvue,telvue-page-json,3752.00,,,1,accept,,1.03,2026-10-10T14:43:16+00:00,,0
+https://cloud.castus.tv/vod/waycam/video/6967effd8c6f230002616238?page=HOME,castus,hls-master+variant,5201.00,,,1,accept,,0.98,2026-10-10T14:43:17+00:00,,0
+https://nbctc.cablecast.tv/CablecastPublicSite/show/4374?channel=1,cablecast,cablecast-api,3416.00,2026-09-08,,1,accept,,0.63,2026-10-10T14:43:18+00:00,,0
+https://lcac.tv/CablecastPublicSite/show/6681,cablecast,cablecast-api,3279.00,2026-08-04,,1,accept,,1.60,2026-10-10T14:43:18+00:00,,0
+https://videoplayer.telvue.com/player/wCwBAXHtGCN-aqYz22Xuje-5ELUZawSc/media/1046395,telvue,telvue-page-json,3287.00,,,1,accept,,0.90,2026-10-10T14:43:18+00:00,,0
+http://schedule.hanoverctv.org/CablecastPublicSite/show/4011,cablecast,cablecast-api,3342.00,2026-07-20,,1,accept,,1.12,2026-10-10T14:43:18+00:00,,0
+http://50.77.30.235/CablecastPublicSite/show/6486?channel=1,cablecast,unknown-accepted,,,,0,accept,"length unknown, accepted (Cablecast): Cablecast API fetch failed: ",47.33,2026-10-10T14:44:05+00:00,,0
+http://108.20.229.83/CablecastPublicSite/show/3551,cablecast,unknown-accepted,,,,0,accept,"length unknown, accepted (Cablecast): Cablecast API fetch failed: ",47.19,2026-10-10T14:44:05+00:00,,0
+http://173.166.104.124/CablecastPublicSite/show/3778,cablecast,cablecast-api,3473.00,2026-09-29,,1,accept,,47.68,2026-10-10T14:44:05+00:00,,0
+http://tv.dsctv.com/CablecastPublicSite/show/5512,cablecast,unknown-accepted,,,,0,accept,"length unknown, accepted (Cablecast): Cablecast API fetch failed: ",47.77,2026-10-10T14:44:06+00:00,,0
