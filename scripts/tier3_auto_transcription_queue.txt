@@ -1261,3 +1261,5 @@ https://liveoaktx.granicus.com/MediaPlayer.php?view_id=1&clip_id=599	https://liv
 https://lancastertx.new.swagit.com/videos/399578		us:place:4841212
 https://belfastme.new.swagit.com/videos/354351		us:place:2303950
 https://sanjoaquincountyca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2654		us:county:06077
+https://www.highfivemedia.org/episodes/evmd-meeting-9172026	https://www.highfivemedia.org/episodes/evmd-meeting-9172026	rtr:us:co:eaglevail-metropolitan-district	EVMD Meeting 9/17/2026
+https://www.highfivemedia.org/episodes/ctb-meeting-992026	https://www.highfivemedia.org/episodes/ctb-meeting-992026	rtr:us:co:eagle-valley-transportation-authority	CTB Meeting 9/9/2026
