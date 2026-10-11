@@ -228,7 +228,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (32)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
   Laval's own archive: walk its ~260 meeting posts, then decide on the…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (231)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (232)
+  [NEEDS-AUDIT] `[EASY]` A Cablecast show page can carry a cut-off…
   [NEEDS-AUDIT] Meeting Finder picks the wrong clip from a Granicus…
   [NEEDS-AUDIT] Near-empty station captions are only guarded on…
   [NEEDS-AUDIT] 10 Cablecast pages on shared cable-channel hosts have…
@@ -2568,6 +2569,13 @@ of human step they need.
 - **History**: built 2026-10-09; findings in `BACKLOG_DONE.md`.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
+
+- **[NEEDS-AUDIT] `[EASY]` A Cablecast show page can carry a cut-off title, and the date then falls back to a station `eventDate` that runs a week early (found 2026-10-11, Southampton, MA).**
+  - **Issue**: show 23761 on `vod.easthamptonmedia.org` ("Southampton School Committee", Southampton School District, MA) was ingested on 2026-10-11 as "Southampton School Committee 9/9/2", dated **2026-09-01**; the meeting is 9/9/26. Reproduced against origin/main: `CablecastAssetFinder` takes `show["title"]` from the show page's embedded `window.__remixContext` (the page's own `<title>` says the same, 34 characters), and `_show_date()` (WO-1048) uses a date written in the title before `eventDate`. "9/9/2" is not a full date, so it falls back to `eventDate` 2026-09-01. The station's own API for the same show, `GET /cablecastapi/v1/shows/23761`, returned "Southampton School Committee 9/9/26" on 2026-10-11 (one request). So the page data and the API disagree. The cause is not settled: other titles in the same page data are long and uncut ("Southampton Ad Hoc Grant Search Committee 9/16/26" is 49 characters), so it is not a fixed length cap; a stale or edited title is possible but unproven.
+  - **Impact**: one confirmed Archive page with a wrong date. The fallback is also unreliable on this station: `eventDate` is 7-8 days before the title date on both shows checked (23761: 2026-09-01 against 9/9/26; 23624: 2026-08-12 against 8/19/26, which was read correctly from its full title). Scope on other Cablecast stations is unknown.
+  - **Next action**: when the page's title has no full date, read `title` and `eventDate` from `/cablecastapi/v1/shows/{id}` (the endpoint the adapter already documents) and take the date from that title first. Add a test from a trimmed capture of show 23761 with both sources. To repair the one page, delete it and re-ingest after the fix; the Archive delete endpoint needs Ryan's approval first.
+  - **Constraint**: Cablecast hosts' `robots.txt` disallows `.vtt`, `.m3u8` and `.mp4` for crawlers (ingest of one specific found meeting is exempt); the API JSON path is not one of those. Do not walk the station through rtr-discovery (its tenants carry a default government; see the 2026-10-11 pins PR).
+  - **History**: found while ingesting one captioned meeting per government from Easthampton Media's Cablecast (rtr-business `research/three_govs_2026-10-10/southampton_ma.csv`). The page is pinned per show in the 2026-10-11 pins PR.
 
 - **[NEEDS-AUDIT] Meeting Finder picks the wrong clip from a Granicus archive on a shared host (found 2026-10-05, Bay Area transit run).**
   - **Issue**: given a `ViewPublisher.php?view_id=N` link on a Granicus host shared by several bodies, `scripts/meeting_finder.py --entry start` ignored the view. Three SamTrans-family views (ids 1, 2, 3) all returned the same old clip (`view_id=1&clip_id=1516`, note "picked by: undated, lister order"); TAM's view 24 returned a Marin County clip; TJPA's view 29 returned a view 2 clip. `granicus.list_recent_video_meetings()` on the same URLs returns the right view, newest first, so the fault is in how the runner picks, not in the lister.
