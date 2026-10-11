@@ -200,18 +200,6 @@ https://mapleton.civicweb.net/Portal/MeetingInformation.aspx?Id=371		ca:csd:3523
 https://vimeo.com/1226985227	https://vimeo.com/1226985227?share=copy&fl=sv&fe=ci	us:sd:2607560
 https://washingtonfl.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=211		us:county:12133
 https://vimeo.com/596543013/7c411dd1aa		us:county:13119
-https://fishkilltownny.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1932		us:cousub:3602725978
-https://barstowcityca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3171		us:place:0604030
-https://cumberland.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1782		us:county:34011
-https://sjrwmd.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1252		rtr:us:fl:st-johns-river-water-management-district
-https://teanecktownnj.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2301		us:cousub:3400372360
-https://video.isilive.ca/cbrm/2026-01-20_0.mp4.html		ca:csd:1217030
-https://video.isilive.ca/peachland/2025-12-09%20COTW.mp4.html		ca:csd:5935018
-https://liveoaktx.granicus.com/MediaPlayer.php?view_id=1&clip_id=599	https://liveoaktx.granicus.com/ViewPublisher.php?view_id=1	us:place:4843096
-https://polk.granicus.com/MediaPlayer.php?view_id=1&clip_id=1		rtr:us:fl:polk-state-college
-https://play.champds.com/gillettewy/event/964	https://campbellcowy.portal.civicclerk.com/event/6860/media	us:county:56005
-https://video.isilive.ca/download/miramichi/2025-04-29.mp4	https://video.isilive.ca/play/miramichi/2025-04-29.mp4	ca:csd:1309050
-https://lancastertx.new.swagit.com/videos/399578		us:place:4841212
 https://belfastme.new.swagit.com/videos/354351		us:place:2303950
 https://pub-ottawa.escribemeetings.com/Meeting.aspx?Id=de879260-e75d-4f74-b0b7-4c8d8cbde996		ca:csd:3506008
 https://copleytwpoh.portal.civicclerk.com/event/214/media		us:cousub:3915318658
@@ -1276,3 +1264,10 @@ http://198.0.152.34/CablecastPublicSite/show/3242?channel=1	http://198.0.152.34/
 https://marthasvineyard.cablecast.tv/internetchannel/show/17272	https://marthasvineyard.cablecast.tv/internetchannel/show/17272	us:cousub:2500769940	Tisbury SB Joint Planning Board 10.7.26
 http://50.252.213.205/CablecastPublicSite/show/5746?channel=1	http://50.252.213.205/CablecastPublicSite/show/5746?channel=1	us:cousub:2500945175	Select Board 9-22-26
 https://townofheath.org/files/SB_2026-10-07_Audio.mp3	https://townofheath.org/f/0/1070/Select-Board-Meeting-Audio-2026	us:cousub:2501129650	Select Board Meeting Audio 2026-10-07
+https://fishkilltownny.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1932		us:cousub:3602725978
+https://barstowcityca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3171		us:place:0604030
+https://cumberland.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1782		us:county:34011
+https://sjrwmd.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1252		rtr:us:fl:st-johns-river-water-management-district
+https://teanecktownnj.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2301		us:cousub:3400372360
+https://liveoaktx.granicus.com/MediaPlayer.php?view_id=1&clip_id=599	https://liveoaktx.granicus.com/ViewPublisher.php?view_id=1	us:place:4843096
+https://lancastertx.new.swagit.com/videos/399578		us:place:4841212

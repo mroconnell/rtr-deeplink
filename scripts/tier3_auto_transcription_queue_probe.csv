@@ -11254,3 +11254,14 @@ https://marthasvineyard.cablecast.tv/internetchannel/show/17272,cablecast,cablec
 http://198.0.152.34/CablecastPublicSite/show/3242?channel=1,cablecast,unknown-accepted,,,,0,accept,"length unknown, accepted (Cablecast): Cablecast API fetch failed: Cannot connect to host 198.0.152.34:443 ssl:default [Connect call failed ('198.0.152.34', 443)]",0.78,2026-10-11T00:24:32+00:00,,0
 https://townofheath.org/files/SB_2026-10-07_Audio.mp3,direct_file,head+ffprobe,10693.37,2026-10-08,126119409,1,accept,,0.89,2026-10-11T00:24:32+00:00,,0
 http://50.252.213.205/CablecastPublicSite/show/5746?channel=1,cablecast,unknown-accepted,,,,0,accept,"length unknown, accepted (Cablecast): Cablecast API fetch failed: ",47.85,2026-10-11T00:25:19+00:00,,0
+https://fishkilltownny.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1932,iqm2,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.16,2026-10-11T06:27:42+00:00,,0
+https://barstowcityca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3171,iqm2,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.04,2026-10-11T06:27:45+00:00,,0
+https://cumberland.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1782,iqm2,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.04,2026-10-11T06:27:47+00:00,,0
+https://sjrwmd.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1252,iqm2,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.04,2026-10-11T06:27:50+00:00,,0
+https://teanecktownnj.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2301,iqm2,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.04,2026-10-11T06:27:52+00:00,,0
+https://video.isilive.ca/cbrm/2026-01-20_0.mp4.html,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.27,2026-10-11T06:27:55+00:00,,0
+https://video.isilive.ca/peachland/2025-12-09%20COTW.mp4.html,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.24,2026-10-11T06:27:57+00:00,,0
+https://liveoaktx.granicus.com/MediaPlayer.php?view_id=1&clip_id=599,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.04,2026-10-11T06:28:00+00:00,,0
+https://play.champds.com/gillettewy/event/964,champds,hls-master+variant,1670.40,,,1,accept,,0.94,2026-10-11T06:28:06+00:00,,0
+https://video.isilive.ca/download/miramichi/2025-04-29.mp4,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.18,2026-10-11T06:28:09+00:00,,0
+https://lancastertx.new.swagit.com/videos/399578,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.04,2026-10-11T06:28:11+00:00,,0
