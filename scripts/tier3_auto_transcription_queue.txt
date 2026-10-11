@@ -1268,3 +1268,10 @@ https://cloud.castus.tv/vod/amp/video/6a31d5ef8aa48f0002258943?page=PLAYLIST	htt
 https://cloud.castus.tv/vod/amp/video/6a3c079c2a82100002b880b3?page=PLAYLIST	https://cloud.castus.tv/vod/amp/video/6a3c079c2a82100002b880b3?page=PLAYLIST	us:sd:0625530	MPUSD Board of Trustees
 https://media.accesstuolumne.org/CablecastPublicSite/show/7011?channel=1	https://media.accesstuolumne.org/CablecastPublicSite/show/7011?channel=1	us:place:0672674	COSCC07072026 (Sonora City Council July 6 2026)
 https://townofsuperior.granicus.com/player/clip/2579?view_id=4	https://townofsuperior.granicus.com/player/clip/2579?view_id=4	us:place:0875640	Town Board Meeting - Public
+https://s3.amazonaws.com/lcatv-lqm/CSEL09222617.mp4	https://lcatv.org/colchester-selectboard-2026-09-22	us:cousub:5000714875	Colchester Selectboard 2026-09-22
+https://lakefront.leesburgflorida.gov/internetchannel/show/9880	https://lakefront.leesburgflorida.gov/internetchannel/show/9880	us:place:1239875	City of Leesburg Commission Meeting August 24, 2026
+http://173.209.96.235/CablecastPublicSite/show/2486?channel=1	http://173.209.96.235/CablecastPublicSite/show/2486?channel=1	us:cousub:3301567620	Board of Selectmen 9-14-2026 (Sandown)
+https://reflect-miami-valley-cc.cablecast.tv/internetchannel/show/19108	https://reflect-miami-valley-cc.cablecast.tv/internetchannel/show/19108	us:place:3913190	2/2/26 Centerville City Council Meeting
+https://townhallstreams.com/stream.php?location_id=68&id=70709	https://townhallstreams.com/stream.php?location_id=68&id=70709	us:cousub:2303137270	Town Council Meeting (Kittery)
+https://www.unalaska.gov/sites/default/files/client/audio/Recording%202026%2009%2022.mp3	https://www.unalaska.gov/meetings	us:place:0280770	City Council 2026-09-22 (Unalaska audio)
+http://pegtv.richmondnc.com/CablecastPublicSite/show/466?channel=1	http://pegtv.richmondnc.com/CablecastPublicSite/show/466?channel=1	us:place:3757260	Rockingham City Council July 2026
