@@ -11265,3 +11265,20 @@ https://liveoaktx.granicus.com/MediaPlayer.php?view_id=1&clip_id=599,granicus,hl
 https://play.champds.com/gillettewy/event/964,champds,hls-master+variant,1670.40,,,1,accept,,0.94,2026-10-11T06:28:06+00:00,,0
 https://video.isilive.ca/download/miramichi/2025-04-29.mp4,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.18,2026-10-11T06:28:09+00:00,,0
 https://lancastertx.new.swagit.com/videos/399578,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.04,2026-10-11T06:28:11+00:00,,0
+https://belfastme.new.swagit.com/videos/354351,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.10,2026-10-11T13:32:04+00:00,,0
+https://pub-ottawa.escribemeetings.com/Meeting.aspx?Id=de879260-e75d-4f74-b0b7-4c8d8cbde996,escribe,hls-master+variant,3023.94,,,1,accept,,0.13,2026-10-11T13:32:06+00:00,,0
+https://pub-ottawa.escribemeetings.com/Meeting.aspx?Id=de879260-e75d-4f74-b0b7-4c8d8cbde996,escribe,hls-master+variant,3023.94,,,1,accept,,0.10,2026-10-11T13:32:06+00:00,feed_tier3_auto_transcription,0
+https://copleytwpoh.portal.civicclerk.com/event/214/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.09,2026-10-11T13:32:09+00:00,,0
+https://cloud.castus.tv/vod/waycam/video/6a7e08d9b1e60900022c61d0?page=HOME,castus,hls-master+variant,574.00,,,1,accept,,0.33,2026-10-11T13:32:11+00:00,,0
+https://cloud.castus.tv/vod/waycam/video/6a7e08d9b1e60900022c61d0?page=HOME,castus,hls-master+variant,574.00,,,1,accept,,0.24,2026-10-11T13:32:12+00:00,feed_tier3_auto_transcription,0
+https://cloud.castus.tv/vod/kltv/video/6a73ab0d86e7df000206fb37?page=HOME,castus,hls-master+variant,1055.00,,,1,accept,,0.34,2026-10-11T13:32:14+00:00,,0
+https://cloud.castus.tv/vod/kltv/video/6a73ab0d86e7df000206fb37?page=HOME,castus,hls-master+variant,1055.00,,,1,accept,,0.18,2026-10-11T13:32:14+00:00,feed_tier3_auto_transcription,0
+https://cloud.castus.tv/vod/kltv/video/6a18ed58d163ee0002556777?page=HOME,castus,hls-master+variant,1894.00,,,1,accept,,0.25,2026-10-11T13:32:17+00:00,,0
+https://cloud.castus.tv/vod/kltv/video/6a18ed58d163ee0002556777?page=HOME,castus,hls-master+variant,1894.00,,,1,accept,,0.17,2026-10-11T13:32:17+00:00,feed_tier3_auto_transcription,0
+https://cloud.castus.tv/vod/kltv/video/6a7543770dea380002b04f73?page=HOME,castus,hls-master+variant,1769.00,,,1,accept,,0.26,2026-10-11T13:32:20+00:00,,0
+https://cloud.castus.tv/vod/kltv/video/6a7543770dea380002b04f73?page=HOME,castus,hls-master+variant,1769.00,,,1,accept,,0.29,2026-10-11T13:32:20+00:00,feed_tier3_auto_transcription,0
+https://reflect-virgin-islands-stt.cablecast.tv/show/2007,cablecast,unknown-accepted,,,,0,accept,"length unknown, accepted (Cablecast): Cablecast API show record returned HTTP 404",0.18,2026-10-11T13:32:25+00:00,,0
+https://reflect-virgin-islands-stt.cablecast.tv/show/2007,cablecast,unknown-accepted,,,,0,accept,"length unknown, accepted (Cablecast): Cablecast API show record returned HTTP 404",0.07,2026-10-11T13:32:25+00:00,feed_tier3_auto_transcription,0
+https://cloud.castus.tv/vod/tukwila/video/6abbf5bae029a300027fc0d7?page=HOME,castus,hls-master+variant,3656.00,,,1,accept,,0.32,2026-10-11T13:32:29+00:00,,0
+https://cloud.castus.tv/vod/tukwila/video/6abbf5bae029a300027fc0d7?page=HOME,castus,hls-master+variant,3656.00,,,1,accept,,0.28,2026-10-11T13:32:29+00:00,feed_tier3_auto_transcription,0
+https://sanjoaquincountyca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2654,iqm2,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-10-11T13:32:31+00:00,,0
