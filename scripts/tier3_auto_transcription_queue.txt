@@ -1263,3 +1263,8 @@ https://belfastme.new.swagit.com/videos/354351		us:place:2303950
 https://sanjoaquincountyca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2654		us:county:06077
 https://www.highfivemedia.org/episodes/evmd-meeting-9172026	https://www.highfivemedia.org/episodes/evmd-meeting-9172026	rtr:us:co:eaglevail-metropolitan-district	EVMD Meeting 9/17/2026
 https://www.highfivemedia.org/episodes/ctb-meeting-992026	https://www.highfivemedia.org/episodes/ctb-meeting-992026	rtr:us:co:eagle-valley-transportation-authority	CTB Meeting 9/9/2026
+https://cloud.castus.tv/vod/amp/video/687b08028e6eac000249459e?page=PLAYLIST	https://cloud.castus.tv/vod/amp/video/687b08028e6eac000249459e?page=PLAYLIST	us:place:0645778	Marina City Council Special Meeting
+https://cloud.castus.tv/vod/amp/video/6a31d5ef8aa48f0002258943?page=PLAYLIST	https://cloud.castus.tv/vod/amp/video/6a31d5ef8aa48f0002258943?page=PLAYLIST	us:place:0618688	DRO Special City Council Meeting
+https://cloud.castus.tv/vod/amp/video/6a3c079c2a82100002b880b3?page=PLAYLIST	https://cloud.castus.tv/vod/amp/video/6a3c079c2a82100002b880b3?page=PLAYLIST	us:sd:0625530	MPUSD Board of Trustees
+https://media.accesstuolumne.org/CablecastPublicSite/show/7011?channel=1	https://media.accesstuolumne.org/CablecastPublicSite/show/7011?channel=1	us:place:0672674	COSCC07072026 (Sonora City Council July 6 2026)
+https://townofsuperior.granicus.com/player/clip/2579?view_id=4	https://townofsuperior.granicus.com/player/clip/2579?view_id=4	us:place:0875640	Town Board Meeting - Public

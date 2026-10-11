@@ -11284,3 +11284,9 @@ https://cloud.castus.tv/vod/tukwila/video/6abbf5bae029a300027fc0d7?page=HOME,cas
 https://sanjoaquincountyca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2654,iqm2,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-10-11T13:32:31+00:00,,0
 https://www.highfivemedia.org/episodes/evmd-meeting-9172026,unknown,hls-master+variant,5547.11,,,1,accept,,1.21,2026-10-11T14:03:35+00:00,,0
 https://www.highfivemedia.org/episodes/ctb-meeting-992026,unknown,hls-master+variant,5632.87,,,1,accept,,1.04,2026-10-11T14:03:36+00:00,,0
+https://vimeo.com/1146735669,vimeo,vimeo-oembed,7586.00,2025-12-15,,1,accept,,0.07,2026-10-11T14:09:03+00:00,bulk_ingest,0
+https://media.accesstuolumne.org/CablecastPublicSite/show/7011?channel=1,cablecast,cablecast-api,3484.00,2026-07-07,,1,accept,,0.73,2026-10-11T14:09:06+00:00,,0
+https://cloud.castus.tv/vod/amp/video/687b08028e6eac000249459e?page=PLAYLIST,castus,hls-master+variant,5046.00,,,1,accept,,1.58,2026-10-11T14:09:07+00:00,,0
+https://cloud.castus.tv/vod/amp/video/6a31d5ef8aa48f0002258943?page=PLAYLIST,castus,hls-master+variant,2673.00,,,1,accept,,0.86,2026-10-11T14:09:08+00:00,,0
+https://cloud.castus.tv/vod/amp/video/6a3c079c2a82100002b880b3?page=PLAYLIST,castus,hls-master+variant,3086.00,,,1,accept,,0.98,2026-10-11T14:09:09+00:00,,0
+https://townofsuperior.granicus.com/player/clip/2579?view_id=4,granicus,hls-master+variant,4240.00,,,1,accept,,3.69,2026-10-11T14:09:10+00:00,,0
