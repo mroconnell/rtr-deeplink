@@ -225,18 +225,6 @@ https://coym.civicweb.net/Portal/MeetingInformation.aspx?Id=3291		us:county:2717
 https://coshawanowi.civicweb.net/Portal/MeetingInformation.aspx?Id=19463		us:county:55115
 https://ciindependenceor.civicweb.net/Portal/MeetingInformation.aspx?Id=10982		us:place:4136150
 https://citymedfordwi.civicweb.net/Portal/MeetingInformation.aspx?Id=5271		us:place:5550425
-https://pub-lincolncity.escribemeetings.com/Meeting.aspx?Id=c1e3ff02-337f-4f09-b7dc-0f7465a6c283&Agenda=Agenda&lang=English		us:place:4142600
-https://pub-maderacounty.escribemeetings.com/Meeting.aspx?Id=4f646bcf-763a-4344-866c-1781955a2173&Agenda=Agenda&lang=English		us:county:06039
-https://wichitafallstx.new.swagit.com/videos/398829		us:place:4879000
-https://aurora-il.granicus.com/MediaPlayer.php?view_id=1&clip_id=2229		us:place:1703012
-https://charlottesvilleva.portal.civicclerk.com/event/2617/media		us:place:5114968
-https://peoriail.portal.civicclerk.com/event/125/media		us:place:1759000
-https://eldoradoks.portal.civicclerk.com/event/1249/media		us:place:2020075
-https://perrysburgoh.portal.civicclerk.com/event/5067/media		us:place:3962148
-https://videoplayer.telvue.com/player/EJtfn8ouxWiUp9uEPl2tc6q8wbMfpV1O/media/1045899		us:place:2607660
-https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=147110&autoplay=no	https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=147110&autoplay=no	us:place:2606020
-https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=147123&autoplay=no	https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=147123&autoplay=no	rtr:us:la:shreve-memorial-library
-https://reflect-two-harbors.cablecast.tv/CablecastPublicSite/show/10604?site=1	https://reflect-two-harbors.cablecast.tv/CablecastPublicSite/show/10604?site=1	us:place:2765956
 https://pa-westmorelandcounty2.civicplus.com/CivicMedia?VID=Prison-Board-4262021-51	https://pa-westmorelandcounty2.civicplus.com/CivicMedia?VID=Prison-Board-4262021-51	us:county:42129
 https://www.dropbox.com/scl/fi/xpv6lr0yyf4bm5mdzbxhx/August-24-2026-Campbell-County-Planning-Commission-1.mp4?rlkey=i1ea5dovxtyi6zpidlvaah4j3&st=fp37y0mk&dl=0	https://www.dropbox.com/scl/fi/xpv6lr0yyf4bm5mdzbxhx/August-24-2026-Campbell-County-Planning-Commission-1.mp4?rlkey=i1ea5dovxtyi6zpidlvaah4j3&st=fp37y0mk&dl=0	us:county:51031
 https://ne-columbus2.civicplus.com/CivicMedia?VID=Committee-of-the-Whole-452021-358	https://ne-columbus2.civicplus.com/CivicMedia?VID=Committee-of-the-Whole-452021-358	us:place:3110110
@@ -1268,3 +1256,5 @@ https://cloud.castus.tv/vod/amp/video/6a31d5ef8aa48f0002258943?page=PLAYLIST	htt
 https://cloud.castus.tv/vod/amp/video/6a3c079c2a82100002b880b3?page=PLAYLIST	https://cloud.castus.tv/vod/amp/video/6a3c079c2a82100002b880b3?page=PLAYLIST	us:sd:0625530	MPUSD Board of Trustees
 https://media.accesstuolumne.org/CablecastPublicSite/show/7011?channel=1	https://media.accesstuolumne.org/CablecastPublicSite/show/7011?channel=1	us:place:0672674	COSCC07072026 (Sonora City Council July 6 2026)
 https://townofsuperior.granicus.com/player/clip/2579?view_id=4	https://townofsuperior.granicus.com/player/clip/2579?view_id=4	us:place:0875640	Town Board Meeting - Public
+https://wichitafallstx.new.swagit.com/videos/398829		us:place:4879000
+https://aurora-il.granicus.com/MediaPlayer.php?view_id=1&clip_id=2229		us:place:1703012

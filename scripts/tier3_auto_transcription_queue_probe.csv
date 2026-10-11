@@ -11290,3 +11290,21 @@ https://cloud.castus.tv/vod/amp/video/687b08028e6eac000249459e?page=PLAYLIST,cas
 https://cloud.castus.tv/vod/amp/video/6a31d5ef8aa48f0002258943?page=PLAYLIST,castus,hls-master+variant,2673.00,,,1,accept,,0.86,2026-10-11T14:09:08+00:00,,0
 https://cloud.castus.tv/vod/amp/video/6a3c079c2a82100002b880b3?page=PLAYLIST,castus,hls-master+variant,3086.00,,,1,accept,,0.98,2026-10-11T14:09:09+00:00,,0
 https://townofsuperior.granicus.com/player/clip/2579?view_id=4,granicus,hls-master+variant,4240.00,,,1,accept,,3.69,2026-10-11T14:09:10+00:00,,0
+https://pub-lincolncity.escribemeetings.com/Meeting.aspx?Id=c1e3ff02-337f-4f09-b7dc-0f7465a6c283&Agenda=Agenda&lang=English,escribe,hls-master+variant,760.47,,,1,accept,,0.29,2026-10-11T22:28:30+00:00,,0
+https://pub-lincolncity.escribemeetings.com/Meeting.aspx?Id=c1e3ff02-337f-4f09-b7dc-0f7465a6c283&Agenda=Agenda&lang=English,escribe,hls-master+variant,760.47,,,1,accept,,0.29,2026-10-11T22:28:30+00:00,feed_tier3_auto_transcription,0
+https://pub-maderacounty.escribemeetings.com/Meeting.aspx?Id=4f646bcf-763a-4344-866c-1781955a2173&Agenda=Agenda&lang=English,escribe,hls-master+variant,2106.60,,,1,accept,,0.30,2026-10-11T22:28:34+00:00,,0
+https://pub-maderacounty.escribemeetings.com/Meeting.aspx?Id=4f646bcf-763a-4344-866c-1781955a2173&Agenda=Agenda&lang=English,escribe,hls-master+variant,2106.60,,,1,accept,,0.29,2026-10-11T22:28:35+00:00,feed_tier3_auto_transcription,0
+https://wichitafallstx.new.swagit.com/videos/398829,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.13,2026-10-11T22:28:37+00:00,,0
+https://aurora-il.granicus.com/MediaPlayer.php?view_id=1&clip_id=2229,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-10-11T22:28:40+00:00,,0
+https://charlottesvilleva.portal.civicclerk.com/event/2617/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.27,2026-10-11T22:28:43+00:00,,0
+https://peoriail.portal.civicclerk.com/event/125/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.27,2026-10-11T22:28:46+00:00,,0
+https://eldoradoks.portal.civicclerk.com/event/1249/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.27,2026-10-11T22:28:49+00:00,,0
+https://perrysburgoh.portal.civicclerk.com/event/5067/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.25,2026-10-11T22:28:52+00:00,,0
+https://videoplayer.telvue.com/player/EJtfn8ouxWiUp9uEPl2tc6q8wbMfpV1O/media/1045899,telvue,telvue-page-json,1864.00,,,1,accept,,0.42,2026-10-11T22:28:54+00:00,,0
+https://videoplayer.telvue.com/player/EJtfn8ouxWiUp9uEPl2tc6q8wbMfpV1O/media/1045899,telvue,telvue-page-json,1864.00,,,1,accept,,0.37,2026-10-11T22:28:55+00:00,feed_tier3_auto_transcription,0
+https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=147110&autoplay=no,civicmedia,hls-master+variant,1548.19,,,1,accept,,0.70,2026-10-11T22:28:58+00:00,,0
+https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=147110&autoplay=no,civicmedia,hls-master+variant,1548.19,,,1,accept,,0.21,2026-10-11T22:28:58+00:00,feed_tier3_auto_transcription,0
+https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=147123&autoplay=no,civicmedia,hls-master+variant,2861.65,,,1,accept,,0.73,2026-10-11T22:29:01+00:00,,0
+https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=147123&autoplay=no,civicmedia,hls-master+variant,2861.65,,,1,accept,,0.21,2026-10-11T22:29:01+00:00,feed_tier3_auto_transcription,0
+https://reflect-two-harbors.cablecast.tv/CablecastPublicSite/show/10604?site=1,cablecast,cablecast-api,1058.00,2026-08-10,,1,accept,,0.04,2026-10-11T22:29:04+00:00,,0
+https://reflect-two-harbors.cablecast.tv/CablecastPublicSite/show/10604?site=1,cablecast,cablecast-api,1058.00,2026-08-10,,1,accept,,0.02,2026-10-11T22:29:04+00:00,feed_tier3_auto_transcription,0
