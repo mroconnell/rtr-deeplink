@@ -53,6 +53,14 @@ _ROOM_WORDS = (
     "gavel", "recess", "roll call", "off mic", "house at ease", "house in",
     "pledge", "closed session", "no audio", "speaking spanish", "speaking",
     "ayes", "chanting", "moment of silence", "adjourn", "sounding",
+    # Added 2026-10-11 from 12 long Tier B pages read from their original
+    # caption files and graded as human captioning (San Antonio, Mendocino,
+    # Miami-Dade, State of New York, Pointe-Claire...). Each is a note a
+    # person has to choose to write about the room, not a sound label:
+    "break", "interpret", "spanish", "french", "foreign", "native language",
+    "reading names", "playing video", "video complete", "presenting",
+    "photograph", "voting", "calling roll", "lapse in audio", "lost audio",
+    "audio cutting", "unfamiliar", "sneez",
 )  # fmt: skip
 _COMMON_WORDS = (
     "music", "applause", "laughter", "inaudible", "crosstalk", "cross talk",

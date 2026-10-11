@@ -81,3 +81,23 @@ def test_is_youtube():
     assert is_youtube("https://www.youtube.com/watch?v=DJD_5jUOmLc")
     assert not is_youtube("https://cityoftampa.granicus.com/x.mp4")
     assert not is_youtube(None)
+
+
+def test_person_only_room_notes_are_room_events():
+    # Tags read in the original caption files of human-captioned meetings,
+    # 2026-10-11: San Antonio, Mendocino, Miami-Dade, San Mateo, State of NY.
+    for tag in [
+        "LAPSE IN AUDIO", "MEETING IS ON BREAK", "LUNCH BREAK", "CALLING ROLL",
+        "READING NAMES", "PLAYING VIDEO", "VIDEO COMPLETE", "PRESENTING PROCLAMATION",
+        "INTERPRETING IN SPANISH", "TAKING PHOTOGRAPH", "VOTING IN PROGRESS",
+        "AUDIO CUTTING IN AND OUT", "SNEEZING AND COUGHING", "SPANISH",
+    ]:  # fmt: skip
+        assert classify_tag(tag) == "room", tag
+
+
+def test_machine_style_sound_labels_stay_out_of_room_events():
+    # Rosetown, SK (read 2026-10-09): software-style event labels.
+    for tag in ["paper rustling", "chair scraping", "light conversation",
+                "clears throat", "door closes", "sigh", "muttering"]:  # fmt: skip
+        assert classify_tag(tag) == "noise", tag
+    assert classify_tag("laughter") == "common"
