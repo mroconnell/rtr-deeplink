@@ -1270,3 +1270,5 @@ http://50.77.30.235/CablecastPublicSite/show/6486?channel=1	http://50.77.30.235/
 http://108.20.229.83/CablecastPublicSite/show/3551	http://108.20.229.83/CablecastPublicSite/show/3551	us:place:2556000	Planning Board 9-22-2026
 http://tv.dsctv.com/CablecastPublicSite/show/5512	http://tv.dsctv.com/CablecastPublicSite/show/5512	us:cousub:2502117405	Dover Selectmen's Meeting 9/3/2026
 https://boisecityid.iqm2.com/Citizens/Detail_Meeting.aspx?ID=5412		us:place:1608830
+https://cablecast.flcc.edu/CablecastPublicSite/show/2928?channel=1	https://cablecast.flcc.edu/CablecastPublicSite/show/2928?channel=1	us:place:3612144	Canandaigua City Council Sept 28, 2026
+https://cablecast.mcallen.net/internetchannel/show/3183?channel=1	https://cablecast.mcallen.net/internetchannel/show/3183?channel=1	rtr:us:tx:mcallen-public-utility	Public Utility Board Meeting: September 29, 2026
