@@ -1754,3 +1754,80 @@ async def test_selfhosted_show_url_still_resolves_as_a_show():
     show_url = "https://vod.maplewoodmn.gov/internetchannel/show/1809"
     assert cablecast._GALLERY_ID_RE.search(show_url) is None
     assert CablecastAssetFinder._extract_show_id(show_url) == 1809
+
+
+# --- A show page whose title is cut off mid-date (Easthampton Media, 2026-10-11) -------------------------------
+# Real captures of show 23761 (Southampton School Committee), trimmed to the show itself: the page's data says
+# "... 9/9/2" and the station API says "... 9/9/26". `eventDate` on this station is a week early (2026-09-01).
+SOUTHAMPTON_URL = (
+    "https://vod.easthamptonmedia.org/internetchannel/show/23761?channel=4"
+)
+SOUTHAMPTON_FETCH_URL = SOUTHAMPTON_URL.replace("https://", "http://")
+SOUTHAMPTON_API_URL = "https://vod.easthamptonmedia.org/cablecastapi/v1/shows/23761"
+SOUTHAMPTON_TRANSCRIPT_URL = (
+    "https://reflect-easthamptonmediatv.cablecast.tv/store-3/"
+    "23761-Southampton-School-Committee-9926-LIVE-v2/transcript.en.txt"
+)
+
+
+def _southampton_routes(page_title=None, api=None):
+    html = load_fixture("cablecast", "southampton_show_23761_cut_title.html")
+    if page_title is not None:
+        html = html.replace("Southampton School Committee 9/9/2", page_title)
+    routes = {
+        SOUTHAMPTON_FETCH_URL: FakeResponse(
+            status=200, text=html, url=SOUTHAMPTON_FETCH_URL
+        ),
+        SOUTHAMPTON_TRANSCRIPT_URL: FakeResponse(status=404, text=""),
+    }
+    if api is not None:
+        routes[SOUTHAMPTON_API_URL] = api
+    return routes
+
+
+async def test_a_title_cut_off_mid_date_takes_the_api_title_and_its_date():
+    api = FakeResponse(
+        status=200, text=load_fixture("cablecast", "southampton_api_show_23761.json")
+    )
+    with mock_session(_southampton_routes(api=api)):
+        result = await CablecastAssetFinder().resolve(SOUTHAMPTON_URL)
+    assert result.title == "Southampton School Committee 9/9/26"
+    assert result.date == "2026-09-09"
+
+
+async def test_a_cut_off_title_with_the_api_down_keeps_todays_behaviour():
+    down = FakeResponse(status=404, text="")
+    routes = _southampton_routes(api=down)
+    routes[SOUTHAMPTON_API_URL.replace("https://", "http://")] = down
+    with mock_session(routes):
+        result = await CablecastAssetFinder().resolve(SOUTHAMPTON_URL)
+    assert result.title == "Southampton School Committee 9/9/2"
+    assert result.date == "2026-09-01"  # the station's eventDate, as before
+
+
+async def test_an_api_title_that_is_a_different_show_is_not_used():
+    other = FakeResponse(
+        status=200,
+        text=json.dumps({"show": {"id": 23761, "title": "Select Board 9/9/26"}}),
+    )
+    with mock_session(_southampton_routes(api=other)):
+        result = await CablecastAssetFinder().resolve(SOUTHAMPTON_URL)
+    assert result.title == "Southampton School Committee 9/9/2"
+    assert result.date == "2026-09-01"
+
+
+async def test_a_title_with_a_full_date_makes_no_extra_request():
+    # No API route is registered: an API request would fail the test.
+    with mock_session(
+        _southampton_routes(page_title="Southampton School Committee 9/9/26")
+    ):
+        result = await CablecastAssetFinder().resolve(SOUTHAMPTON_URL)
+    assert result.title == "Southampton School Committee 9/9/26"
+    assert result.date == "2026-09-09"
+
+
+async def test_a_title_with_no_date_at_all_makes_no_extra_request():
+    with mock_session(_southampton_routes(page_title="Southampton School Committee")):
+        result = await CablecastAssetFinder().resolve(SOUTHAMPTON_URL)
+    assert result.title == "Southampton School Committee"
+    assert result.date == "2026-09-01"  # eventDate, as before

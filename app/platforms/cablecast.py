@@ -286,6 +286,12 @@ _FASTBOOT_SHOW_LINK_RE = re.compile(r'href="(/show/\d+(?:\?[^"]*)?)"')
 # failure rather than assuming either scheme for an unconfirmed tenant.
 _PUBLICSITE_SCHEMES = ("https", "http")
 
+# A title that ends in the START of a numeric date ("... 9/9/2", "... 3/4",
+# "... 9-9-") -- the shape of a title the show page's data carries cut off
+# mid-date. `parse_title_date()` finds no date in it. See
+# `_show_with_full_date_title()`.
+_PARTIAL_DATE_TAIL_RE = re.compile(r"\d{1,2}[/-]\d{1,2}(?:[/-]\d?)?\s*$")
+
 # Confirmed live 2026-08-29 on both CablecastPublicSite tenants checked:
 # no jurisdiction-bearing text anywhere -- og:title/twitter:title/meta
 # description are all just channel branding ("Urbana Public Television"),
@@ -510,6 +516,11 @@ class CablecastAssetFinder(AssetFinder):
                             update={"jurisdiction": jurisdiction}
                         )
                     return api_result
+
+        if show:
+            show = await self._show_with_full_date_title(
+                show, urlparse(fetch_url).netloc, show_id
+            )
 
         if not show or not show.get("vodUrl"):
             # Real bug found 2026-08-29 investigating a user report on
@@ -1437,6 +1448,44 @@ class CablecastAssetFinder(AssetFinder):
             end = raw_cues[idx + 1][0] if idx + 1 < len(raw_cues) else start
             cues.append({"start": start, "end": max(end, start), "text": text})
         return cues
+
+    @staticmethod
+    async def _show_with_full_date_title(show: dict, netloc: str, show_id: int) -> dict:
+        """The show, with the station API's title in place of the page's
+        title when the page's title is cut off in the middle of its date.
+
+        Found 2026-10-11 on Easthampton Media (Southampton School
+        Committee, show 23761). The show page's data and its `<title>` say
+        "Southampton School Committee 9/9/2"; the same show's
+        `/cablecastapi/v1/shows/23761` says "... 9/9/26". `_show_date()`
+        takes a full date from the title first, found none in "9/9/2", and
+        fell back to `eventDate`, which this station sets a week early
+        (2026-09-01 against the real 2026-09-09). Other titles on the same
+        page are long and uncut, so the cause (a stale page copy, or an
+        edit made later) is not settled; the API is the station's current
+        record.
+
+        One extra request, made ONLY when the page's title has no full date
+        AND ends in the start of one. A title with a full date, or with no
+        date at all, makes no request. The API title replaces the page's
+        only when it starts with the page title's own text before the cut
+        and carries a full date; otherwise (API down, a different title)
+        the show is returned unchanged.
+        """
+        title = show.get("title") or ""
+        if not title or parse_title_date(title) is not None:
+            return show
+        tail = _PARTIAL_DATE_TAIL_RE.search(title)
+        if not tail:
+            return show
+        payload = await CablecastAssetFinder._fetch_publicsite_json(
+            netloc, f"/cablecastapi/v1/shows/{show_id}"
+        )
+        api_title = ((payload or {}).get("show") or {}).get("title") or ""
+        prefix = title[: tail.start()].strip()
+        if not api_title.startswith(prefix) or parse_title_date(api_title) is None:
+            return show
+        return {**show, "title": api_title}
 
     @staticmethod
     def _show_date(show: dict) -> Optional[str]:
