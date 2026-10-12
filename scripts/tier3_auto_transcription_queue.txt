@@ -1296,4 +1296,5 @@ https://download.avcaptureall.cloud/customer-421e2fdb-496d-4481-9216-151a190d0dd
 https://byronmn.granicus.com/MediaPlayer.php?view_id=1&clip_id=369	https://byronmn.granicus.com/MediaPlayer.php?view_id=1&clip_id=369	us:place:2709154
 https://lemont.granicus.com/MediaPlayer.php?view_id=1&clip_id=1141	https://lemont.granicus.com/MediaPlayer.php?view_id=1&clip_id=1141	us:place:1742795
 https://mathewsva.granicus.com/MediaPlayer.php?view_id=1&clip_id=797	https://mathewsva.granicus.com/MediaPlayer.php?view_id=1&clip_id=797	us:county:51115
+https://s3.us-west-2.amazonaws.com/bolton-ma.castus-vod/vod/video/6b363e41-61b8-43b1-96f7-66a2680c0d12/video.original.mp4	https://bolton-ma.vod.castus.tv/vod/?page=ALL&video=6b363e41-61b8-43b1-96f7-66a2680c0d12	us:cousub:2502706365	Select Board - October 8, 2026	2026-10-08	Select Board
 https://archive.org/download/OrleansMA-Ch18Planning-07-14-2026/Planning-07-14-2026.mp4	https://archive.org/details/OrleansMA-Ch18Planning-07-14-2026	us:cousub:2500151440	Planning Board - July 14, 2026	2026-07-14	Planning Board

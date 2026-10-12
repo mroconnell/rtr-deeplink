@@ -11407,3 +11407,4 @@ https://byronmn.granicus.com/MediaPlayer.php?view_id=1&clip_id=369,granicus,hls-
 https://lemont.granicus.com/MediaPlayer.php?view_id=1&clip_id=1141,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-12T06:33:31+00:00,,0
 https://mathewsva.granicus.com/MediaPlayer.php?view_id=1&clip_id=797,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-12T06:33:34+00:00,,0
 https://archive.org/download/OrleansMA-Ch18Planning-07-14-2026/Planning-07-14-2026.mp4,direct_file,head+ffprobe,4915.71,2026-07-15,482504414,1,accept,,4.92,2026-10-12T13:24:44+00:00,,0
+https://s3.us-west-2.amazonaws.com/bolton-ma.castus-vod/vod/video/6b363e41-61b8-43b1-96f7-66a2680c0d12/video.original.mp4,direct_file,head+ffprobe,4665.12,2026-10-11,1015430028,1,accept,,1.29,2026-10-12T13:32:26+00:00,,0
