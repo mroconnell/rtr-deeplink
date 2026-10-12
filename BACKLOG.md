@@ -228,7 +228,9 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (32)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
   Laval's own archive: walk its ~260 meeting posts, then decide on the…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (231)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (233)
+  [NEEDS-AUDIT] Tampa deep links assume the video starts at the first…
+  [NEEDS-AUDIT] Some stored captions do not line up with their video,…
   [NEEDS-AUDIT] Meeting Finder picks the wrong clip from a Granicus…
   [NEEDS-AUDIT] Near-empty station captions are only guarded on…
   [NEEDS-AUDIT] 10 Cablecast pages on shared cable-channel hosts have…
@@ -521,7 +523,8 @@ Trust, safety & data quality  (32)
   `[NEEDS-AUDIT]` One row in `jurisdiction_coverage.csv` has…  (1)
     [NEEDS-AUDIT] At least 9 `domain` values in…
 
-Roadmap & strategy `[IMPROVEMENT-ROUND]`  (38)
+Roadmap & strategy `[IMPROVEMENT-ROUND]`  (39)
+  Adapters drop signals that show a person captioned the meeting…
   A hub with its own meetings still shows the site's generic share…
   `[IMPROVEMENT-ROUND]` `[BIG]` Build Meeting Finder: one breadth pipe…
   `[IMPROVEMENT-ROUND]` Meeting Finder follow-up plumbing: connect…
@@ -2568,6 +2571,20 @@ of human step they need.
 - **History**: built 2026-10-09; findings in `BACKLOG_DONE.md`.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
+
+- **[NEEDS-AUDIT] Tampa deep links assume the video starts at the first caption (found 2026-10-09, WO-1960).**
+  - **Issue**: Tampa's transcript stamps are wall-clock times of day (for example 5:04:14 PM), not positions in the video. `app/platforms/tampa.py` turns the first caption's clock time into video 0:00 (`t0 = raw_entries[0][0]`, line 422) and nothing checks it. On meeting 2698 (2026-08-20) the page header gives a 5:01 PM start and the first caption is at 5:04:14 PM, a 3 minute 14 second gap; whether the video starts at the first caption was never measured. There is also no midnight handling: a line stamped after midnight gives a negative offset and `max(0, seconds - t0)` (line 425) clamps it to 0.
+  - **Impact**: if the video has any lead-in, every Tampa deep link and click-to-seek is off by that amount (unmeasured). A meeting that runs past midnight puts all later lines at 0:00.
+  - **Next action**: on the drip Mac, play the video for pkey 2698 (YouTube `DJD_5jUOmLc`) and one more pkey, note the video time of three known spoken lines, and compare with the offsets the adapter gives. Then set the offset from the measured start, handle midnight by adding 24 hours when the clock drops below the previous line, and add a fixture test from the saved `tests/fixtures/tampa/` pages.
+  - **Constraint**: YouTube requests come only from the drip Mac (`docs/YOUTUBE_DRIP_RUNBOOK.md`); do not play or fetch the video from any other machine.
+  - **History**: found 2026-10-09 while reading Tampa's live transcript page; not investigated further.
+
+- **[NEEDS-AUDIT] Some stored captions do not line up with their video, so deep links land at the wrong moment (found 2026-10-10, WO-1960).**
+  - **Issue**: matching a meeting's audio to its stored captions with a speech model (`scripts/align_captions_to_audio.py`, 2-minute windows) found pages whose caption times differ from the video by far more than normal live-caption lag (1 to 6 seconds): Dunnellon FL 2026-07-15 (about 13 minutes, 0% agreement at three sampled points), Coral Gables FL 2023-06-01 (32.6 seconds off for the first half, 4.3 seconds after a step near the middle; the video is 7.46 hours and the captions cover 3.41), and Venice FL 2026-08-25 (99% agreement to the midpoint, about 20% in the last third). Frame rate was checked and is not the cause: drift was under 1 second an hour on most meetings.
+  - **Impact**: on those pages transcript click-to-seek and `?t=` links go to the wrong moment and nothing flags it. How many of the roughly 7,000 sourced pages are affected is unknown: 24 meetings were checked, chosen for human captions, not at random.
+  - **Next action**: pick 100 sourced pages at random, run the aligner's window check on each (it needs the page's audio), and count pages with a median lag over 10 seconds or a step. If more than a few show up, store a per-page offset map and apply it when the page seeks.
+  - **Constraint**: needs audio from the city's own host (some serve about 150 KB a second; Granicus wants a normal Referer); the check runs about 12 times faster than real time on a laptop CPU. No YouTube pages from a machine other than the drip Mac. Do not bulk-fetch one host in one go.
+  - **History**: results in rtr-business `research/CAPTION_METHODOLOGY.md` and `data-product/samples/E_annotated_speech/alignment/`.
 
 - **[NEEDS-AUDIT] Meeting Finder picks the wrong clip from a Granicus archive on a shared host (found 2026-10-05, Bay Area transit run).**
   - **Issue**: given a `ViewPublisher.php?view_id=N` link on a Granicus host shared by several bodies, `scripts/meeting_finder.py --entry start` ignored the view. Three SamTrans-family views (ids 1, 2, 3) all returned the same old clip (`view_id=1&clip_id=1516`, note "picked by: undated, lister order"); TAM's view 24 returned a Marin County clip; TJPA's view 29 returned a view 2 clip. `granicus.list_recent_video_meetings()` on the same URLs returns the right view, newest first, so the fault is in how the runner picks, not in the lister.
@@ -6978,6 +6995,14 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **History**: `BACKLOG_DONE.md`'s WO-338 entry.
 
 ## Roadmap & strategy `[IMPROVEMENT-ROUND]`
+
+### Adapters drop signals that show a person captioned the meeting `[IMPROVEMENT-ROUND]`
+
+- **Issue**: typed speaker names survive only as inline text (Tampa: "ALAN CLENDENIN : ..."); `TranscriptSegment.speaker` is never filled. TelVue's `<v Speaker N>` tags and Cablecast's `S1:` labels are stripped before storage. Tampa's page header ("unedited version of realtime captioning") is cut before the first timestamp. The Archive's `source` only separates `transcribed` from everything else, so human, edited and automatic captions all look the same.
+- **Impact**: finding human-captioned meetings takes a text-pattern scan of every stored transcript (`scripts/find_named_speaker_transcripts.py`), and it cannot use the header. Name labels also appear in video-call machine transcripts, so a label alone is not evidence of a person.
+- **Next action**: fill `speaker` where an adapter has a reliable label and leave the text unchanged; keep a short caption credit (such as Tampa's header) with the version. Skip room or account labels such as "El Cerrito Council Chamber".
+- **Constraint**: a new field on the ingest payload needs an Alembic migration (`archive/alembic/`). A label alone is not a person.
+- **History**: rtr-business `research/CAPTION_METHODOLOGY.md` (2026-10-09 to 10-12).
 
 ### A hub with its own meetings still shows the site's generic share image until its thumbnail is warmed `[IMPROVEMENT-ROUND]`
 
