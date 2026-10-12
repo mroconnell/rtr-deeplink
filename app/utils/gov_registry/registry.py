@@ -359,6 +359,9 @@ MULTI_GOV_HOSTS: FrozenSet[str] = frozenset(
         # CATS (catstv.net, Bloomington IN): one station, many governments. Pins are `match=channel=cats:{code}` (the body code in the video file name,
         # lower case), matched against catstv.py's `video_channel`; the meeting address (`m.php?q=<n>`) does not name its body.
         "catstv.net",
+        # AV Capture All (media.avcaptureall.cloud): one viewer site for many small governments; a meeting is `/meeting/{guid}` and does not name its
+        # customer. Pins are `match=channel=avcapture:{customerGuid, lower case}`, matched against avcaptureall.py's `video_channel`.
+        "media.avcaptureall.cloud",
     }
 )
 

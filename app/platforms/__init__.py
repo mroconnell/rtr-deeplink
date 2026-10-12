@@ -16,6 +16,7 @@ def register_all_finders() -> None:
     from .cablecast import CablecastAssetFinder
     from .castus import CastusAssetFinder
     from .catstv import CatsTvAssetFinder
+    from .avcaptureall import AVCaptureAllAssetFinder
     from .champds import ChampDSAssetFinder
     from .clerkbase import ClerkBaseAssetFinder
     from .civicclerk import CivicClerkAssetFinder
@@ -91,6 +92,7 @@ def register_all_finders() -> None:
     register(OpenMediaAssetFinder())
     register(CastusAssetFinder())
     register(CatsTvAssetFinder())
+    register(AVCaptureAllAssetFinder())
     register(SuiteOneAssetFinder())
     register(VimeoAssetFinder())
     register(ChicagoElmsAssetFinder())

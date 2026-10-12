@@ -294,6 +294,11 @@ CANARY_URLS: dict[str, list[str]] = {
     ],
     # Bloomington, IN's real 2026-10-07 City Council meeting on CATS -- confirmed live 2026-10-10: a 3 h 18 m .m4v and a 1,722-cue WebVTT file.
     "catstv": ["https://catstv.net/m.php?q=16544"],
+    # Ocean Shores, WA's real 2026-09-22 Regular City Council meeting on AV Capture All (WO-1190) -- captions and an agenda; 86 min. Needs the
+    # headless browser: run from an office Mac (untested from Render, like Vimeo).
+    "avcaptureall": [
+        "https://media.avcaptureall.cloud/meeting/809abb94-6a6b-474b-83ae-7ed17c067971"
+    ],
     # Salisbury, NC's real 7/21/2026 City Council meeting -- the one city
     # in the WO-29 investigation confirmed (via a real browser) to have
     # populated English captions inside the Vimeo player. This adapter is

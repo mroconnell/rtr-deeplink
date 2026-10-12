@@ -1,5 +1,54 @@
 # Backlog — done
 
+## [Done 2026-10-11] AV Capture All (media.avcaptureall.cloud) resolves video, captions and local date; 51 customers pinned (WO-1190)
+
+**What was done and why.** AV Capture All is one viewer site for many small governments. A meeting link resolved to nothing. Added `app/platforms/avcaptureall.py`. It works on office Macs only, like Vimeo, and it has not been tried from Render.
+
+**Why office Macs only.** The meeting record comes from `public-api.avcaptureall.cloud`. That API refuses a plain client. It needs an AWS WAF token that only a real browser page can make. So the adapter loads the meeting page in headless Chromium and reads the reply the page asks for. It builds no header, replays no token, and never calls the API by itself. With no headless browser it raises `HeadlessBrowserUnavailable` with the same short message Vimeo uses.
+
+**What changed.**
+
+| Area | Change |
+|---|---|
+| Adapter | `avcaptureall.py`: record to title, local date, length, video, agenda, packet, `video_channel` |
+| Headless helper | `headless_browser.fetch_api_reply_via_browser()`: loads a page, returns the reply to one API call. Same browser, same address guard, plus a hard stop on YouTube hosts |
+| Identity | `media.avcaptureall.cloud` in `MULTI_GOV_HOSTS`; `tenant_key.py` rule and `channel=avcapture:{guid}` pin shape; 51 pin rows in `tenant_overrides.csv` |
+| Other | `detect_platform()`, registration, `CUSTOM_PLATFORMS` label, canary URL (Ocean Shores), README row |
+
+**Rules used.**
+- Local date comes from the date in the video file name. The record's own dates are UTC. If the name has no date, the UTC date is used and a warning says so.
+- Source captions present: tier 1. No `videoSubtitlesUrl` key: no segments, "No captions found for this video.", tier 3. No per-customer cap was built.
+- A caption URL that repeats its own path is used as given. After one 403 it is tried once in the clean form.
+- `meeting_body` is `departmentTitle` as given. No meeting is dropped by the adapter, court calendars included.
+- A customer-viewer link (`/?customerGuid=...`) gets the "open the meeting itself" warning and starts no browser.
+
+**Live check on this Mac, 2026-10-11** (one page load each, 3 seconds apart, `bulk_ingest.py --dry-run`, nothing written).
+
+| Meeting | Date | Minutes | Segments | Result |
+|---|---|---|---|---|
+| Ocean Shores WA, Regular City Council | 2026-09-22 | 85.7 | 923 | Captions, agenda, packet, no warnings |
+| Suisun City CA, City Council | 2026-07-28 | 22.2 | 0 | No captions, tier 3 |
+| Smith County TX, Commissioners Court Live | 2026-10-06 | 55.4 | 551 | Captions, no warnings |
+| Shasta Lake CA, City Council Meeting | 2026-10-06 | 56.5 | 0 | No captions, no agenda on the record, tier 3 |
+
+**Pins (Ryan's rules, 2026-10-11).** Pins only for customers that have a `gov_id` and are not courts. Written: 51 (`media.avcaptureall.cloud,channel=avcapture:{guid},{gov_id},fallback,avc_check_2026-10-11`). Not pinned:
+
+| Customer group | Count | Why |
+|---|---|---|
+| Court calendars (name has "Court", incl. the 4 `TARGET-court-only`) | 25 | Not a governing body |
+| City of Monroe, WA | 1 | 75 of 75 meetings on page 1 are Judicial |
+| Special districts and the unnamed customer (no `gov_id`) | 10 | No registry row yet |
+
+Pinned but worth a second look: Shasta County, CA **Elections** (pinned to the county, as its `gov_id` says) and Napavine, Winlock, Roy, Lynden WA (councils whose records are partly Judicial).
+
+**Not settled.**
+- Render: untested. If it is blocked, this stays an office-Mac lane.
+- A pinned meeting reaches its government only through `video_channel`. `has_owner()` passes no hints, so it reports a bare AVC link as not owned, pinned or not. A queue line must carry its `gov_id` (column 3).
+- The Suisun City page already in the Archive should dedupe: the adapter's `source_url` is the plain lower-case meeting address. Not checked against production.
+- `download.avcaptureall.cloud` was not added to `MULTI_GOV_HOSTS`. Nothing required it.
+
+**Tests.** `tests/test_avcaptureall.py` (16): real saved records and WebVTT (`tests/fixtures/avcaptureall/`), headless step mocked, parsing real. Needs a deploy of `rtr-deeplink` to go live.
+
 ## [Done 2026-10-11] CVTV (cvtv.org, Clark/Vancouver WA) resolves through the Invintus adapter (WO-1189)
 
 **What was done and why.** A CVTV meeting link resolved to nothing (platform unknown). The site is a WordPress page with the Invintus plugin, so it is an Invintus tenant. Added `app/platforms/cvtv.py`, which hands the meeting to `invintus.py`, the same way `tvw.py` does.
