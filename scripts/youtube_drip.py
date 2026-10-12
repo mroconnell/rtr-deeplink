@@ -1014,7 +1014,11 @@ class Drip:
         todo = [
             t
             for t in youtube_queue_lines(QUEUE_FILE.read_text().splitlines())
-            if t[1] not in fed and not self.state.is_deferred(f"feed|{t[1]}")
+            if t[1] not in fed
+            and not self.state.is_deferred(f"feed|{t[1]}")
+            # WO-1961: with the vimeo lane off, nothing can read a fed Vimeo
+            # page's captions, so leave its queue line alone for now.
+            and ("vimeo" in self.lanes or _classify_queue_url(t[1])[1] != "vimeo")
         ]
         if not todo:
             return False, None

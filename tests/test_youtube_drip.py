@@ -1123,3 +1123,37 @@ def test_lane_audio_timeout_strikes_item_and_returns(tmp_path, monkeypatch):
     assert asyncio.run(drip.lane_audio(None)) == (True, None)
     assert drip.state.is_deferred("audio|slow")
     assert drip.state.data["audio_queue"] == [{"slug": "slow"}]
+
+
+# WO-1961: with the vimeo lane off, the feed lane leaves Vimeo queue lines alone.
+def _feed_pushed_urls(drip, monkeypatch, tmp_path):
+    from scripts import feed_tier3_auto_transcription as feed
+
+    q = tmp_path / "queue.txt"
+    q.write_text(
+        "https://vimeo.com/1212025580\thttps://example.gov/m\tus:place:0000001\n"
+        "https://www.youtube.com/watch?v=dQw4w9WgXcQ\thttps://example.gov/m\tus:place:0000001\n"
+    )
+    monkeypatch.setattr(yd, "QUEUE_FILE", q)
+    seen = []
+
+    async def fake_push(session, url, *a, **k):
+        seen.append(url)
+        return "[SKIP] not fed in this test"
+
+    monkeypatch.setattr(feed, "_push_if_has_video", fake_push)
+    drip.dry_run = False
+    asyncio.run(drip.lane_feed(None))
+    return seen
+
+
+def test_feed_skips_vimeo_when_vimeo_lane_off(tmp_path, monkeypatch):
+    drip = _drip(tmp_path, lanes=("captions", "feed"))
+    seen = _feed_pushed_urls(drip, monkeypatch, tmp_path)
+    assert seen and all("vimeo" not in u for u in seen)
+
+
+def test_feed_takes_vimeo_when_vimeo_lane_on(tmp_path, monkeypatch):
+    drip = _drip(tmp_path, lanes=("captions", "feed", "vimeo"))
+    seen = _feed_pushed_urls(drip, monkeypatch, tmp_path)
+    assert seen and "vimeo" in seen[0]
