@@ -363,6 +363,7 @@ def detect_platform(url: str) -> str:
     from .boarddocs import is_boarddocs_tenant_url
     from .sliq_harmony import is_sliq_harmony_url
     from .tvw import is_tvw_video_url
+    from .cvtv import is_cvtv_video_url
     from .twelvemilesout import is_twelvemilesout_tenant_host
     from .spectrumstream import parse_spectrumstream_tenant
 
@@ -979,6 +980,10 @@ def detect_platform(url: str) -> str:
         # the same way azleg.gov's wrapper pages do above -- see
         # tvw.py's own module docstring for the real investigation.
         return "tvw"
+    if is_cvtv_video_url(url):
+        # CVTV (cvtv.org, Clark/Vancouver WA), WO-1189: an Invintus wrapper
+        # page, same shape as tvw above -- see cvtv.py.
+        return "cvtv"
     if parse_wistia_account_url(url) is not None:
         # Wistia -- confirmed live 2026-09-10 (WO-161) against RegionalWebTV/
         # Advanced Media Solutions of Virginia's shared `amsva.wistia.com`
