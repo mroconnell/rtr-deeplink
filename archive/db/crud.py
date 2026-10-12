@@ -6051,6 +6051,9 @@ CUSTOM_PLATFORMS: dict[str, str] = {
     # shape as tvw above: cvtv.py delegates to InvintusAssetFinder and
     # resets `platform` to "cvtv".
     "cvtv": "CVTV, Clark/Vancouver WA (cvtv.org)",
+    # AV Capture All (media.avcaptureall.cloud) -- WO-1190, 2026-10-11. One viewer site for many small governments; direct .mp4 files and WebVTT
+    # captions on download.avcaptureall.cloud, the record read through the headless browser (avcaptureall.py; office Macs only).
+    "avcaptureall": "AV Capture All (media.avcaptureall.cloud)",
 }
 
 # Registered platforms (app/platforms/__init__.py's

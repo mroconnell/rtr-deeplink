@@ -98,7 +98,8 @@ import asyncio
 import logging
 import subprocess
 import sys
-from typing import Optional
+from typing import Optional, Tuple
+from urllib.parse import urlparse
 
 try:
     from playwright.async_api import Browser, Route, async_playwright
@@ -280,5 +281,80 @@ async def fetch_via_browser(url: str, *, wait_ms: int = DEFAULT_WAIT_MS) -> str:
         await page.goto(url, timeout=20000)
         await page.wait_for_timeout(wait_ms)
         return await page.content()
+    finally:
+        await context.close()
+
+
+# Hosts no headless load in this module may ever reach, whatever a page asks
+# for (CLAUDE.md: YouTube is fetched only by the drip Mac). `fetch_via_browser()`
+# above never needed this because its callers only open non-YouTube pages;
+# `fetch_api_reply_via_browser()` is new and takes the same belt-and-braces.
+_NEVER_LOAD_SUFFIXES = (
+    "youtube.com",
+    "youtu.be",
+    "googlevideo.com",
+    "youtube-nocookie.com",
+    "ytimg.com",
+)
+
+
+def _is_never_load_host(url: str) -> bool:
+    host = (urlparse(url).hostname or "").lower()
+    return any(host == s or host.endswith("." + s) for s in _NEVER_LOAD_SUFFIXES)
+
+
+async def _guard_route_api_capture(route: "Route") -> None:
+    """`_guard_route` plus a hard stop on YouTube hosts."""
+    if _is_never_load_host(route.request.url):
+        await route.abort()
+        return
+    await _guard_route(route)
+
+
+async def fetch_api_reply_via_browser(
+    page_url: str,
+    *,
+    reply_url_contains: str,
+    timeout_ms: int = 30000,
+) -> Optional[Tuple[int, str]]:
+    """Loads `page_url` in a real (headless) Chromium tab and returns
+    `(status, body_text)` of the first GET reply whose URL contains
+    `reply_url_contains`, or None when no such reply arrives in time.
+
+    For a source whose data call carries a token that only the vendor's own
+    script, running inside a real page, can mint (AV Capture All's AWS WAF
+    token). The page makes the call itself; this only reads the answer. No
+    header is built or replayed here. Same SSRF guard, shared browser and
+    per-call context as `fetch_via_browser()`; raises
+    `HeadlessBrowserUnavailable` when no browser can start."""
+    await check_destination(page_url)
+    browser = await _get_browser()
+    context = await browser.new_context(
+        user_agent=_REALISTIC_USER_AGENT, viewport=_VIEWPORT
+    )
+    try:
+        await context.route("**/*", _guard_route_api_capture)
+        page = await context.new_page()
+
+        def _wanted(response) -> bool:
+            return (
+                reply_url_contains in response.url and response.request.method == "GET"
+            )
+
+        try:
+            async with page.expect_response(_wanted, timeout=timeout_ms) as waiting:
+                await page.goto(
+                    page_url, wait_until="domcontentloaded", timeout=timeout_ms
+                )
+            response = await waiting.value
+            return response.status, await response.text()
+        except Exception as exc:  # Playwright TimeoutError, navigation or body errors
+            logger.warning(
+                "headless API capture for %s found no reply: %s: %s",
+                page_url,
+                type(exc).__name__,
+                str(exc).splitlines()[0] if str(exc) else "",
+            )
+            return None
     finally:
         await context.close()

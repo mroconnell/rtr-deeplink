@@ -333,6 +333,12 @@ def _catstv(url: str) -> Optional[str]:
     return None
 
 
+# --- AV Capture All (avcaptureall.py): one viewer site for many customers. A meeting is `/meeting/{guid}` and its address does not name the customer,
+# so there is no key to read from the address (None); avcaptureall.py sends the customer's guid as `video_channel` = `avcapture:{guid}`.
+def _avcaptureall(url: str) -> Optional[str]:
+    return None
+
+
 # Host -> key rule for every shared website with a defined key.
 KEYED_SHARED_HOSTS: Dict[str, Callable[[str], Optional[str]]] = {
     "play.champds.com": _champds,
@@ -353,6 +359,7 @@ KEYED_SHARED_HOSTS: Dict[str, Callable[[str], Optional[str]]] = {
     "webtv.coop": _webtv_coop,
     "swd-live.com": _swd_live,
     "catstv.net": _catstv,
+    "media.avcaptureall.cloud": _avcaptureall,
 }
 
 
@@ -718,6 +725,10 @@ _SWD_LIVE_CHANNEL_HINT_RE = re.compile(
     r"^channel=swd_live:([a-z0-9-]+)$", re.IGNORECASE
 )
 _CATSTV_CHANNEL_HINT_RE = re.compile(r"^channel=cats:([a-z0-9_]+)$", re.IGNORECASE)
+_AVCAPTURE_CHANNEL_HINT_RE = re.compile(
+    r"^channel=avcapture:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+    re.IGNORECASE,
+)
 # How a pin may spell "exactly this tenant" in front of the bare key.
 _WHOLE_TENANT_PREFIXES = (
     "player/",
@@ -728,6 +739,7 @@ _WHOLE_TENANT_PREFIXES = (
     "channel=webtv_coop:",
     "channel=swd_live:",
     "channel=cats:",
+    "channel=avcapture:",
     "clientid=",
     "location_id=",
     "id=",
@@ -777,6 +789,11 @@ def pin_tenant_key(host: str, match: Optional[str]) -> Optional[str]:
     hint = _CATSTV_CHANNEL_HINT_RE.match(match)
     if host == "catstv.net" and hint:
         # CATS's body pin, `channel=cats:{code}`: matched against the adapter's `video_channel` page hint (the meeting address does not name its body).
+        return hint.group(1).lower()
+    hint = _AVCAPTURE_CHANNEL_HINT_RE.match(match)
+    if host == "media.avcaptureall.cloud" and hint:
+        # AV Capture All's customer pin, `channel=avcapture:{customerGuid}`: matched against the adapter's `video_channel` page hint (the meeting
+        # address does not name its customer).
         return hint.group(1).lower()
     if re.match(r"^[A-Za-z_]+=", match):
         url = f"https://{host}/{_QUERY_PIN_PATH.get(host, '')}?{match}"

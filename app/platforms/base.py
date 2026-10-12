@@ -513,6 +513,10 @@ def detect_platform(url: str) -> str:
         # CATS (Community Access Television Services, Bloomington IN): one station, many governments. Confirmed live 2026-10-10 -- see catstv.py.
         # Any catstv.net path routes here; the adapter says plainly when a page is not a single meeting.
         return "catstv"
+    if netloc == "media.avcaptureall.cloud":
+        # AV Capture All (WO-1190): one viewer site for many small governments; a meeting is /meeting/{guid}. Office-Mac only (the record needs a
+        # browser-minted AWS WAF token) -- see avcaptureall.py. Any path on the host routes here; the adapter says plainly when it is not a meeting.
+        return "avcaptureall"
     if netloc == "swd-live.com" or netloc == "www.swd-live.com":
         # SWD Live (Service Web Diffusion): council webcasts for Gatineau and Mont-Royal. Confirmed live 2026-10-08 -- see swd_live.py.
         # Any swd-live.com path routes here; the adapter says plainly when a page is not a single meeting.
