@@ -22,6 +22,7 @@ from app.platforms.cablecast import CablecastAssetFinder, list_gallery_shows
 from aiohttp_mock import FakeResponse, mock_session
 from conftest import load_fixture
 
+
 @pytest.fixture(autouse=True)
 def _no_hls_subtitle_fetch(request, monkeypatch):
     """The Remix path now also tries the video's own HLS subtitle track when
@@ -29,7 +30,10 @@ def _no_hls_subtitle_fetch(request, monkeypatch):
     Older tests here list their exact requests, so that extra read is
     stubbed out for them; the tests with "hls_subtitle" in their name keep
     it live."""
-    if "hls_subtitle" in request.node.name or "real_dyersville_fastboot" in request.node.name:
+    if (
+        "hls_subtitle" in request.node.name
+        or "real_dyersville_fastboot" in request.node.name
+    ):
         return
 
     async def _none(_url):
@@ -1860,7 +1864,7 @@ _HUDSON_MASTER = (
     "#EXTM3U\n"
     '#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="English",DEFAULT=YES,'
     'FORCED=NO,URI="captions.en.m3u8",LANGUAGE="en"\n'
-    "#EXT-X-STREAM-INF:BANDWIDTH=2800000,SUBTITLES=\"subs\"\n720p.m3u8\n"
+    '#EXT-X-STREAM-INF:BANDWIDTH=2800000,SUBTITLES="subs"\n720p.m3u8\n'
 )
 _HUDSON_SUBS = (
     "#EXTM3U\n#EXTINF:10,\nsubtitles/1/captions.en.00000.vtt?duration=10\n"
@@ -1891,13 +1895,11 @@ async def test_resolve_reads_the_hls_subtitle_track_when_the_show_has_no_vod_tra
         url: FakeResponse(status=200, text=_hudson_html([]), url=url),
         _HUDSON_VOD: FakeResponse(status=200, text=_HUDSON_MASTER),
         base + "captions.en.m3u8": FakeResponse(status=200, text=_HUDSON_SUBS),
-        base
-        + "subtitles/1/captions.en.00000.vtt?duration=10": FakeResponse(
+        base + "subtitles/1/captions.en.00000.vtt?duration=10": FakeResponse(
             status=200,
             text="WEBVTT\n\n00:00:01.000 --> 00:00:04.000\nGood evening and welcome to the school board meeting.\n",
         ),
-        base
-        + "subtitles/1/captions.en.00001.vtt?duration=10": FakeResponse(
+        base + "subtitles/1/captions.en.00001.vtt?duration=10": FakeResponse(
             status=200,
             text="WEBVTT\n\n00:00:11.000 --> 00:00:14.000\nThe first item on the agenda is the budget.\n",
         ),
