@@ -281,6 +281,8 @@ longer) and moves on to the next lane. The Whisper thread itself cannot be
 killed from the drip, so it may still finish in the background and use the
 CPU; the page stays in the queue.
 
+**The feed lane skips Vimeo queue lines when the `vimeo` lane is off (WO-1961).** Fed Vimeo pages can only get captions from the `vimeo` lane, so without it the feed lane leaves those queue lines alone instead of creating pages that sit waiting. Add `vimeo` to `--lanes` and the feed lane takes them again.
+
 ## When to tell Ryan
 
 - Any new line in `alerts.log` that you cannot explain.
