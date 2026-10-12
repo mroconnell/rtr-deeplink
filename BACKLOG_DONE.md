@@ -1,6 +1,6 @@
 # Backlog — done
 
-## [Done 2026-10-11] AV Capture All (media.avcaptureall.cloud) resolves video, captions and local date; 51 customers pinned (WO-1190)
+## [Done 2026-10-11] AV Capture All (media.avcaptureall.cloud) resolves video, captions and local date; 50 customers pinned (WO-1190)
 
 **What was done and why.** AV Capture All is one viewer site for many small governments. A meeting link resolved to nothing. Added `app/platforms/avcaptureall.py`. It works on office Macs only, like Vimeo, and it has not been tried from Render.
 
@@ -12,7 +12,7 @@
 |---|---|
 | Adapter | `avcaptureall.py`: record to title, local date, length, video, agenda, packet, `video_channel` |
 | Headless helper | `headless_browser.fetch_api_reply_via_browser()`: loads a page, returns the reply to one API call. Same browser, same address guard, plus a hard stop on YouTube hosts |
-| Identity | `media.avcaptureall.cloud` in `MULTI_GOV_HOSTS`; `tenant_key.py` rule and `channel=avcapture:{guid}` pin shape; 51 pin rows in `tenant_overrides.csv` |
+| Identity | `media.avcaptureall.cloud` in `MULTI_GOV_HOSTS`; `tenant_key.py` rule and `channel=avcapture:{guid}` pin shape; 50 pin rows in `tenant_overrides.csv` |
 | Other | `detect_platform()`, registration, `CUSTOM_PLATFORMS` label, canary URL (Ocean Shores), README row |
 
 **Rules used.**
@@ -31,7 +31,7 @@
 | Smith County TX, Commissioners Court Live | 2026-10-06 | 55.4 | 551 | Captions, no warnings |
 | Shasta Lake CA, City Council Meeting | 2026-10-06 | 56.5 | 0 | No captions, no agenda on the record, tier 3 |
 
-**Pins (Ryan's rules, 2026-10-11).** Pins only for customers that have a `gov_id` and are not courts. Written: 51 (`media.avcaptureall.cloud,channel=avcapture:{guid},{gov_id},fallback,avc_check_2026-10-11`). Not pinned:
+**Pins (Ryan's rules, 2026-10-11).** Pins only for customers that have a `gov_id` and are not courts. Written: 50 (`media.avcaptureall.cloud,channel=avcapture:{guid},{gov_id},fallback,avc_check_2026-10-11`). Ryan dropped the Shasta County, CA "Elections" customer's pin on 2026-10-11 (an elections office calendar, not a governing board); the county's own customer stays pinned. Not pinned:
 
 | Customer group | Count | Why |
 |---|---|---|
