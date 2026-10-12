@@ -11290,17 +11290,6 @@ https://cloud.castus.tv/vod/amp/video/687b08028e6eac000249459e?page=PLAYLIST,cas
 https://cloud.castus.tv/vod/amp/video/6a31d5ef8aa48f0002258943?page=PLAYLIST,castus,hls-master+variant,2673.00,,,1,accept,,0.86,2026-10-11T14:09:08+00:00,,0
 https://cloud.castus.tv/vod/amp/video/6a3c079c2a82100002b880b3?page=PLAYLIST,castus,hls-master+variant,3086.00,,,1,accept,,0.98,2026-10-11T14:09:09+00:00,,0
 https://townofsuperior.granicus.com/player/clip/2579?view_id=4,granicus,hls-master+variant,4240.00,,,1,accept,,3.69,2026-10-11T14:09:10+00:00,,0
-https://www.cityofalexandriala.com/government/city-council/council-meeting-videos/,vimeo,vimeo-oembed,3670.00,2026-10-07,,1,accept,,0.09,2026-10-11T22:08:14+00:00,bulk_ingest,0
-https://vimeopro.com/northhaventv/nhtv-on-demand-videos/video/1232390549,vimeo,vimeo-oembed,9825.00,2026-10-02,,1,accept,,0.07,2026-10-11T22:08:23+00:00,bulk_ingest,0
-https://vimeopro.com/lrtv/town-of-bridgton-2025/video/1138609128,vimeo,vimeo-oembed,2476.00,2025-11-19,,1,accept,,0.06,2026-10-11T22:08:32+00:00,bulk_ingest,0
-https://vimeo.com/1234219117,vimeo,vimeo-oembed,3345.00,2026-10-08,,1,accept,,0.12,2026-10-11T22:08:38+00:00,bulk_ingest,0
-https://reflect-miami-valley-cc.cablecast.tv/internetchannel/show/19108,cablecast,cablecast-api,2868.00,2026-01-20,,1,accept,,0.45,2026-10-11T22:09:50+00:00,,0
-https://lakefront.leesburgflorida.gov/internetchannel/show/9880,cablecast,cablecast-api,3717.00,2026-08-23,,1,accept,,1.07,2026-10-11T22:09:51+00:00,,0
-http://173.209.96.235/CablecastPublicSite/show/2486?channel=1,cablecast,unknown-accepted,,,,0,accept,"length unknown, accepted (Cablecast): Cablecast API fetch failed: Cannot connect to host 173.209.96.235:443 ssl:True [SSLCertVerificationError: (1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signed certificate in certificate chain (_ssl.c:1035)')]",1.36,2026-10-11T22:09:51+00:00,,0
-https://www.unalaska.gov/sites/default/files/client/audio/Recording%202026%2009%2022.mp3,direct_file,head+ffprobe,5094.92,2026-09-23,25179370,1,accept,,0.66,2026-10-11T22:09:52+00:00,,0
-https://townhallstreams.com/stream.php?location_id=68&id=70709,townhallstreams,hls-master+variant,2630.74,,,1,accept,,1.57,2026-10-11T22:09:52+00:00,,0
-https://s3.amazonaws.com/lcatv-lqm/CSEL09222617.mp4,direct_file,head+ffprobe,5931.48,2026-09-28,580106937,1,accept,,2.83,2026-10-11T22:09:53+00:00,,0
-http://pegtv.richmondnc.com/CablecastPublicSite/show/466?channel=1,cablecast,unknown-accepted,,,,0,accept,"length unknown, accepted (Cablecast): Cablecast API fetch failed: ",47.37,2026-10-11T22:10:39+00:00,,0
 https://pub-lincolncity.escribemeetings.com/Meeting.aspx?Id=c1e3ff02-337f-4f09-b7dc-0f7465a6c283&Agenda=Agenda&lang=English,escribe,hls-master+variant,760.47,,,1,accept,,0.29,2026-10-11T22:28:30+00:00,,0
 https://pub-lincolncity.escribemeetings.com/Meeting.aspx?Id=c1e3ff02-337f-4f09-b7dc-0f7465a6c283&Agenda=Agenda&lang=English,escribe,hls-master+variant,760.47,,,1,accept,,0.29,2026-10-11T22:28:30+00:00,feed_tier3_auto_transcription,0
 https://pub-maderacounty.escribemeetings.com/Meeting.aspx?Id=4f646bcf-763a-4344-866c-1781955a2173&Agenda=Agenda&lang=English,escribe,hls-master+variant,2106.60,,,1,accept,,0.30,2026-10-11T22:28:34+00:00,,0
@@ -11319,3 +11308,14 @@ https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=147123&autoplay=no
 https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=147123&autoplay=no,civicmedia,hls-master+variant,2861.65,,,1,accept,,0.21,2026-10-11T22:29:01+00:00,feed_tier3_auto_transcription,0
 https://reflect-two-harbors.cablecast.tv/CablecastPublicSite/show/10604?site=1,cablecast,cablecast-api,1058.00,2026-08-10,,1,accept,,0.04,2026-10-11T22:29:04+00:00,,0
 https://reflect-two-harbors.cablecast.tv/CablecastPublicSite/show/10604?site=1,cablecast,cablecast-api,1058.00,2026-08-10,,1,accept,,0.02,2026-10-11T22:29:04+00:00,feed_tier3_auto_transcription,0
+https://www.cityofalexandriala.com/government/city-council/council-meeting-videos/,vimeo,vimeo-oembed,3670.00,2026-10-07,,1,accept,,0.09,2026-10-11T22:08:14+00:00,bulk_ingest,0
+https://vimeopro.com/northhaventv/nhtv-on-demand-videos/video/1232390549,vimeo,vimeo-oembed,9825.00,2026-10-02,,1,accept,,0.07,2026-10-11T22:08:23+00:00,bulk_ingest,0
+https://vimeopro.com/lrtv/town-of-bridgton-2025/video/1138609128,vimeo,vimeo-oembed,2476.00,2025-11-19,,1,accept,,0.06,2026-10-11T22:08:32+00:00,bulk_ingest,0
+https://vimeo.com/1234219117,vimeo,vimeo-oembed,3345.00,2026-10-08,,1,accept,,0.12,2026-10-11T22:08:38+00:00,bulk_ingest,0
+https://reflect-miami-valley-cc.cablecast.tv/internetchannel/show/19108,cablecast,cablecast-api,2868.00,2026-01-20,,1,accept,,0.45,2026-10-11T22:09:50+00:00,,0
+https://lakefront.leesburgflorida.gov/internetchannel/show/9880,cablecast,cablecast-api,3717.00,2026-08-23,,1,accept,,1.07,2026-10-11T22:09:51+00:00,,0
+http://173.209.96.235/CablecastPublicSite/show/2486?channel=1,cablecast,unknown-accepted,,,,0,accept,"length unknown, accepted (Cablecast): Cablecast API fetch failed: Cannot connect to host 173.209.96.235:443 ssl:True [SSLCertVerificationError: (1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signed certificate in certificate chain (_ssl.c:1035)')]",1.36,2026-10-11T22:09:51+00:00,,0
+https://www.unalaska.gov/sites/default/files/client/audio/Recording%202026%2009%2022.mp3,direct_file,head+ffprobe,5094.92,2026-09-23,25179370,1,accept,,0.66,2026-10-11T22:09:52+00:00,,0
+https://townhallstreams.com/stream.php?location_id=68&id=70709,townhallstreams,hls-master+variant,2630.74,,,1,accept,,1.57,2026-10-11T22:09:52+00:00,,0
+https://s3.amazonaws.com/lcatv-lqm/CSEL09222617.mp4,direct_file,head+ffprobe,5931.48,2026-09-28,580106937,1,accept,,2.83,2026-10-11T22:09:53+00:00,,0
+http://pegtv.richmondnc.com/CablecastPublicSite/show/466?channel=1,cablecast,unknown-accepted,,,,0,accept,"length unknown, accepted (Cablecast): Cablecast API fetch failed: ",47.37,2026-10-11T22:10:39+00:00,,0
