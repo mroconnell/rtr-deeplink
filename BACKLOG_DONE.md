@@ -1,5 +1,22 @@
 # Backlog — done
 
+## [Done 2026-10-12] Cablecast: read the video's own caption track when a show has no transcript file
+
+**What was done and why.** Some Cablecast stations (Hudson NH, Centerville OH) mark a meeting as captioned, but the page data has no transcript file. The adapter gave back video and 0 segments, so the meeting looked like it had no captions. The captions were there all along: the video's playlist (`vod.m3u8`) points to an English caption track, cut into 10-second pieces. The adapter already read that track for one other URL shape. It now reads it here too, when nothing else was found.
+
+**Result.** Live check on this Mac, 2026-10-12 (one request per file, nothing written):
+
+| Meeting | Segments before | Segments after |
+|---|---:|---:|
+| Hudson NH School Board, 2026-10-05 | 0 | 1,052 (last caption at 45:19; video is 45:29) |
+| Hudson NH School Board, 2026-09-21 | 0 | 2,383 |
+| Centerville OH City Council, 2026-10-05 | 0 | 837 |
+| Williamstown Fire District MA, 2026-08-20 (control, already worked) | 220 | 220 |
+
+**Caution.** The caption quality is as the station provides it. Sparse captions are still refused by the existing check. Merrimac MA was not fixed by this; its show page did not resolve in my test.
+
+**Tests.** Two new tests (track read; no track declared). Older tests that list their exact requests now stub the extra read.
+
 ## [Done 2026-10-11] AV Capture All (media.avcaptureall.cloud) resolves video, captions and local date; 50 customers pinned (WO-1190)
 
 **What was done and why.** AV Capture All is one viewer site for many small governments. A meeting link resolved to nothing. Added `app/platforms/avcaptureall.py`. It works on office Macs only, like Vimeo, and it has not been tried from Render.
