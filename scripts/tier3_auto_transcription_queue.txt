@@ -225,18 +225,6 @@ https://coym.civicweb.net/Portal/MeetingInformation.aspx?Id=3291		us:county:2717
 https://coshawanowi.civicweb.net/Portal/MeetingInformation.aspx?Id=19463		us:county:55115
 https://ciindependenceor.civicweb.net/Portal/MeetingInformation.aspx?Id=10982		us:place:4136150
 https://citymedfordwi.civicweb.net/Portal/MeetingInformation.aspx?Id=5271		us:place:5550425
-https://pa-westmorelandcounty2.civicplus.com/CivicMedia?VID=Prison-Board-4262021-51	https://pa-westmorelandcounty2.civicplus.com/CivicMedia?VID=Prison-Board-4262021-51	us:county:42129
-https://www.dropbox.com/scl/fi/xpv6lr0yyf4bm5mdzbxhx/August-24-2026-Campbell-County-Planning-Commission-1.mp4?rlkey=i1ea5dovxtyi6zpidlvaah4j3&st=fp37y0mk&dl=0	https://www.dropbox.com/scl/fi/xpv6lr0yyf4bm5mdzbxhx/August-24-2026-Campbell-County-Planning-Commission-1.mp4?rlkey=i1ea5dovxtyi6zpidlvaah4j3&st=fp37y0mk&dl=0	us:county:51031
-https://ne-columbus2.civicplus.com/CivicMedia?VID=Committee-of-the-Whole-452021-358	https://ne-columbus2.civicplus.com/CivicMedia?VID=Committee-of-the-Whole-452021-358	us:place:3110110
-https://townhallstreams.com/stream.php?location_id=55&id=76363	https://townhallstreams.com/stream.php?location_id=55&id=76363	us:cousub:3301127140
-https://pa-westnorriton2.civicplus.com/CivicMedia?VID=April-14th-Regular-Meeting-3	https://pa-westnorriton2.civicplus.com/CivicMedia?VID=April-14th-Regular-Meeting-3	us:cousub:4209183696
-https://ri-westerly.civicplus.com/CivicMedia?VID=Meeting-062816-1	https://ri-westerly.civicplus.com/CivicMedia?VID=Meeting-062816-1	us:cousub:4400977000
-https://fl-opalocka2.civicplus.com/CivicMedia?VID=Regular-Commission-Meeting-October-23-20-1003	https://fl-opalocka2.civicplus.com/CivicMedia?VID=Regular-Commission-Meeting-October-23-20-1003	us:place:1251650
-https://az-cavecreek4.civicplus.com/CivicMedia?VID=July-1-2013-Town-Council-Meeting-2	https://az-cavecreek4.civicplus.com/CivicMedia?VID=July-1-2013-Town-Council-Meeting-2	us:place:0411300
-https://bethel.granicus.com/MediaPlayer.php?view_id=2&clip_id=346	https://bethel.granicus.com/MediaPlayer.php?view_id=2&clip_id=346	us:place:3906068
-https://byronmn.granicus.com/MediaPlayer.php?view_id=1&clip_id=369	https://byronmn.granicus.com/MediaPlayer.php?view_id=1&clip_id=369	us:place:2709154
-https://lemont.granicus.com/MediaPlayer.php?view_id=1&clip_id=1141	https://lemont.granicus.com/MediaPlayer.php?view_id=1&clip_id=1141	us:place:1742795
-https://mathewsva.granicus.com/MediaPlayer.php?view_id=1&clip_id=797	https://mathewsva.granicus.com/MediaPlayer.php?view_id=1&clip_id=797	us:county:51115
 https://poundridge.granicus.com/MediaPlayer.php?view_id=1&clip_id=268	https://poundridge.granicus.com/MediaPlayer.php?view_id=1&clip_id=268	us:cousub:3611959685
 https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1260	https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1260	us:place:5587725
 https://townmeetings.s3.us-east-2.amazonaws.com/Conservation+/2026/09-01-26+CC+Meeting+Recording.mp4	https://ct-canton.civicplus.com/AgendaCenter	us:cousub:0911012270
@@ -1305,3 +1293,6 @@ https://reflect-vod-athol.cablecast.tv/CablecastPublicSite/show/11585?channel=1	
 https://cablecast.mayfieldheightsohio.gov/internetchannel/show/66	https://cablecast.mayfieldheightsohio.gov/internetchannel/show/66	us:place:3948482	City Council Meeting 5/28/2025 (2025-05-28)
 https://cablecast.santafetx.gov/store-3/345-City-Council-Regular-Meeting-09-17-26-v2/vod.mp4	https://cablecast.santafetx.gov/internetchannel/show/345	us:place:4865726	City Council Regular Meeting 09-17-26 (2026-09-17)
 https://download.avcaptureall.cloud/customer-421e2fdb-496d-4481-9216-151a190d0dd2/meetings/ccce6a24-6d57-4cf5-bd35-e34e0c128a13/Tax%20Appeal%20Hearing%20-%202025-138%20NAD%20LLC_2026-10-07_03-00-46%20PM.mp4	https://media.avcaptureall.cloud/meeting/ccce6a24-6d57-4cf5-bd35-e34e0c128a13	us:county:30031	Tax Appeal Hearing - 2025-138 NAD LLC (2026-10-07)
+https://byronmn.granicus.com/MediaPlayer.php?view_id=1&clip_id=369	https://byronmn.granicus.com/MediaPlayer.php?view_id=1&clip_id=369	us:place:2709154
+https://lemont.granicus.com/MediaPlayer.php?view_id=1&clip_id=1141	https://lemont.granicus.com/MediaPlayer.php?view_id=1&clip_id=1141	us:place:1742795
+https://mathewsva.granicus.com/MediaPlayer.php?view_id=1&clip_id=797	https://mathewsva.granicus.com/MediaPlayer.php?view_id=1&clip_id=797	us:county:51115
