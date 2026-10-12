@@ -2811,6 +2811,7 @@ platform share the same page/API structure. Detection lives in
 | Municode Meetings (`{tenant}.municodemeetings.com`) | `municode_meetings.py` | An agenda CMS, not a video host: follows the meeting row's video link (absolute to a platform, or one hop to a detail page's `iframe#mcc_agenda_video`) and delegates. Confirmed 2026-09-01. | Whatever the delegated platform provides. |
 | Arizona Legislature (`azleg.gov/videoplayer`) | `az_legislature.py` | A wrapper page around Invintus: extracts the `clientID`/`eventID` from the inline `Invintus.launch(...)` call and delegates to `invintus.py`. Found 2026-09-09. | From Invintus. |
 | TVW (`tvw.org`, Washington State) | `tvw.py` | A wrapper page around Invintus: reads the `eventID`/`clientID` `<meta>` tags and delegates to `invintus.py`. Confirmed 2026-09-22 (WO-1010). | From Invintus. |
+| CVTV (`cvtv.org`, Clark/Vancouver WA) | `cvtv.py` | A wrapper page around Invintus (WordPress plugin): takes the `eventID` from the end of the link (or the page's `data-eventid`), uses CVTV's one `clientID` (2917038973), and delegates to `invintus.py`. Confirmed 2026-10-11 (WO-1189). | From Invintus (none on the one meeting checked). |
 | Granicus "Video on Demand" channel matching | `granicus_channel.py` | Not a new platform: for a Legistar meeting whose own video link is empty (Kansas City, MO's structural norm, confirmed 2026-08-29), matches it to the right item in the tenant's Granicus VOD RSS listing. | From Granicus. |
 
 ### Direct downloads

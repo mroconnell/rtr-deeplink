@@ -1,5 +1,21 @@
 # Backlog — done
 
+## [Done 2026-10-11] CVTV (cvtv.org, Clark/Vancouver WA) resolves through the Invintus adapter (WO-1189)
+
+**What was done and why.** A CVTV meeting link resolved to nothing (platform unknown). The site is a WordPress page with the Invintus plugin, so it is an Invintus tenant. Added `app/platforms/cvtv.py`, which hands the meeting to `invintus.py`, the same way `tvw.py` does.
+
+**Where the clientID came from.** The page itself has `var invintusConfig = {"clientId":"2917038973",...}` in an inline script, and `data-eventid` on the player div. The page shows no `player.invintus.com` link. Invintus's public `Event/getDetailed` call with client 2917038973 and event 2026101001 returns "Vancouver City Council (10-05-26)" with an MP4, an HLS stream and an audio link.
+
+| Check | Result |
+|---|---|
+| CVTV pages read (5, different bodies) | Same clientId on all 5 |
+| Pages whose path ends in the eventID | 5 of 5 (equals `data-eventid`) |
+| Captions on the Vancouver meeting | None (`captionPath` is null) |
+
+**Not settled.** Identity: CVTV also carries Clark County and regional bodies, so no whole-host pin was added. Pass `gov_id` per link on ingest. Captions on any CVTV meeting are unconfirmed.
+
+**Tests.** `tests/test_cvtv.py` from the real page and API response (`tests/fixtures/cvtv/`). Full suite 10,482 passed. Needs a deploy of `rtr-deeplink` to go live.
+
 ## [Done 2026-10-11] Cablecast: a show page title cut off mid-date takes the station API's title and date
 
 **What was done and why.** On 2026-10-11 the Southampton School Committee page (Southampton School District, MA; Easthampton Media show 23761) was ingested as "Southampton School Committee 9/9/2" dated 2026-09-01, but the meeting was 9/9/26. The show page's data and its `<title>` carried the title cut off ("9/9/2"); the same show's `/cablecastapi/v1/shows/23761` said "9/9/26". `_show_date()` (WO-1048) takes a full date from the title before `eventDate`, found none, and fell back to `eventDate`, which this station sets 7 to 8 days early (23761: 2026-09-01; 23624: 2026-08-12 for an 8/19/26 meeting).

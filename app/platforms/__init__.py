@@ -48,6 +48,7 @@ def register_all_finders() -> None:
     from .twelvemilesout import TwelveMilesOutAssetFinder
     from .spectrumstream import SpectrumStreamAssetFinder
     from .tvw import TVWAssetFinder
+    from .cvtv import CVTVAssetFinder
     from .utah_pmn import UtahPMNAssetFinder
     from .viebit import ViebitAssetFinder
     from .swd_live import SwdLiveAssetFinder
@@ -100,6 +101,7 @@ def register_all_finders() -> None:
     register(InvintusAssetFinder())
     register(ArizonaLegislatureAssetFinder())
     register(TVWAssetFinder())
+    register(CVTVAssetFinder())
     register(WistiaAssetFinder())
     register(BoxcastAssetFinder())
     register(DirectFileAssetFinder())

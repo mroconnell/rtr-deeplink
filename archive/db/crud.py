@@ -6047,6 +6047,10 @@ CUSTOM_PLATFORMS: dict[str, str] = {
     # resolve() end to end), so a real pushed row keeps its own label
     # rather than reading "invintus". See tvw.py's own module docstring.
     "tvw": "Washington State Legislature (tvw.org)",
+    # CVTV (cvtv.org, Clark/Vancouver WA) -- WO-1189, 2026-10-11. Same
+    # shape as tvw above: cvtv.py delegates to InvintusAssetFinder and
+    # resets `platform` to "cvtv".
+    "cvtv": "CVTV, Clark/Vancouver WA (cvtv.org)",
 }
 
 # Registered platforms (app/platforms/__init__.py's

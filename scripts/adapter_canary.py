@@ -260,6 +260,9 @@ CANARY_URLS: dict[str, list[str]] = {
     # page ages off, swap in any recent `/video/{slug}/` page linked from
     # tvw.org's own schedule.
     "tvw": ["https://tvw.org/video/senate-housing-2026091165/"],
+    # CVTV (cvtv.org, Clark/Vancouver WA), WO-1189 (2026-10-11) -- a real
+    # Vancouver City Council meeting; cvtv.py delegates to Invintus.
+    "cvtv": ["https://www.cvtv.org/video/vancouver-city-council-10-05-26-2026101001/"],
     # "unknown" is generic_fallback.py's registered platform_name -- the
     # exact string detect_platform() returns for an unmatched host, not a
     # placeholder. Kept under that key so the coverage test can compare
