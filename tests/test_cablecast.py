@@ -22,6 +22,24 @@ from app.platforms.cablecast import CablecastAssetFinder, list_gallery_shows
 from aiohttp_mock import FakeResponse, mock_session
 from conftest import load_fixture
 
+@pytest.fixture(autouse=True)
+def _no_hls_subtitle_fetch(request, monkeypatch):
+    """The Remix path now also tries the video's own HLS subtitle track when
+    a show has no `vodTranscripts` (see the Hudson tests at the bottom).
+    Older tests here list their exact requests, so that extra read is
+    stubbed out for them; the tests with "hls_subtitle" in their name keep
+    it live."""
+    if "hls_subtitle" in request.node.name or "real_dyersville_fastboot" in request.node.name:
+        return
+
+    async def _none(_url):
+        return []
+
+    monkeypatch.setattr(
+        CablecastAssetFinder, "_fetch_fastboot_captions", staticmethod(_none)
+    )
+
+
 PORTAL_URL = "http://detroit-vod.cablecast.tv/internetchannel/show/15323?site=1"
 REAL_VOD_URL = (
     "https://reflect-detroit-vod.cablecast.tv/store-8/"
@@ -1831,3 +1849,79 @@ async def test_a_title_with_no_date_at_all_makes_no_extra_request():
         result = await CablecastAssetFinder().resolve(SOUTHAMPTON_URL)
     assert result.title == "Southampton School Committee"
     assert result.date == "2026-09-01"  # eventDate, as before
+
+
+# Hudson, NH (www.hudsonctv.com) 2026-10-12: the show record says
+# `hasCaptions: true` and carries no `vodTranscripts`, but its vod.m3u8
+# declares an English subtitle track (real show 21982: 272 ten-second .vtt
+# pieces). The cue text below is a short synthetic stand-in in that shape.
+_HUDSON_VOD = "https://reflect-hudsonctv.cablecast.tv/store-5/21982-School-Board-Meeting-of-10-05-26-v3/vod.m3u8"
+_HUDSON_MASTER = (
+    "#EXTM3U\n"
+    '#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="English",DEFAULT=YES,'
+    'FORCED=NO,URI="captions.en.m3u8",LANGUAGE="en"\n'
+    "#EXT-X-STREAM-INF:BANDWIDTH=2800000,SUBTITLES=\"subs\"\n720p.m3u8\n"
+)
+_HUDSON_SUBS = (
+    "#EXTM3U\n#EXTINF:10,\nsubtitles/1/captions.en.00000.vtt?duration=10\n"
+    "#EXTINF:10,\nsubtitles/1/captions.en.00001.vtt?duration=10\n"
+)
+
+
+def _hudson_html(vod_transcripts):
+    show = {
+        "showId": 21982,
+        "title": "School Board Meeting of 10-05-26",
+        "eventDate": "2026-10-05T00:00:00-04:00",
+        "vodUrl": _HUDSON_VOD,
+        "vodTranscripts": vod_transcripts,
+    }
+    tree = {"shows": [show], "site": {"siteId": 1, "title": "Hudson CTV"}}
+    return (
+        "<html><body><script>window.__remixContext = "
+        + json.dumps(tree)
+        + ";</script></body></html>"
+    )
+
+
+async def test_resolve_reads_the_hls_subtitle_track_when_the_show_has_no_vod_transcripts():
+    url = "http://www.hudsonctv.com/internetchannel/show/21982"
+    base = "https://reflect-hudsonctv.cablecast.tv/store-5/21982-School-Board-Meeting-of-10-05-26-v3/"
+    routes = {
+        url: FakeResponse(status=200, text=_hudson_html([]), url=url),
+        _HUDSON_VOD: FakeResponse(status=200, text=_HUDSON_MASTER),
+        base + "captions.en.m3u8": FakeResponse(status=200, text=_HUDSON_SUBS),
+        base
+        + "subtitles/1/captions.en.00000.vtt?duration=10": FakeResponse(
+            status=200,
+            text="WEBVTT\n\n00:00:01.000 --> 00:00:04.000\nGood evening and welcome to the school board meeting.\n",
+        ),
+        base
+        + "subtitles/1/captions.en.00001.vtt?duration=10": FakeResponse(
+            status=200,
+            text="WEBVTT\n\n00:00:11.000 --> 00:00:14.000\nThe first item on the agenda is the budget.\n",
+        ),
+    }
+    with mock_session(routes):
+        result = await CablecastAssetFinder().resolve(url)
+
+    assert [s.start for s in result.segments] == [1.0, 11.0]
+    assert result.segments[1].text == "The first item on the agenda is the budget."
+    assert result.transcript_language == "en"
+    assert result.transcript_warnings == []
+    assert result.video_url == _HUDSON_VOD
+
+
+async def test_resolve_hls_subtitle_fallback_still_reports_no_transcript_when_none_declared():
+    url = "http://www.hudsonctv.com/internetchannel/show/21982"
+    routes = {
+        url: FakeResponse(status=200, text=_hudson_html([]), url=url),
+        _HUDSON_VOD: FakeResponse(
+            status=200, text="#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1\n720p.m3u8\n"
+        ),
+    }
+    with mock_session(routes):
+        result = await CablecastAssetFinder().resolve(url)
+
+    assert result.segments == []
+    assert result.transcript_warnings == ["No transcript found for this event."]

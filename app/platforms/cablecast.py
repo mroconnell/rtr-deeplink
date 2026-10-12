@@ -609,6 +609,33 @@ class CablecastAssetFinder(AssetFinder):
                     if cues is not chosen[0]
                 ]
 
+        if not segments and not transcript_warnings:
+            # Hudson, NH (www.hudsonctv.com/internetchannel/show/21982) and
+            # other stations whose show record says `hasCaptions: true` carry
+            # no `vodTranscripts`, but their `vod.m3u8` playlist declares the
+            # same English subtitle track the FastBoot path reads (272
+            # ten-second .vtt pieces on that show, real spoken text). Read
+            # it here too, only when nothing was found above and nothing
+            # said the captions were unusable.
+            cues = await self._fetch_fastboot_captions(show["vodUrl"])
+            sparse, sparse_words, sparse_minutes = caption_text_is_sparse(cues or [])
+            if sparse:
+                transcript_warnings.append(
+                    f"The station's captions hold only {sparse_words} words "
+                    f"over {sparse_minutes:.0f} minutes, so they were not used."
+                )
+            elif cues:
+                normalize_shouting_caption(cues)
+                segments = [TranscriptSegment(**cue) for cue in cues]
+                transcript_language = detect_language_from_texts(
+                    c["text"] for c in cues
+                )
+                if transcript_language and transcript_language != TARGET_LANGUAGE:
+                    transcript_warnings.append(
+                        f"These captions appear to be in '{transcript_language}', not "
+                        f"'{TARGET_LANGUAGE}' — no matching-language track was found for this meeting."
+                    )
+
         if not segments:
             transcript_warnings.append("No transcript found for this event.")
 
