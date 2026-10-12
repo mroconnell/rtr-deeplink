@@ -1,5 +1,25 @@
 # Backlog — done
 
+## [Done 2026-10-11] Cablecast: a show page title cut off mid-date takes the station API's title and date
+
+**What was done and why.** On 2026-10-11 the Southampton School Committee page (Southampton School District, MA; Easthampton Media show 23761) was ingested as "Southampton School Committee 9/9/2" dated 2026-09-01, but the meeting was 9/9/26. The show page's data and its `<title>` carried the title cut off ("9/9/2"); the same show's `/cablecastapi/v1/shows/23761` said "9/9/26". `_show_date()` (WO-1048) takes a full date from the title before `eventDate`, found none, and fell back to `eventDate`, which this station sets 7 to 8 days early (23761: 2026-09-01; 23624: 2026-08-12 for an 8/19/26 meeting).
+
+New `CablecastAssetFinder._show_with_full_date_title()`, called in the Remix path just before the show is used. It makes **one** extra request, only when the page title has no full date **and** ends in the start of one (`_PARTIAL_DATE_TAIL_RE`: "... 9/9/2", "... 3/4"). It takes the API title only when that title starts with the page title's own text before the cut and carries a full date; if the API is down or answers a different title, the show is unchanged (today's behaviour). A title with a full date, or with no date, makes no request.
+
+**Result.** Live, after the change: show 23761 gives "Southampton School Committee 9/9/26", date 2026-09-09, 142 segments; show 23624 is unchanged ("Southampton Planning Board 8/19/26", 2026-08-19, 48 segments).
+
+| Case | Extra request | Result |
+|---|---|---|
+| Cut-off title, API answers with the full title | 1 | API title and its date |
+| Cut-off title, API down | 1 (fails) | unchanged (eventDate) |
+| Cut-off title, API title is a different show | 1 | unchanged |
+| Full date in the title | 0 | unchanged |
+| No date in the title | 0 | unchanged |
+
+**Not settled.** Why the page copy is cut: other titles on the same page are long and uncut, so it is not a length cap; a stale copy or a later edit is possible and unproven. Scope on other stations is unknown. The one affected Archive page was deleted and re-ingested by hand on 2026-10-11 (new address `/m/southampton-school-district-ma-2026-09-09-southampton-school-committee-9-9-26`).
+
+**Tests.** Five new cases in `tests/test_cablecast.py` from trimmed real captures of show 23761 (`tests/fixtures/cablecast/southampton_*`). Full suite 10,474 passed. Needs a deploy of `rtr-deeplink` to take effect in the resolver service; `bulk_ingest.py` and the discovery tool run the code locally.
+
 ## [Done 2026-10-10] CATS (catstv.net, Bloomington IN) resolver: one station, eight governments pinned
 
 **What was done.** Ryan asked for adapter support after the 2026-10-10 research (rtr-business `research/CATS_RCCD_BREADTH_2026-10-10.md`). Added `app/platforms/catstv.py`. Given a CATS meeting link (`catstv.net/m.php?q=<n>`), it returns the .m4v address, the title, the date, the source's own runtime and the WebVTT captions as segments. The body code in the video file name (`B_CC_261007.m4v` -> `B_CC`) goes out as `video_channel` = `cats:b_cc`, and eight pins in `tenant_overrides.csv` (`match=channel=cats:<code>`) tie that to a government. A code with no pin stays unattributed on purpose.
