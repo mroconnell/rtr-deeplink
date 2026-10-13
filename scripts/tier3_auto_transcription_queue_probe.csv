@@ -11545,3 +11545,20 @@ https://pub-lincolncity.escribemeetings.com/Meeting.aspx?Id=c1e3ff02-337f-4f09-b
 https://pub-lincolncity.escribemeetings.com/Meeting.aspx?Id=c1e3ff02-337f-4f09-b7dc-0f7465a6c283,escribe,hls-master+variant,760.47,,,1,accept,,0.30,2026-10-13T00:59:16+00:00,feed_tier3_auto_transcription,0
 https://videoplayer.telvue.com/player/GNduNoua2rBThhw6N4PRP9OCSPf6B2ru/media/1016341,telvue,telvue-page-json,4844.00,,,1,accept,,0.36,2026-10-13T00:59:18+00:00,,0
 https://videoplayer.telvue.com/player/GNduNoua2rBThhw6N4PRP9OCSPf6B2ru/media/1016341,telvue,telvue-page-json,4844.00,,,1,accept,,0.38,2026-10-13T00:59:19+00:00,feed_tier3_auto_transcription,0
+https://archive.org/download/school-board-ws-4178-260928/School%20Board%20WS%204178_260928.ia.mp4,direct_file,head+ffprobe,1705.92,2026-09-29,155339011,1,accept,,1.13,2026-10-12T22:45:48+00:00,,0
+https://archive.org/download/richmond-selectbd-vcdploan-09142026/RichmondSelectbdVCDPLoan09142026.mp4,direct_file,head+ffprobe,5229.69,2026-09-15,392015857,1,accept,,1.68,2026-10-12T22:45:50+00:00,,0
+https://archive.org/download/underhill-spec-selectbd-10082026/UnderhillSpecSelectbd10082026.mp4,direct_file,head+ffprobe,4270.61,2026-10-12,408703448,1,accept,,1.15,2026-10-12T22:45:51+00:00,,0
+https://archive.org/download/norwich-school-board-meeting-06-04-2025/Norwich%20School%20Board%20Meeting%2006_04_2025.mp4,direct_file,head+ffprobe,2377.00,2025-11-12,255130663,1,accept,,1.12,2026-10-12T22:45:54+00:00,,0
+https://archive.org/download/mmuusdschool-bd-09142026/MMUUSDSchoolBd09142026.mp4,direct_file,head+ffprobe,5511.00,2026-09-15,551657355,1,accept,,3.42,2026-10-12T22:45:55+00:00,,0
+https://archive.org/download/hartland-school-board-meeting-2025-05-06-17-21-edt-recording/Hartland%20School%20Board%20Meeting%20-%202025_05_06%2017_21%20EDT%20-%20Recording.mp4,direct_file,head+ffprobe,3620.58,2025-10-01,388091042,1,accept,,1.01,2026-10-12T22:45:55+00:00,,0
+https://archive.org/download/hanover-school-board-06-11-2025/Hanover%20School%20Board%2006_11_2025.mp4,direct_file,head+ffprobe,4117.47,2025-11-12,441678406,1,accept,,1.79,2026-10-12T22:45:58+00:00,,0
+https://archive.org/download/dresden-school-board-05-27-2025/Dresden%20School%20Board%2005_27_2025.mp4,direct_file,head+ffprobe,7089.70,2025-10-21,760191496,1,accept,,1.02,2026-10-12T22:45:58+00:00,,0
+https://archive.org/download/lebanon-school-board-6-11-2025/Lebanon%20School%20Board%206_11_2025.mp4,direct_file,head+ffprobe,6093.53,2025-11-12,653406137,1,accept,,2.15,2026-10-12T22:46:01+00:00,,0
+https://archive.org/download/ph-tbmtg-9-20-23/PH-TBMtg9-20-23.mp4,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,2.58,2026-10-12T22:46:03+00:00,,0
+https://archive.org/download/weathersfield-select-board-special-meeting/Weathersfield%20Select%20Board%20Special%20Meeting%20-%20070924%20-%20Aimee%20Parnell.mp4,direct_file,head+ffprobe,3839.70,2024-07-09,4503056208,1,accept,,3.71,2026-10-12T22:46:05+00:00,,0
+https://archive.org/download/weathersfield-school-board-meeting-100124/Weathersfield%20School%20Board%20Meeting%20-%20100124%20-%20MK.mp4,direct_file,head+ffprobe,4766.43,2024-10-02,4204627888,1,accept,,3.08,2026-10-12T22:46:06+00:00,,0
+https://archive.org/download/tcc_6-09-20/tcc_6-09-20.mp4,direct_file,ranged-get+ffprobe,9445.78,2020-06-11,912818822,1,accept,,4.63,2026-10-12T22:46:09+00:00,,0
+https://archive.org/download/DoubleACS_7A28/DoubleACS_7A28.mp4,direct_file,head+ffprobe,7376.62,2020-08-27,2486664992,1,accept,,5.42,2026-10-12T22:46:12+00:00,,0
+https://archive.org/download/2022-04-26-school-committee-gap/2022%2004%2026%20School%20Committee%20GAP.mp4,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,2.46,2026-10-12T22:46:12+00:00,,0
+https://archive.org/download/school-22-1110/School22%201110.mp4,direct_file,head+ffprobe,4571.43,2024-04-26,421870289,1,accept,,5.74,2026-10-12T22:46:14+00:00,,0
+https://archive.org/download/060326-town-board-work-session/060326_Town%20Board%20Work%20Session.mp4,direct_file,head+ffprobe,899.01,2026-06-05,87288920,1,accept,,1.03,2026-10-12T22:46:29+00:00,,0
