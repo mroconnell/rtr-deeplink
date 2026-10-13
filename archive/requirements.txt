@@ -17,7 +17,7 @@ anyio==4.14.2
     #   httpx
     #   starlette
     #   watchfiles
-asyncpg==0.31.0
+asyncpg==0.32.0
     # via -r requirements.in
 attrs==26.1.0
     # via aiohttp
@@ -111,17 +111,13 @@ starlette==1.6.0
     # via fastapi
 typing-extensions==4.16.0
     # via
-    #   aiohttp
-    #   aiosignal
     #   alembic
-    #   anyio
     #   beautifulsoup4
     #   fastapi
     #   opentelemetry-api
     #   pydantic
     #   pydantic-core
     #   sqlalchemy
-    #   starlette
     #   typing-inspection
 typing-inspection==0.4.4
     # via
