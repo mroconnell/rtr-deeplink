@@ -11529,6 +11529,22 @@ https://vimeo.com/1226666749,vimeo,hand-approved,,,,0,accept,hand-approved: Ryan
 https://vimeo.com/337801428,vimeo,hand-approved,,,,0,accept,hand-approved: Ryan 2026-10-12; length unknown (Vimeo probe got no answer in 120 s; Vimeo answers the server 401/403/404); accepted and queued with length unknown,,2026-10-12T00:00:00+00:00
 https://vimeo.com/1233109217,vimeo,vimeo-oembed,9334.00,2026-10-05,,1,accept,,6.13,2026-10-12T21:00:17+00:00
 https://vimeo.com/1229010286,vimeo,vimeo-oembed,1529.00,2026-09-21,,1,accept,,5.57,2026-10-12T21:00:45+00:00
+https://poundridge.granicus.com/MediaPlayer.php?view_id=1&clip_id=268,granicus,range-asf-header,,,,0,reject-dead,ranged GET on the media file returned HTTP 403,0.06,2026-10-13T00:58:47+00:00,,0
+https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1260,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.03,2026-10-13T00:58:51+00:00,,0
+https://townmeetings.s3.us-east-2.amazonaws.com/Conservation+/2026/09-01-26+CC+Meeting+Recording.mp4,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.23,2026-10-13T00:58:53+00:00,,0
+https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=151264&autoplay=no,civicmedia,hls-master+variant,182.98,,,0,accept,,0.17,2026-10-13T00:58:55+00:00,,0
+https://vista.granicus.com/MediaPlayer.php?view_id=2&clip_id=1818,granicus,range-asf-header,,,,0,reject-dead,ranged GET on the media file returned HTTP 403,0.01,2026-10-13T00:58:58+00:00,,0
+https://tx-selma.civicplus.com/CivicMedia?VID=6,civicmedia,hls-master+variant,594.87,,,1,accept,,0.61,2026-10-13T00:59:02+00:00,,0
+https://tx-selma.civicplus.com/CivicMedia?VID=6,civicmedia,hls-master+variant,594.87,,,1,accept,,0.09,2026-10-13T00:59:02+00:00,feed_tier3_auto_transcription,0
+https://reflect-dennis.cablecast.tv/internetchannel/show/3206,cablecast,cablecast-api,1963.00,2026-09-21,,1,accept,,0.28,2026-10-13T00:59:04+00:00,,0
+https://reflect-dennis.cablecast.tv/internetchannel/show/3206,cablecast,cablecast-api,1963.00,2026-09-21,,1,accept,,0.02,2026-10-13T00:59:04+00:00,feed_tier3_auto_transcription,0
+https://reflect-forestlake.cablecast.tv/internetchannel/show/3728,cablecast,cablecast-api,4373.00,2026-08-28,,1,accept,,0.12,2026-10-13T00:59:07+00:00,,0
+https://reflect-forestlake.cablecast.tv/internetchannel/show/3728,cablecast,cablecast-api,4373.00,2026-08-28,,1,accept,,0.01,2026-10-13T00:59:07+00:00,feed_tier3_auto_transcription,0
+https://www.dropbox.com/scl/fi/grocbu6gblgwr1lkfh4k0/Septemeber-1-2026-Board-of-Supervisors-Regular-Meeting.mp4?rlkey=o2da31zalchocmku8z8wbnu35&st=74qrcedc&dl=0,direct_file,ranged-get+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,1.05,2026-10-13T00:59:10+00:00,,0
+https://pub-lincolncity.escribemeetings.com/Meeting.aspx?Id=c1e3ff02-337f-4f09-b7dc-0f7465a6c283,escribe,hls-master+variant,760.47,,,1,accept,,0.35,2026-10-13T00:59:15+00:00,,0
+https://pub-lincolncity.escribemeetings.com/Meeting.aspx?Id=c1e3ff02-337f-4f09-b7dc-0f7465a6c283,escribe,hls-master+variant,760.47,,,1,accept,,0.30,2026-10-13T00:59:16+00:00,feed_tier3_auto_transcription,0
+https://videoplayer.telvue.com/player/GNduNoua2rBThhw6N4PRP9OCSPf6B2ru/media/1016341,telvue,telvue-page-json,4844.00,,,1,accept,,0.36,2026-10-13T00:59:18+00:00,,0
+https://videoplayer.telvue.com/player/GNduNoua2rBThhw6N4PRP9OCSPf6B2ru/media/1016341,telvue,telvue-page-json,4844.00,,,1,accept,,0.38,2026-10-13T00:59:19+00:00,feed_tier3_auto_transcription,0
 https://archive.org/download/school-board-ws-4178-260928/School%20Board%20WS%204178_260928.ia.mp4,direct_file,head+ffprobe,1705.92,2026-09-29,155339011,1,accept,,1.13,2026-10-12T22:45:48+00:00,,0
 https://archive.org/download/richmond-selectbd-vcdploan-09142026/RichmondSelectbdVCDPLoan09142026.mp4,direct_file,head+ffprobe,5229.69,2026-09-15,392015857,1,accept,,1.68,2026-10-12T22:45:50+00:00,,0
 https://archive.org/download/underhill-spec-selectbd-10082026/UnderhillSpecSelectbd10082026.mp4,direct_file,head+ffprobe,4270.61,2026-10-12,408703448,1,accept,,1.15,2026-10-12T22:45:51+00:00,,0

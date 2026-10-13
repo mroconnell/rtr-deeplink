@@ -225,18 +225,8 @@ https://coym.civicweb.net/Portal/MeetingInformation.aspx?Id=3291		us:county:2717
 https://coshawanowi.civicweb.net/Portal/MeetingInformation.aspx?Id=19463		us:county:55115
 https://ciindependenceor.civicweb.net/Portal/MeetingInformation.aspx?Id=10982		us:place:4136150
 https://citymedfordwi.civicweb.net/Portal/MeetingInformation.aspx?Id=5271		us:place:5550425
-https://poundridge.granicus.com/MediaPlayer.php?view_id=1&clip_id=268	https://poundridge.granicus.com/MediaPlayer.php?view_id=1&clip_id=268	us:cousub:3611959685
 https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1260	https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1260	us:place:5587725
-https://townmeetings.s3.us-east-2.amazonaws.com/Conservation+/2026/09-01-26+CC+Meeting+Recording.mp4	https://ct-canton.civicplus.com/AgendaCenter	us:cousub:0911012270
 https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=151264&autoplay=no	https://www.mountairy.org/
-https://vista.granicus.com/MediaPlayer.php?view_id=2&clip_id=1818		us:place:0682996
-https://tx-selma.civicplus.com/CivicMedia?VID=6		us:place:4866704
-https://reflect-dennis.cablecast.tv/internetchannel/show/3206	https://reflect-dennis.cablecast.tv/internetchannel/show/3206	us:cousub:2500116775
-https://reflect-forestlake.cablecast.tv/internetchannel/show/3728	https://reflect-forestlake.cablecast.tv/internetchannel/show/3728	us:place:2712718
-https://www.dropbox.com/scl/fi/grocbu6gblgwr1lkfh4k0/Septemeber-1-2026-Board-of-Supervisors-Regular-Meeting.mp4?rlkey=o2da31zalchocmku8z8wbnu35&st=74qrcedc&dl=0	https://www.dropbox.com/scl/fi/grocbu6gblgwr1lkfh4k0/Septemeber-1-2026-Board-of-Supervisors-Regular-Meeting.mp4?rlkey=o2da31zalchocmku8z8wbnu35&st=74qrcedc&dl=0	us:county:51031
-https://suffolkva.granicus.com/ViewPublisher.php?view_id=2	https://suffolkva.granicus.com/ViewPublisher.php?view_id=2	us:place:5176432
-https://pub-lincolncity.escribemeetings.com/Meeting.aspx?Id=c1e3ff02-337f-4f09-b7dc-0f7465a6c283	https://pub-lincolncity.escribemeetings.com/Meeting.aspx?Id=c1e3ff02-337f-4f09-b7dc-0f7465a6c283	us:place:4142600
-https://videoplayer.telvue.com/player/GNduNoua2rBThhw6N4PRP9OCSPf6B2ru/media/1016341	https://videoplayer.telvue.com/player/GNduNoua2rBThhw6N4PRP9OCSPf6B2ru/media/1016341	rtr:us:pa:university-area-joint-authority
 https://yazoo.granicus.com/MediaPlayer.php?view_id=1&clip_id=236	https://cityofyazoocity.org/	us:place:2881520
 https://justintx.new.swagit.com/videos/308727	https://cityofjustin.com/276/Watch-Meetings	us:place:4838332
 https://rdale.granicus.com/MediaPlayer.php?view_id=2&clip_id=1412	https://www.rdale.org/discover/school-board	us:sd:2731780
