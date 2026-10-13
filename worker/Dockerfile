@@ -45,6 +45,13 @@ COPY worker worker
 # layer sits below the code COPYs on purpose: any code-triggered rebuild
 # invalidates it, so freshness tracks merge cadence with no manual bump.
 # Do not "fix" staleness by pinning these two -- that reverses WO-11.
-RUN pip install --no-cache-dir --upgrade yt-dlp faster-whisper
+#
+# `av` (PyAV) is upgraded here too, on purpose. faster-whisper only
+# declares a loose `av>=` floor, so upgrading faster-whisper alone leaves
+# an older cached `av` in place when it still satisfies the floor. A newer
+# faster-whisper then calls `av.open(..., metadata_errors="ignore")`, which
+# the old `av` rejects: "open() got an unexpected keyword argument
+# 'metadata_errors'" on chunk 0 of every job (2026-10-12, job 7940).
+RUN pip install --no-cache-dir --upgrade yt-dlp faster-whisper av
 
 CMD ["python", "-m", "worker.main"]
