@@ -125,7 +125,8 @@ Standing decisions — do NOT re-raise  (17)
   The Archive files a page under whatever `gov_id` a sweep sends: do…
   A single job still makes N consecutive pulls to the same host — WO-40…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (65)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (66)
+  The "no adapter" comment on `MULTI_GOV_HOSTS` is out of date: BoxCast…
   `swagit.py`'s title parser cuts a hyphenated place name in half,…
   Run Meeting Finder on the 7,599 never-checked and "no platform link…
   Pages whose stored source URL their own adapter can't re-resolve are…
@@ -980,6 +981,15 @@ WO-932 and WO-913.
   the `GET /internal/transcription-failure-analysis` endpoint.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
+
+
+### The "no adapter" comment on `MULTI_GOV_HOSTS` is out of date: BoxCast has an adapter, and Dropbox and Drive single files resolve through `direct_file` `[JUST-DO-IT]` `[EASY]`
+
+- **Issue**: `app/utils/gov_registry/registry.py` lists `facebook.com`, `fb.watch`, `boxcast.tv`, `livestream.com`, `soundcloud.com`, `drive.google.com`, `drive.usercontent.google.com`, `dropbox.com` and `sharepoint.com` under a comment saying no adapter in `app/platforms/` resolves them. That is wrong for two of them: `app/platforms/boxcast.py` exists (rtr-business `UNSUPPORTED_PLATFORMS.md` already says the old BoxCast note predates the build), and a Dropbox or Drive link with a real filename and extension resolves through `direct_file.py`. `livestream.com` is dead rather than unsupported: on 2026-10-13 its robots.txt and an event page both answered 302 to `vimeo.com/features/livestreaming`. `tenant_key.py`'s `OUT_OF_SCOPE_HOSTS` has the same list without `boxcast.tv`.
+- **Impact**: none at run time. The comment misleads the next reader into thinking BoxCast cannot resolve.
+- **Next action**: reword the comment into two groups. Truly unsupported: `facebook.com`, `fb.watch`, `soundcloud.com`, `sharepoint.com`, plus `livestream.com` (dead, see `UNSUPPORTED_PLATFORMS.md`). Kept for pin safety although something resolves them: `boxcast.tv` (`boxcast.py`), `dropbox.com` and the two Drive hosts (single files, via `direct_file.py`). No behaviour change.
+- **Constraint**: do not remove any host from the set. The safeguard still refuses a blank-match pin on all of them.
+- **History**: found 2026-10-13 while checking `livestream.com` against the unsupported-platform file (rtr-business `research/UNSUPPORTED_PLATFORMS.md`, `ENUMERATION_METHODS.md` §401 follow-ups).
 
 ### `swagit.py`'s title parser cuts a hyphenated place name in half, filing the meeting under the wrong government `[JUST-DO-IT]` `[EASY]`
 
