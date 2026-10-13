@@ -11570,3 +11570,16 @@ https://vimeo.com/1225952855/66b42e1fab,vimeo,resolve,,,,0,reject-dead,resolve r
 https://vimeo.com/726134356,vimeo,resolve,,,,0,reject-dead,resolve returned no video_url,0.41,2026-10-13T12:19:06+00:00,,0
 https://vimeo.com/821090477,vimeo,vimeo-oembed,7569.00,2023-04-25,,1,accept,,5.79,2026-10-13T12:19:10+00:00,,0
 https://vimeo.com/1012214426/a2a3825261,vimeo,vimeo-oembed,6364.00,2024-09-23,,1,accept,,5.16,2026-10-13T12:19:12+00:00,,0
+https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1260,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.19,2026-10-13T14:35:15+00:00,,0
+https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=151264&autoplay=no,civicmedia,hls-master+variant,182.98,,,0,accept,,0.47,2026-10-13T14:35:18+00:00,,0
+https://yazoo.granicus.com/MediaPlayer.php?view_id=1&clip_id=236,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.06,2026-10-13T14:35:22+00:00,,0
+https://justintx.new.swagit.com/videos/308727,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.06,2026-10-13T14:35:23+00:00,,0
+https://rdale.granicus.com/MediaPlayer.php?view_id=2&clip_id=1412,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.06,2026-10-13T14:35:27+00:00,,0
+https://midlothianisdtx.new.swagit.com/videos/399554,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.06,2026-10-13T14:35:29+00:00,,0
+https://newberlinwi.portal.civicclerk.com/event/2025/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.29,2026-10-13T14:35:32+00:00,,0
+https://taylortx.portal.civicclerk.com/event/2023/media,civicclerk,,,,,0,reject-dead,no probe recipe for this media shape: https://taylortx.new.swagit.com/videos/399437,0.00,2026-10-13T14:35:35+00:00,,0
+https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1254,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.06,2026-10-13T14:35:39+00:00,,0
+https://manortx.new.swagit.com/videos/400366,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.06,2026-10-13T14:35:41+00:00,,0
+https://townhallstreams.com/stream.php?location_id=69&id=35034,townhallstreams,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 404,0.39,2026-10-13T14:35:44+00:00,,0
+https://townhallstreams.com/stream.php?location_id=90&id=76295,townhallstreams,hls-master+variant,10782.78,,,1,accept,,6.19,2026-10-13T14:35:52+00:00,,0
+https://townhallstreams.com/stream.php?location_id=90&id=76295,townhallstreams,hls-master+variant,10782.78,,,1,accept,,0.48,2026-10-13T14:35:53+00:00,feed_tier3_auto_transcription,0
