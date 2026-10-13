@@ -1,7 +1,7 @@
 fastapi>=0.142.2
 uvicorn[standard]>=0.54.0
 jinja2>=3.1
-aiohttp>=3.9
+aiohttp>=3.14.4
 langdetect>=1.0.9
 # WO-1083: archive/utils/video_refresh.py's fresh_video_url() lazily
 # imports app/platforms/boxcast.py (its "boxcast"/"civicmedia" refresh
