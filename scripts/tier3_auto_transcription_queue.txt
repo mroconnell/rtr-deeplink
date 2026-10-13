@@ -251,12 +251,8 @@ https://www.youtube.com/watch?v=xIZGNsSd_Fw	https://centertexas.org/city-council
 https://www.youtube.com/watch?v=DPIPTs6L90Y	https://floresvilletx.gov/	us:place:4826160
 https://www.youtube.com/watch?v=h45ALQNsuDg	https://www.mountaincitytx.gov/meetings/recent	us:place:4849600
 https://www.youtube.com/watch?v=wmBH4fPqn00	https://cityoflamarque.gov/693/Video-Resources	us:place:4841116
-https://newberlinwi.portal.civicclerk.com/event/2025/media	https://newberlinwi.portal.civicclerk.com/event/2025/media	us:place:5556375
-https://taylortx.portal.civicclerk.com/event/2023/media	https://taylortx.portal.civicclerk.com/event/2023/media	us:county:48441
 https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1254	https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1254	us:place:5587725
 https://manortx.new.swagit.com/videos/400366	https://manortx.new.swagit.com/videos/400366	us:place:4846440
-https://townhallstreams.com/stream.php?location_id=69&id=35034	https://townhallstreams.com/stream.php?location_id=69&id=35034	us:cousub:0911044910
-https://townhallstreams.com/stream.php?location_id=90&id=76295	https://townhallstreams.com/stream.php?location_id=90&id=76295	us:place:0636056
 https://townhallstreams.com/stream.php?location_id=103&id=57839	https://townhallstreams.com/stream.php?location_id=103&id=57839	us:cousub:2302559005
 https://townhallstreams.com/stream.php?location_id=138&id=76117	https://townhallstreams.com/stream.php?location_id=138&id=76117	us:cousub:3602150452
 https://townhallstreams.com/stream.php?location_id=157&id=60590	https://townhallstreams.com/stream.php?location_id=157&id=60590	us:cousub:3301916340
