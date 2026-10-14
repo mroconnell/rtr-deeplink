@@ -14,7 +14,7 @@
 **Rules used.**
 - Claims only `https://archive.org/details/{item_id}` (http, www, trailing slash, query, hash). A `/download/...` link still goes to `direct_file`. A test proves it.
 - One request to `archive.org/metadata/{item_id}`, then at most one for the caption file. Never YouTube, never a media download.
-- Caption order: `*.en.vtt`, any `.vtt`, `*.en.asr.srt` / `.en.srt`, any `.srt`. SRT is supported because the repo already had an SRT parser.
+- Caption order: `*.en.vtt`, any `.vtt`, `*.en.asr.srt` / `.en.srt`, any `.srt`. SRT is supported because the repo already had an SRT parser. The note "Captions are archive.org's own speech recognition." is added only when the caption file used is an `.asr.` file; an `.en.vtt` on an item with a `youtube-id` is YouTube's own text, so it gets "Captions were copied from the YouTube video." instead.
 - A missing, dark or media-less item gives a plain warning and no video. It never raises.
 - `youtube-id` is recorded as `external_id` `youtube:{id}` with the note "Copy of a YouTube video held by the Internet Archive." It is not fetched.
 - Government fields stay blank. `creator` is the station, so it goes in no government field. `archive.org` is in `MULTI_GOV_HOSTS`. Callers pass an explicit `gov_id`. No per-item pins.

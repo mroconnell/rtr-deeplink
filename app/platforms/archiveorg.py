@@ -25,8 +25,8 @@ Mapping:
 * `youtube-id` in the metadata becomes `external_id` = `youtube:{id}` (recorded, never fetched) and the reader sees "Copy of a YouTube video held by the
   Internet Archive." Without it, `external_id` = `archiveorg:{item_id}`.
 * Captions, in this order: `*.en.vtt`, any other `*.vtt`, `*.en.asr.srt`/`*.en.srt`, any other `*.srt`. VTT and SRT both parse (`parse_captions_by_extension`
-  in `app/utils/vtt_parser.py` already carries an SRT parser). A file name with `.asr.`, or an item that lists any `.asr.srt`, gets the note
-  "Captions are archive.org's own speech recognition."
+  in `app/utils/vtt_parser.py` already carries an SRT parser). The note "Captions are archive.org's own speech recognition."
+  is added only when the caption file used is an `.asr.` file; any other caption file on an item with a `youtube-id` gets "Captions were copied from the YouTube video."
 * No caption file: no segments and "No captions found for this video." (tier 3).
 * A missing item, a dark or restricted item, or an item with no mp4/mp3 gives a result with a plain warning and no `video_url`. Nothing raises.
 
@@ -55,6 +55,7 @@ _USER_AGENT = "RedTapeRecordings/1.0 (+https://redtaperecordings.com)"
 
 COPY_WARNING = "Copy of a YouTube video held by the Internet Archive."
 MACHINE_CAPTION_NOTE = "Captions are archive.org's own speech recognition."
+YOUTUBE_CAPTION_NOTE = "Captions were copied from the YouTube video."
 NO_CAPTIONS_NOTE = "No captions found for this video."
 
 _DETAILS_RE = re.compile(r"^/details/(?P<id>[^/?#]+)/?$")
@@ -218,11 +219,7 @@ class ArchiveOrgAssetFinder(AssetFinder):
             resolved.video_duration_seconds = parse_length(media.get("length"))
 
             caption = _pick_caption(files)
-            machine = bool(caption and ".asr." in caption["name"].lower()) or any(
-                ".asr." in (f.get("name") or "").lower()
-                and _ext(f.get("name", "")) == "srt"
-                for f in files
-            )
+            machine = bool(caption and ".asr." in caption["name"].lower())
             cues = None
             if caption:
                 cues = await self._fetch_cues(
@@ -232,6 +229,8 @@ class ArchiveOrgAssetFinder(AssetFinder):
                 resolved.segments = [TranscriptSegment(**c) for c in cues]
                 if machine:
                     resolved.transcript_warnings.append(MACHINE_CAPTION_NOTE)
+                elif youtube_id:
+                    resolved.transcript_warnings.append(YOUTUBE_CAPTION_NOTE)
                 if is_likely_garbled(cues, lang="en"):
                     resolved.transcript_warnings.append(
                         "This transcript looks garbled at the source (not a parsing "

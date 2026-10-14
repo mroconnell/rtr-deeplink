@@ -132,7 +132,8 @@ async def test_youtube_mirror_gets_segments_external_id_and_both_notes():
     assert result.segments[0].text.startswith("Good evening everyone")
     warnings = result.transcript_warnings
     assert "Copy of a YouTube video held by the Internet Archive." in warnings
-    assert "Captions are archive.org's own speech recognition." in warnings
+    assert "Captions were copied from the YouTube video." in warnings
+    assert "Captions are archive.org's own speech recognition." not in warnings
     assert "No captions found for this video." not in warnings
     assert result.jurisdiction is None and result.meeting_body is None
 
