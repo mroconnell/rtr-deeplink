@@ -1,5 +1,28 @@
 # Backlog — done
 
+## [Done 2026-10-14] Internet Archive item pages (archive.org/details/{item_id}) resolve into a meeting (WO-1962)
+
+**What was done and why.** The Internet Archive holds a large bulk mirror of local-government YouTube channels. Each mirror item carries the station's YouTube id, an mp4 and an mp3, and about half carry captions. Fetching these from archive.org (plain public HTTP) avoids YouTube. Added `app/platforms/archiveorg.py`, platform `archiveorg`. Nothing was ingested.
+
+**Result.** Checked on this Mac, 2026-10-14. The adapter ran only against saved real responses (eight requests or fewer to archive.org, none to any other host).
+
+| Item | Kind | Video | Segments | Tier |
+|---|---|---|---:|---|
+| `bos-2021-05-11` (Foxborough select board) | Own-station upload | mp4 (71 min), date 2021-05-11 from metadata | 0 | 3 |
+| `orcavt-Berlin_Selectboard_-_September_28_2026_BNS-CRVIP1m2Lo0` | YouTube mirror | mp4 (84 min), date 2026-10-02 | Read from `.en.vtt` | 1 |
+
+**Rules used.**
+- Claims only `https://archive.org/details/{item_id}` (http, www, trailing slash, query, hash). A `/download/...` link still goes to `direct_file`. A test proves it.
+- One request to `archive.org/metadata/{item_id}`, then at most one for the caption file. Never YouTube, never a media download.
+- Caption order: `*.en.vtt`, any `.vtt`, `*.en.asr.srt` / `.en.srt`, any `.srt`. SRT is supported because the repo already had an SRT parser.
+- A missing, dark or media-less item gives a plain warning and no video. It never raises.
+- `youtube-id` is recorded as `external_id` `youtube:{id}` with the note "Copy of a YouTube video held by the Internet Archive." It is not fetched.
+- Government fields stay blank. `creator` is the station, so it goes in no government field. `archive.org` is in `MULTI_GOV_HOSTS`. Callers pass an explicit `gov_id`. No per-item pins.
+
+**Caution.** The mirror's `.en.vtt` is YouTube-style roll-up text. The existing roll-up cleaner handled it in the saved sample. Only the first 60 lines of one caption file were saved, so long-file behaviour is not tested here. The 404, dark, no-media and SRT paths are tested on hand-edited copies of the real metadata, not on live items of those kinds.
+
+**Other touches.** `detect_platform()`, registration, `CUSTOM_PLATFORMS` label "Internet Archive item", `tenant_key.py` rule (no key), README row, canary URL `https://archive.org/details/bos-2021-05-11`, 15 tests in `tests/test_archiveorg.py`. On `main` only after merge; it needs a deploy to go live.
+
 ## [Done 2026-10-12] Cablecast: read the video's own caption track when a show has no transcript file
 
 **What was done and why.** Some Cablecast stations (Hudson NH, Centerville OH) mark a meeting as captioned, but the page data has no transcript file. The adapter gave back video and 0 segments, so the meeting looked like it had no captions. The captions were there all along: the video's playlist (`vod.m3u8`) points to an English caption track, cut into 10-second pieces. The adapter already read that track for one other URL shape. It now reads it here too, when nothing else was found.

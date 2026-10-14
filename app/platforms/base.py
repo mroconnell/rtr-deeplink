@@ -513,6 +513,12 @@ def detect_platform(url: str) -> str:
         # CATS (Community Access Television Services, Bloomington IN): one station, many governments. Confirmed live 2026-10-10 -- see catstv.py.
         # Any catstv.net path routes here; the adapter says plainly when a page is not a single meeting.
         return "catstv"
+    if netloc in ("archive.org", "www.archive.org") and re.match(
+        r"^/details/[^/]+/?$", urlparse(url).path
+    ):
+        # Internet Archive item page (WO-1962): one shared host, any government's items. ONLY /details/{item_id} -- a /download/... media link stays on
+        # the direct_file path below (existing queue lines depend on it). See archiveorg.py.
+        return "archiveorg"
     if netloc == "media.avcaptureall.cloud":
         # AV Capture All (WO-1190): one viewer site for many small governments; a meeting is /meeting/{guid}. Office-Mac only (the record needs a
         # browser-minted AWS WAF token) -- see avcaptureall.py. Any path on the host routes here; the adapter says plainly when it is not a meeting.
