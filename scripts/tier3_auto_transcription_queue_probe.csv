@@ -11720,3 +11720,6 @@ https://cloud.castus.tv/vod/westchester/video/6aa96d05450ae18fceb28813?page=ALL,
 https://s3.us-west-2.amazonaws.com/sturbridge.castus-vod/vod/video/cf225744-7b58-4718-89a8-9a96877e79bb/video.original.mp4,direct_file,head+ffprobe,3745.54,2026-05-04,883857651,1,accept,,0.92,2026-10-14T18:31:45+00:00
 https://s3.us-west-2.amazonaws.com/lynn.castus-vod/1/4/b/0/9/2/14b092e0-eafc-41f9-b62e-bb7d36683be4%2B17262417181726239374849366.vod.480p.School%20Committee%20Meeting%20%7C%20September%2012%2C%202024.mov.mp4,direct_file,head+ffprobe,4212.75,2024-09-13,339095114,1,accept,,1.07,2026-10-14T18:31:48+00:00
 https://s3.us-west-2.amazonaws.com/sturbridge.castus-vod/vod/video/671ae616-5bdb-4caa-9fe5-62e995bd2dc6/video.original.mp4,direct_file,head+ffprobe,3064.77,2026-09-16,723562790,1,accept,,3.42,2026-10-14T18:31:49+00:00
+https://archive.org/download/bos-2021-05-11/BOS2021_05_11.mp3,direct_file,ranged-get+ffprobe,4271.25,2021-05-12,51308014,1,accept,,4.59,2026-10-14T18:43:45+00:00
+https://archive.org/download/sc-2020-09-22/SC2020_09_22.mp3,direct_file,head+ffprobe,5177.26,2020-09-25,62191173,1,accept,,1.99,2026-10-14T18:43:44+00:00
+https://archive.org/download/gov-hdc-2023-03-16/Gov_HDC_2023-03-16.mp4,direct_file,head+ffprobe,5466.00,2023-04-04,315630591,1,accept,,7.20,2026-10-14T18:42:41+00:00
