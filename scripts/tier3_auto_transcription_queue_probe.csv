@@ -11713,3 +11713,6 @@ https://media.avcaptureall.cloud/meeting/57aef9c4-852c-44e2-9ee2-6a382e889dc9,av
 https://media.avcaptureall.cloud/meeting/b2ccc869-6680-4c98-80fb-0939ff9c64ad,avcaptureall,head+ffprobe,5637.30,2026-10-13,731475889,1,accept,,1.13,2026-10-14T17:55:45+00:00,bulk_ingest,0
 https://media.avcaptureall.cloud/meeting/56775c5f-d4a3-4a53-97b4-6bfa11c3a4dd,avcaptureall,head+ffprobe,19104.36,2026-10-07,2489011592,1,accept,,1.47,2026-10-14T17:55:50+00:00,bulk_ingest,0
 https://media.avcaptureall.cloud/meeting/233b6e7a-82d2-414a-a219-b5d66250e153,avcaptureall,head+ffprobe,12284.84,2026-10-01,1557253666,1,accept,,1.34,2026-10-14T17:55:56+00:00,bulk_ingest,0
+https://archive.org/download/bos-2021-05-11/BOS2021_05_11.mp3,direct_file,ranged-get+ffprobe,4271.25,2021-05-12,51308014,1,accept,,4.59,2026-10-14T18:43:45+00:00
+https://archive.org/download/sc-2020-09-22/SC2020_09_22.mp3,direct_file,head+ffprobe,5177.26,2020-09-25,62191173,1,accept,,1.99,2026-10-14T18:43:44+00:00
+https://archive.org/download/gov-hdc-2023-03-16/Gov_HDC_2023-03-16.mp4,direct_file,head+ffprobe,5466.00,2023-04-04,315630591,1,accept,,7.20,2026-10-14T18:42:41+00:00

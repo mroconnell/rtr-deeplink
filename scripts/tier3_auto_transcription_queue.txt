@@ -1467,3 +1467,6 @@ https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1254	https://wi
 https://manortx.new.swagit.com/videos/400366	https://manortx.new.swagit.com/videos/400366	us:place:4846440
 https://yazoo.granicus.com/MediaPlayer.php?view_id=1&clip_id=237	https://yazoo.granicus.com/MediaPlayer.php?view_id=1&clip_id=237	us:place:2881520
 https://hastingsonhudsonny.swagit.com/play/10102024-509	https://hastingsonhudsonny.swagit.com/play/10102024-509	us:place:3632710
+https://archive.org/download/bos-2021-05-11/BOS2021_05_11.mp3	https://archive.org/details/bos-2021-05-11	us:cousub:2502124820	Foxborough Board of Selectmen - 2021-05-11	2021-05-11	Board of Selectmen
+https://archive.org/download/sc-2020-09-22/SC2020_09_22.mp3	https://archive.org/details/sc-2020-09-22	us:sd:2504950	Foxborough School Committee - 2020-09-22	2020-09-22	School Committee
+https://archive.org/download/gov-hdc-2023-03-16/Gov_HDC_2023-03-16.mp4	https://archive.org/details/gov-hdc-2023-03-16	us:cousub:2501943790	Nantucket Historic District Commission - 2023-03-16	2023-03-16	Historic District Commission
