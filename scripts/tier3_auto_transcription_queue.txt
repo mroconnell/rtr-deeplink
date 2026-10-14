@@ -245,21 +245,9 @@ https://www.youtube.com/watch?v=xIZGNsSd_Fw	https://centertexas.org/city-council
 https://www.youtube.com/watch?v=DPIPTs6L90Y	https://floresvilletx.gov/	us:place:4826160
 https://www.youtube.com/watch?v=h45ALQNsuDg	https://www.mountaincitytx.gov/meetings/recent	us:place:4849600
 https://www.youtube.com/watch?v=wmBH4fPqn00	https://cityoflamarque.gov/693/Video-Resources	us:place:4841116
-https://townhallstreams.com/stream.php?location_id=171&id=76094	https://townhallstreams.com/stream.php?location_id=171&id=76094	us:cousub:3608329674
-https://townhallstreams.com/stream.php?location_id=174&id=76216	https://townhallstreams.com/stream.php?location_id=174&id=76216	us:cousub:3301540100
-https://townhallstreams.com/stream.php?location_id=175&id=76135	https://townhallstreams.com/stream.php?location_id=175&id=76135	us:cousub:2302766635
-https://shorewoodmn.portal.civicclerk.com/event/409/media	https://shorewoodmn.portal.civicclerk.com/event/409/media	us:place:2760016
-https://jodaviesscoil.portal.civicclerk.com/event/2478/media	https://jodaviesscoil.portal.civicclerk.com/event/2478/media	us:county:17085
-https://rowancountync.portal.civicclerk.com/event/419/media	https://rowancountync.portal.civicclerk.com/event/419/media	us:county:37159
 https://vimeo.com/646562708	https://vimeo.com/646562708	us:county:37013
 https://vimeo.com/707985726	https://vimeo.com/707985726	us:county:53053
 https://vimeo.com/537299140	https://vimeo.com/537299140	us:place:4532245
-https://yazoo.granicus.com/MediaPlayer.php?view_id=1&clip_id=237	https://yazoo.granicus.com/MediaPlayer.php?view_id=1&clip_id=237	us:place:2881520
-https://hendersontx.portal.civicclerk.com/event/176/media	https://hendersontx.portal.civicclerk.com/event/176/media	us:place:4833212
-http://www.crowwingcountymn.iqm2.com/Citizens/Detail_Meeting.aspx?ID=21876	http://www.crowwingcountymn.iqm2.com/Citizens/Detail_Meeting.aspx?ID=21876	us:county:27035
-https://hastingsonhudsonny.swagit.com/play/10102024-509	https://hastingsonhudsonny.swagit.com/play/10102024-509	us:place:3632710
-https://brooklinema.portal.civicclerk.com/event/16635/media	https://brooklinema.portal.civicclerk.com/event/16635/media	us:cousub:2502109175
-https://www.utah.gov/pmn/sitemap/notice/1098323.html	https://www.utah.gov/pmn/sitemap/notice/1098323.html	us:place:4919680
 https://www.utah.gov/pmn/sitemap/notice/1100859.html	https://www.utah.gov/pmn/sitemap/notice/1100859.html	us:place:4925290
 https://www.utah.gov/pmn/sitemap/notice/1100993.html	https://www.utah.gov/pmn/sitemap/notice/1100993.html	us:place:4929580
 https://www.utah.gov/pmn/sitemap/notice/1103933.html	https://www.utah.gov/pmn/sitemap/notice/1103933.html	us:place:4939370
@@ -1493,3 +1481,5 @@ https://rdale.granicus.com/MediaPlayer.php?view_id=2&clip_id=1412	https://www.rd
 https://midlothianisdtx.new.swagit.com/videos/399554	https://www.midlothianisd.org/about/school-board/watch-live-on-demand	us:sd:4830600
 https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1254	https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1254	us:place:5587725
 https://manortx.new.swagit.com/videos/400366	https://manortx.new.swagit.com/videos/400366	us:place:4846440
+https://yazoo.granicus.com/MediaPlayer.php?view_id=1&clip_id=237	https://yazoo.granicus.com/MediaPlayer.php?view_id=1&clip_id=237	us:place:2881520
+https://hastingsonhudsonny.swagit.com/play/10102024-509	https://hastingsonhudsonny.swagit.com/play/10102024-509	us:place:3632710
