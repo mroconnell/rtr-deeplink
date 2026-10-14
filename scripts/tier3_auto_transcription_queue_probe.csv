@@ -11746,3 +11746,16 @@ https://resources.finalsite.net/videos/v1763756524/crk12org/eoc4bmvneeuzywgrm43f
 https://resources.finalsite.net/videos/v1758745091/myfisdcom/meg9rj68zz6eoydnjcod/BoardWOrkshopAudio.mov,direct_file,head+ffprobe,12560.07,2025-09-24,39128149,1,accept,,2.58,2026-10-14T19:04:15+00:00
 https://resources.finalsite.net/videos/v1769551072/district70org/swpi866lcbpf19ulrcsz/BoardMeeting10-13-2025Part1.mp3,direct_file,head+ffprobe,6168.95,2026-01-27,98707248,1,accept,,1.12,2026-10-14T19:04:18+00:00
 https://resources.finalsite.net/videos/v1729779038/denisonisdnet/tipnklucnfumdgjau7d1/20240123SchoolHealthAdvisoryCommitteeMeetingRecording11.m4a,direct_file,head+ffprobe,4264.23,2024-10-24,35937801,1,accept,,2.07,2026-10-14T19:04:22+00:00
+https://www.utah.gov/pmn/sitemap/notice/1086577.html,utah_pmn,,,,,0,reject-dead,no probe recipe for this media shape: https://www.utah.gov/pmn/files/1444445.pdf,0.00,2026-10-14T21:56:59+00:00,,0
+https://www.utah.gov/pmn/sitemap/notice/1096137.html,utah_pmn,,,,,0,reject-dead,no probe recipe for this media shape: https://www.utah.gov/pmn/files/1463255.docx,0.00,2026-10-14T21:57:00+00:00,,0
+https://www.utah.gov/pmn/sitemap/notice/1069761.html,utah_pmn,,,,,0,reject-dead,no probe recipe for this media shape: https://www.utah.gov/pmn/files/1417695.pdf,0.00,2026-10-14T21:57:02+00:00,,0
+https://www.utah.gov/pmn/sitemap/notice/1074923.html,utah_pmn,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.20,2026-10-14T21:57:04+00:00,,0
+https://www.utah.gov/pmn/sitemap/notice/1065203.html,utah_pmn,,,,,0,reject-dead,no probe recipe for this media shape: https://www.utah.gov/pmn/files/1402815.pdf,0.00,2026-10-14T21:57:06+00:00,,0
+https://www.utah.gov/pmn/sitemap/notice/1071705.html,utah_pmn,,,,,0,reject-dead,no probe recipe for this media shape: https://www.utah.gov/pmn/files/1415933.pdf,0.00,2026-10-14T21:57:08+00:00,,0
+https://reflect-yarmouth.cablecast.tv/internetchannel/show/3907,cablecast,cablecast-api,17895.00,2025-12-16,,1,accept,,0.21,2026-10-14T21:57:10+00:00,,0
+https://reflect-yarmouth.cablecast.tv/internetchannel/show/3907,cablecast,cablecast-api,17895.00,2025-12-16,,1,accept,,0.05,2026-10-14T21:57:10+00:00,feed_tier3_auto_transcription,0
+https://alisoviejoca.granicus.com/MediaPlayer.php?view_id=2&clip_id=283,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.09,2026-10-14T21:57:14+00:00,,0
+https://altoona.granicus.com/MediaPlayer.php?view_id=1&clip_id=839,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.05,2026-10-14T21:57:17+00:00,,0
+https://evansville.granicus.com/MediaPlayer.php?view_id=1&clip_id=8744,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.05,2026-10-14T21:57:20+00:00,,0
+https://greenevilletn.granicus.com/MediaPlayer.php?view_id=2&clip_id=9,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.05,2026-10-14T21:57:23+00:00,,0
+https://hiddenhillscity.granicus.com/MediaPlayer.php?view_id=1&clip_id=424,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.04,2026-10-14T21:57:26+00:00,,0
