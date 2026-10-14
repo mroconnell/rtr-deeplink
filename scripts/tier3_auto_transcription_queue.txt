@@ -248,20 +248,8 @@ https://www.youtube.com/watch?v=wmBH4fPqn00	https://cityoflamarque.gov/693/Video
 https://vimeo.com/646562708	https://vimeo.com/646562708	us:county:37013
 https://vimeo.com/707985726	https://vimeo.com/707985726	us:county:53053
 https://vimeo.com/537299140	https://vimeo.com/537299140	us:place:4532245
-https://www.utah.gov/pmn/sitemap/notice/1086577.html	https://www.utah.gov/pmn/sitemap/notice/1086577.html	us:place:4935740
-https://www.utah.gov/pmn/sitemap/notice/1096137.html	https://www.utah.gov/pmn/sitemap/notice/1096137.html	us:place:4935960
-https://www.utah.gov/pmn/sitemap/notice/1069761.html	https://www.utah.gov/pmn/sitemap/notice/1069761.html	us:place:4936620
-https://www.utah.gov/pmn/sitemap/notice/1074923.html	https://www.utah.gov/pmn/sitemap/notice/1074923.html	us:place:4980860
-https://www.utah.gov/pmn/sitemap/notice/1065203.html	https://www.utah.gov/pmn/sitemap/notice/1065203.html	us:place:4982510
-https://www.utah.gov/pmn/sitemap/notice/1071705.html	https://www.utah.gov/pmn/sitemap/notice/1071705.html	us:place:4982730
 https://vimeo.com/868329507	https://vimeo.com/868329507	us:cousub:2501125730
 https://liveoakcity.primegov.com/Portal/Meeting?meetingTemplateId=1764	https://liveoakcity.primegov.com/Portal/Meeting?meetingTemplateId=1764	us:place:0641936
-https://reflect-yarmouth.cablecast.tv/internetchannel/show/3907	https://reflect-yarmouth.cablecast.tv/internetchannel/show/3907	us:cousub:2500182525
-https://alisoviejoca.granicus.com/MediaPlayer.php?view_id=2&clip_id=283	https://alisoviejoca.granicus.com/MediaPlayer.php?view_id=2&clip_id=283	us:place:0600947
-https://altoona.granicus.com/MediaPlayer.php?view_id=1&clip_id=839	https://altoona.granicus.com/MediaPlayer.php?view_id=1&clip_id=839	us:place:5501550
-https://evansville.granicus.com/MediaPlayer.php?view_id=1&clip_id=8744	https://evansville.granicus.com/MediaPlayer.php?view_id=1&clip_id=8744	us:place:1822000
-https://greenevilletn.granicus.com/MediaPlayer.php?view_id=2&clip_id=9	https://greenevilletn.granicus.com/MediaPlayer.php?view_id=2&clip_id=9	us:place:4730980
-https://hiddenhillscity.granicus.com/MediaPlayer.php?view_id=1&clip_id=424	https://hiddenhillscity.granicus.com/MediaPlayer.php?view_id=1&clip_id=424	us:place:0633518
 https://kearney.granicus.com/MediaPlayer.php?view_id=1&clip_id=630	https://kearney.granicus.com/MediaPlayer.php?view_id=1&clip_id=630	us:place:3125055
 https://katyisdtx.new.swagit.com/videos/400838	https://www.katyisd.org/board/board/board-meeting-videos	us:sd:4825170
 https://drive.google.com/file/d/1Z2ir3mX1Fjhz3XlYpc-yLSXbD0dBdloI/view?usp=sharing	meeting_finder_group4	us:sd:3606210
@@ -1500,3 +1488,8 @@ https://resources.finalsite.net/videos/v1763756524/crk12org/eoc4bmvneeuzywgrm43f
 https://resources.finalsite.net/videos/v1758745091/myfisdcom/meg9rj68zz6eoydnjcod/BoardWOrkshopAudio.mov	https://resources.finalsite.net/videos/v1758745091/myfisdcom/meg9rj68zz6eoydnjcod/BoardWOrkshopAudio.mov	us:sd:4819950	Friendswood Independent School District - Board WOrkshop Audio
 https://resources.finalsite.net/videos/v1769551072/district70org/swpi866lcbpf19ulrcsz/BoardMeeting10-13-2025Part1.mp3	https://resources.finalsite.net/videos/v1769551072/district70org/swpi866lcbpf19ulrcsz/BoardMeeting10-13-2025Part1.mp3	us:sd:0806150	Pueblo County School District 70 - Board Meeting10-13-2025Part1	2025-10-13
 https://resources.finalsite.net/videos/v1729779038/denisonisdnet/tipnklucnfumdgjau7d1/20240123SchoolHealthAdvisoryCommitteeMeetingRecording11.m4a	https://resources.finalsite.net/videos/v1729779038/denisonisdnet/tipnklucnfumdgjau7d1/20240123SchoolHealthAdvisoryCommitteeMeetingRecording11.m4a	us:sd:4816710	Denison Independent School District - 20240123School Health Advisory Committee Meeting Recording11
+https://alisoviejoca.granicus.com/MediaPlayer.php?view_id=2&clip_id=283	https://alisoviejoca.granicus.com/MediaPlayer.php?view_id=2&clip_id=283	us:place:0600947
+https://altoona.granicus.com/MediaPlayer.php?view_id=1&clip_id=839	https://altoona.granicus.com/MediaPlayer.php?view_id=1&clip_id=839	us:place:5501550
+https://evansville.granicus.com/MediaPlayer.php?view_id=1&clip_id=8744	https://evansville.granicus.com/MediaPlayer.php?view_id=1&clip_id=8744	us:place:1822000
+https://greenevilletn.granicus.com/MediaPlayer.php?view_id=2&clip_id=9	https://greenevilletn.granicus.com/MediaPlayer.php?view_id=2&clip_id=9	us:place:4730980
+https://hiddenhillscity.granicus.com/MediaPlayer.php?view_id=1&clip_id=424	https://hiddenhillscity.granicus.com/MediaPlayer.php?view_id=1&clip_id=424	us:place:0633518
