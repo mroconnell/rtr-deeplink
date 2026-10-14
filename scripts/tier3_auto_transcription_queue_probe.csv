@@ -11659,3 +11659,16 @@ https://download.avcaptureall.cloud/customer-f1aae689-cb9e-4371-ad84-fceab4986af
 https://download.avcaptureall.cloud/customer-f5bc9920-ced8-43d4-99fc-12e588c4bf47/meetings/7bcffafe-1d37-4ce1-ae34-accfba734670/City%20Council_2026-10-12_06-00-48%20PM.mp4,direct_file,head+ffprobe,3893.07,2026-10-13,505483684,1,accept,,1.59,2026-10-14T00:22:21+00:00
 https://download.avcaptureall.cloud/customer-f5bc9920-ced8-43d4-99fc-12e588c4bf47/meetings/b4fe9f9a-9023-4873-a2b4-8095e2d06598/Planning%20Commission_2026-10-05_04-30-25%20PM.mp4,direct_file,head+ffprobe,7599.71,2026-10-06,987094065,1,accept,,1.55,2026-10-14T00:22:22+00:00
 https://download.avcaptureall.cloud/customer-f5d2631a-79e0-45cd-ba51-15212ab64b71/meetings/1e1a4bb1-4f38-4f8a-b6fc-8633cde719ad/Chehalis%20City%20Council_2026-10-12_05-00-34%20PM.mp4,direct_file,head+ffprobe,1845.18,2026-10-13,183249968,1,accept,,1.57,2026-10-14T00:22:24+00:00
+https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1260,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.09,2026-10-14T05:24:47+00:00,,0
+https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=151264&autoplay=no,civicmedia,hls-master+variant,182.98,,,0,accept,,0.86,2026-10-14T05:24:50+00:00,,0
+https://yazoo.granicus.com/MediaPlayer.php?view_id=1&clip_id=236,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-14T05:24:53+00:00,,0
+https://justintx.new.swagit.com/videos/308727,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-10-14T05:24:55+00:00,,0
+https://rdale.granicus.com/MediaPlayer.php?view_id=2&clip_id=1412,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-14T05:24:58+00:00,,0
+https://midlothianisdtx.new.swagit.com/videos/399554,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-10-14T05:24:59+00:00,,0
+https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1254,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-14T05:25:02+00:00,,0
+https://manortx.new.swagit.com/videos/400366,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-14T05:25:04+00:00,,0
+https://townhallstreams.com/stream.php?location_id=103&id=57839,townhallstreams,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 404,0.15,2026-10-14T05:25:06+00:00,,0
+https://townhallstreams.com/stream.php?location_id=138&id=76117,townhallstreams,hls-master+variant,7180.30,,,1,accept,,7.55,2026-10-14T05:25:16+00:00,,0
+https://townhallstreams.com/stream.php?location_id=138&id=76117,townhallstreams,hls-master+variant,7180.30,,,1,accept,,0.22,2026-10-14T05:25:16+00:00,feed_tier3_auto_transcription,0
+https://townhallstreams.com/stream.php?location_id=157&id=60590,townhallstreams,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 404,0.18,2026-10-14T05:25:19+00:00,,0
+https://townhallstreams.com/stream.php?location_id=158&id=76011,townhallstreams,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 404,0.19,2026-10-14T05:25:21+00:00,,0

@@ -225,12 +225,6 @@ https://coym.civicweb.net/Portal/MeetingInformation.aspx?Id=3291		us:county:2717
 https://coshawanowi.civicweb.net/Portal/MeetingInformation.aspx?Id=19463		us:county:55115
 https://ciindependenceor.civicweb.net/Portal/MeetingInformation.aspx?Id=10982		us:place:4136150
 https://citymedfordwi.civicweb.net/Portal/MeetingInformation.aspx?Id=5271		us:place:5550425
-https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1260	https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1260	us:place:5587725
-https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=151264&autoplay=no	https://www.mountairy.org/
-https://yazoo.granicus.com/MediaPlayer.php?view_id=1&clip_id=236	https://cityofyazoocity.org/	us:place:2881520
-https://justintx.new.swagit.com/videos/308727	https://cityofjustin.com/276/Watch-Meetings	us:place:4838332
-https://rdale.granicus.com/MediaPlayer.php?view_id=2&clip_id=1412	https://www.rdale.org/discover/school-board	us:sd:2731780
-https://midlothianisdtx.new.swagit.com/videos/399554	https://www.midlothianisd.org/about/school-board/watch-live-on-demand	us:sd:4830600
 https://www.youtube.com/watch?v=hNJQew9bCCc	https://coffeecounty.us/	us:county:01031
 https://www.youtube.com/watch?v=fyLu1QiMEis	https://www.jaspertx.org/	us:place:4837420
 https://www.youtube.com/watch?v=rgJJnoqX1DI	https://www.burnetcountytexas.org/1305/May-3-2025	us:county:48053
@@ -251,12 +245,6 @@ https://www.youtube.com/watch?v=xIZGNsSd_Fw	https://centertexas.org/city-council
 https://www.youtube.com/watch?v=DPIPTs6L90Y	https://floresvilletx.gov/	us:place:4826160
 https://www.youtube.com/watch?v=h45ALQNsuDg	https://www.mountaincitytx.gov/meetings/recent	us:place:4849600
 https://www.youtube.com/watch?v=wmBH4fPqn00	https://cityoflamarque.gov/693/Video-Resources	us:place:4841116
-https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1254	https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1254	us:place:5587725
-https://manortx.new.swagit.com/videos/400366	https://manortx.new.swagit.com/videos/400366	us:place:4846440
-https://townhallstreams.com/stream.php?location_id=103&id=57839	https://townhallstreams.com/stream.php?location_id=103&id=57839	us:cousub:2302559005
-https://townhallstreams.com/stream.php?location_id=138&id=76117	https://townhallstreams.com/stream.php?location_id=138&id=76117	us:cousub:3602150452
-https://townhallstreams.com/stream.php?location_id=157&id=60590	https://townhallstreams.com/stream.php?location_id=157&id=60590	us:cousub:3301916340
-https://townhallstreams.com/stream.php?location_id=158&id=76011	https://townhallstreams.com/stream.php?location_id=158&id=76011	us:cousub:2303100275
 https://townhallstreams.com/stream.php?location_id=171&id=76094	https://townhallstreams.com/stream.php?location_id=171&id=76094	us:cousub:3608329674
 https://townhallstreams.com/stream.php?location_id=174&id=76216	https://townhallstreams.com/stream.php?location_id=174&id=76216	us:cousub:3301540100
 https://townhallstreams.com/stream.php?location_id=175&id=76135	https://townhallstreams.com/stream.php?location_id=175&id=76135	us:cousub:2302766635
@@ -1497,3 +1485,11 @@ https://download.avcaptureall.cloud/customer-f1aae689-cb9e-4371-ad84-fceab4986af
 https://download.avcaptureall.cloud/customer-f5bc9920-ced8-43d4-99fc-12e588c4bf47/meetings/7bcffafe-1d37-4ce1-ae34-accfba734670/City%20Council_2026-10-12_06-00-48%20PM.mp4	https://media.avcaptureall.cloud/meeting/7bcffafe-1d37-4ce1-ae34-accfba734670	us:place:5379275	City Council	2026-10-12	Legislative
 https://download.avcaptureall.cloud/customer-f5bc9920-ced8-43d4-99fc-12e588c4bf47/meetings/b4fe9f9a-9023-4873-a2b4-8095e2d06598/Planning%20Commission_2026-10-05_04-30-25%20PM.mp4	https://media.avcaptureall.cloud/meeting/b4fe9f9a-9023-4873-a2b4-8095e2d06598	us:place:5379275	Planning Commission	2026-10-05	Planning Commission
 https://download.avcaptureall.cloud/customer-f5d2631a-79e0-45cd-ba51-15212ab64b71/meetings/1e1a4bb1-4f38-4f8a-b6fc-8633cde719ad/Chehalis%20City%20Council_2026-10-12_05-00-34%20PM.mp4	https://media.avcaptureall.cloud/meeting/1e1a4bb1-4f38-4f8a-b6fc-8633cde719ad	us:place:5311475	Chehalis City Council	2026-10-12	Legislative
+https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=151264&autoplay=no	https://www.mountairy.org/
+https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1260	https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1260	us:place:5587725
+https://yazoo.granicus.com/MediaPlayer.php?view_id=1&clip_id=236	https://cityofyazoocity.org/	us:place:2881520
+https://justintx.new.swagit.com/videos/308727	https://cityofjustin.com/276/Watch-Meetings	us:place:4838332
+https://rdale.granicus.com/MediaPlayer.php?view_id=2&clip_id=1412	https://www.rdale.org/discover/school-board	us:sd:2731780
+https://midlothianisdtx.new.swagit.com/videos/399554	https://www.midlothianisd.org/about/school-board/watch-live-on-demand	us:sd:4830600
+https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1254	https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1254	us:place:5587725
+https://manortx.new.swagit.com/videos/400366	https://manortx.new.swagit.com/videos/400366	us:place:4846440
