@@ -362,6 +362,9 @@ MULTI_GOV_HOSTS: FrozenSet[str] = frozenset(
         # AV Capture All (media.avcaptureall.cloud): one viewer site for many small governments; a meeting is `/meeting/{guid}` and does not name its
         # customer. Pins are `match=channel=avcapture:{customerGuid, lower case}`, matched against avcaptureall.py's `video_channel`.
         "media.avcaptureall.cloud",
+        # Internet Archive (archive.org): any government's items on one host (own-station uploads and bulk mirrors of YouTube channels), WO-1962. A page
+        # from here is filed only under an explicit caller gov_id or a per-item pin; the creator field names the station, not the government.
+        "archive.org",
     }
 )
 

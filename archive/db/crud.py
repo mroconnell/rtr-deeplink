@@ -6054,6 +6054,8 @@ CUSTOM_PLATFORMS: dict[str, str] = {
     # AV Capture All (media.avcaptureall.cloud) -- WO-1190, 2026-10-11. One viewer site for many small governments; direct .mp4 files and WebVTT
     # captions on download.avcaptureall.cloud, the record read through the headless browser (avcaptureall.py; office Macs only).
     "avcaptureall": "AV Capture All (media.avcaptureall.cloud)",
+    # Internet Archive item pages (archive.org/details/{item_id}) -- WO-1962. Shared host; own-station uploads and YouTube-channel mirrors.
+    "archiveorg": "Internet Archive item",
 }
 
 # Registered platforms (app/platforms/__init__.py's

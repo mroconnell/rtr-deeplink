@@ -526,7 +526,7 @@ Trust, safety & data quality  (32)
   `[NEEDS-AUDIT]` One row in `jurisdiction_coverage.csv` has…  (1)
     [NEEDS-AUDIT] At least 9 `domain` values in…
 
-Roadmap & strategy `[IMPROVEMENT-ROUND]`  (39)
+Roadmap & strategy `[IMPROVEMENT-ROUND]`  (40)
   Adapters drop signals that show a person captioned the meeting (found…
   A hub with its own meetings still shows the site's generic share…
   `[IMPROVEMENT-ROUND]` `[BIG]` Build Meeting Finder: one breadth pipe…
@@ -571,12 +571,14 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (39)
   `[IMPROVEMENT-ROUND]` A path-probe builder from the hub…
   YouTube channels the access ladder found for 5,000+ governments are…
   37 of the 212 dead government addresses over 5,000 people were not…
+  Tier 1.5: show a transcript that has no timestamps…
 
 Dormant — needs a real example first `[LATER]`  (1)
   Granicus `TranscriptViewer.php` as a transcript fallback: wait for a…
 
-Parked deliberately — allowed back `[PARK]`  (3)
-  Video-to-calendar join: match a government's video source to its own…  (3)
+Parked deliberately — allowed back `[PARK]`  (4)
+  Video-to-calendar join: match a government's video source to its own…
+  SparQ Meetings adapter: agenda pages, six hosts and per-organization…  (3)
     [IMPROVEMENT-ROUND] School-district / special-entity jurisdiction…
     [PARK] MPO / transit-authority / utility-district name table.
     [PARK] `[BIG]` "Request Transcript from Audio" doesn't work for…
@@ -7793,6 +7795,13 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 - **Constraint:** never try to get past the walls.
 - **History:** `BACKLOG_DONE.md` WO-1077; per-government results in `rtr-business/research/wo1077_passB_results.csv`.
 
+### Tier 1.5: show a transcript that has no timestamps `[IMPROVEMENT-ROUND]`
+
+- **Issue:** Our tiers assume a transcript has times (tier 1 source captions, tier 3 our Whisper). Some sources publish a transcript without times, such as SparQ's public HTML minutes (`/Public/Minutes/`).
+- **Impact:** Such text is real content, but today it has no home on a meeting page. A reader could read it, though not jump to a moment.
+- **Next action:** Decide whether it earns a tier of its own (working name tier 1.5, "source transcript, no times") and what a page shows when there are no clickable jumps. An agenda without item times is a separate flag, not a tier: agendas already display as a link.
+- **Constraint:** Ryan 2026-10-14: show an agenda whenever one exists, with no clickable jumps when it has no times.
+
 ## Dormant — needs a real example first `[LATER]`
 
 ### Granicus `TranscriptViewer.php` as a transcript fallback: wait for a tenant that runs Granicus captioning `[LATER]` `[EXAMPLE]`
@@ -7824,6 +7833,14 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 - **History:** `ENUMERATION_METHODS.md` §193 (rtr-business); script and
   result files `research/wo158_*`. Supersedes the 2026-08-26 "YouTube
   Atom-feed polling" entry, now in `BACKLOG_DONE.md`.
+
+### SparQ Meetings adapter: agenda pages, six hosts and per-organization pins `[PARK]` `[BIG]`
+
+- **Issue:** SparQ Meetings (also BOEconnect, Assemble Meetings, BoardBook, Keystone Agenda, KASB: one database, six host names) holds agendas and minutes only, no video of its own. A pasted SparQ link resolves as `platform=unknown`, and the six hosts are not in `MULTI_GOV_HOSTS`, so a blank-match pin on any of them would mis-file thousands of meetings.
+- **Impact:** About 1,350 matched governments with 0 Archive pages would gain agenda facts; only about 75 have a video link, and those are already in the drip. Agenda-only pages are never ingested (Ryan's rule).
+- **Next action:** When picked up, read `ADAPTER_SCOPE.md` in rtr-business `research/boeconnect_2026-10-12/`: build the adapter, register the six hosts in `MULTI_GOV_HOSTS` and `tenant_key.py`, and add about 1,600 per-organization pin rows (skip the 307 duplicate org ids). Canonical host `meeting.sparqdata.com`. About 1.5 days.
+- **Constraint:** Parked by Ryan 2026-10-14: the coverage outcome (video leads in the drip, the rest marked `meeting-without-video`) is already done without it. Agenda list stays as a link only, no per-item times. Minutes are linked, not parsed.
+- **History:** `ENUMERATION_METHODS.md` §402 (rtr-business); 163 governments marked and 158 relabelled `meeting-without-video` on 2026-10-13/14.
 
 Parked by the user during the jurisdiction/title extraction planning
 conversation. Not rejected — explicitly allowed to return.

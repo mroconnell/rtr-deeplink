@@ -294,6 +294,8 @@ CANARY_URLS: dict[str, list[str]] = {
     ],
     # Bloomington, IN's real 2026-10-07 City Council meeting on CATS -- confirmed live 2026-10-10: a 3 h 18 m .m4v and a 1,722-cue WebVTT file.
     "catstv": ["https://catstv.net/m.php?q=16544"],
+    # Foxborough, MA select board 2021-05-11, uploaded by the town's own station (WO-1962): an .mp4 and an .mp3, no caption file (tier 3).
+    "archiveorg": ["https://archive.org/details/bos-2021-05-11"],
     # Ocean Shores, WA's real 2026-09-22 Regular City Council meeting on AV Capture All (WO-1190) -- captions and an agenda; 86 min. Needs the
     # headless browser: run from an office Mac (untested from Render, like Vimeo).
     "avcaptureall": [
