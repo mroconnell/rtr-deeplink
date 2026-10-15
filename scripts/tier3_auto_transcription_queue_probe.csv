@@ -12010,3 +12010,25 @@ https://download.avcaptureall.cloud/customer-947337c9-f271-4ddc-a736-021c1a33465
 https://media.avcaptureall.cloud/meeting/87b49c29-8792-4755-84ac-2e990afaddc3,avcaptureall,head+ffprobe,4791.22,2026-10-13,40243201,1,accept,,1.32,2026-10-15T14:04:48+00:00,bulk_ingest,0
 https://download.avcaptureall.cloud/customer-1f480985-3417-42a0-a2f2-1de632492bae/meetings/4cc95c4a-776a-43d8-aee7-a5150755b478/RTCM_2024-12-17_05-00-07%20PM.mp4,direct_file,head+ffprobe,2747.52,2024-12-18,23175365,1,accept,,1.24,2026-10-15T14:05:01+00:00
 https://westamwelltwpnj.portal.civicclerk.com/event/1021/media,civicclerk,head+ffprobe,12699.92,2026-10-08,8338595685,1,accept,,11.70,2026-10-15T15:47:24+00:00
+https://boxcast.tv/view/9282026---legal-finance-vygewwbbbhjwlxtgct03,boxcast,hls-master+variant,694.06,,,1,accept,,0.30,2026-10-15T17:22:05+00:00,,0
+https://boxcast.tv/view/9282026---legal-finance-vygewwbbbhjwlxtgct03,boxcast,hls-master+variant,694.06,,,1,accept,,0.12,2026-10-15T17:22:05+00:00,feed_tier3_auto_transcription,0
+https://reflect-geauga-gtv.cablecast.tv/internetchannel/show/1518?site=1,cablecast,cablecast-api,3215.00,2026-05-14,,1,accept,,0.14,2026-10-15T17:22:07+00:00,,0
+https://reflect-geauga-gtv.cablecast.tv/internetchannel/show/1518?site=1,cablecast,cablecast-api,3215.00,2026-05-14,,1,accept,,0.03,2026-10-15T17:22:07+00:00,feed_tier3_auto_transcription,0
+https://reflect-ccx.cablecast.tv/show/41030,cablecast,cablecast-api,4594.00,2026-09-28,,1,accept,,0.03,2026-10-15T17:22:11+00:00,,0
+https://reflect-ccx.cablecast.tv/show/41030,cablecast,cablecast-api,4594.00,2026-09-28,,1,accept,,0.02,2026-10-15T17:22:11+00:00,feed_tier3_auto_transcription,0
+https://nctpa.granicus.com/MediaPlayer.php?view_id=1&clip_id=115,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.10,2026-10-15T17:22:15+00:00,,0
+https://sangamonil.gov/Portals/0/TempAudio/SoundFile/County%20Board%20Meeting%2010-14-25%20(2).mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.24,2026-10-15T17:22:17+00:00,,0
+https://reflect-merrimac-access.cablecast.tv/show/3686,cablecast,cablecast-api,4116.00,2025-10-22,,1,accept,,0.03,2026-10-15T17:22:19+00:00,,0
+https://reflect-merrimac-access.cablecast.tv/show/3686,cablecast,cablecast-api,4116.00,2025-10-22,,1,accept,,0.02,2026-10-15T17:22:19+00:00,feed_tier3_auto_transcription,0
+https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=146677&autoplay=yes,civicmedia,hls-master+variant,4178.27,,,1,accept,,0.86,2026-10-15T17:22:22+00:00,,0
+https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=146677&autoplay=yes,civicmedia,hls-master+variant,4178.27,,,1,accept,,0.25,2026-10-15T17:22:23+00:00,feed_tier3_auto_transcription,0
+https://videoplayer.telvue.com/player/YGktjFZCLukJd_8Fx53BkVRk4tAZafS4/media/1014748,telvue,telvue-page-json,755.00,,,1,accept,,0.32,2026-10-15T17:22:25+00:00,,0
+https://videoplayer.telvue.com/player/YGktjFZCLukJd_8Fx53BkVRk4tAZafS4/media/1014748,telvue,telvue-page-json,755.00,,,1,accept,,0.35,2026-10-15T17:22:25+00:00,feed_tier3_auto_transcription,0
+https://videoplayer.telvue.com/player/YGktjFZCLukJd_8Fx53BkVRk4tAZafS4/media/1031326,telvue,telvue-page-json,4061.00,,,1,accept,,0.39,2026-10-15T17:22:28+00:00,,0
+https://videoplayer.telvue.com/player/YGktjFZCLukJd_8Fx53BkVRk4tAZafS4/media/1031326,telvue,telvue-page-json,4061.00,,,1,accept,,0.34,2026-10-15T17:22:28+00:00,feed_tier3_auto_transcription,0
+https://reflect-haverhillcommunity.cablecast.tv/show/48079,cablecast,cablecast-api,1647.00,2026-05-08,,1,accept,,0.04,2026-10-15T17:22:31+00:00,,0
+https://reflect-haverhillcommunity.cablecast.tv/show/48079,cablecast,cablecast-api,1647.00,2026-05-08,,1,accept,,0.03,2026-10-15T17:22:31+00:00,feed_tier3_auto_transcription,0
+https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=91048&autoplay=yes,civicmedia,hls-master+variant,1101.25,,,1,accept,,0.95,2026-10-15T17:22:34+00:00,,0
+https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=91048&autoplay=yes,civicmedia,hls-master+variant,1101.25,,,1,accept,,0.23,2026-10-15T17:22:34+00:00,feed_tier3_auto_transcription,0
+https://reflect-thurston.cablecast.tv/show/31110,cablecast,cablecast-api,1234.00,2023-12-13,,1,accept,,0.10,2026-10-15T17:22:37+00:00,,0
+https://reflect-thurston.cablecast.tv/show/31110,cablecast,cablecast-api,1234.00,2023-12-13,,1,accept,,0.10,2026-10-15T17:22:37+00:00,feed_tier3_auto_transcription,0
