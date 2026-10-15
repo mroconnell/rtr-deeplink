@@ -72,7 +72,7 @@ _API_URL = "https://api.v3.invintus.com/v2/Event/getDetailed"
 _AUTH_HEADERS = {
     "Content-Type": "application/json",
     "authorization": "embedder",
-    "wsc-api-key": "7WhiEBzijpritypp8bqcU7pfU9uicDR",
+    "wsc-api-key": "7WhiEBzijpritypp8bqcU7pfU9uicDR",  # gitleaks:allow (public client-side key, see comment above)
 }
 
 # **Video**: `downloadLinks.videoDownloadURI` (host `m-download.invintus.

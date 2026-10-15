@@ -1,5 +1,23 @@
 # Backlog — done
 
+## [Done 2026-10-15] GitHub issue: "hard-coded secret" in the tier-3 queue file, and the repo had no secret scanner
+
+**What was done and why.** Someone opened a GitHub issue saying `scripts/tier3_auto_transcription_queue.txt` held a hard-coded secret and that bots had already picked it up. We checked the file with every value masked, so no secret was echoed into the session.
+
+**Result.** The file held no credential. It had three look-alikes:
+
+| Line (before) | What it was | Still works? |
+|---|---|---|
+| 872 | Signed video link (`Expires`, `Signature`, `Key-Pair-Id`), a Brownfield ISD recording | No. Expired 2026-10-04. |
+| 892 | Signed video link, a Walpole-area `wmtps.org` recording | No. Expired 2026-10-05. |
+| 1227 | `token=` share link on the SBS Portals meeting-video tab (White County IN) | Not tested. Looks like a public share link, no login. |
+
+No AWS, Google, GitHub, `sk-` or JWT key was in the file. Bots flag any URL with `Signature=` or `token=`.
+
+**What changed.** The two expired lines were removed from the queue (1,501 lines to 1,499). `.gitleaks.toml`, a `secret-scan` job in `test.yml` and `.pre-commit-config.yaml` were added. The first full scan found 138 look-alikes, almost all in saved test pages; they are allowlisted by path and rule, and the scan now passes. The only non-test hit that was a real key-shaped value is Invintus' public client-side key, marked inline. A CLAUDE.md bullet records the rules.
+
+**Caution.** The two expired links still appear in git history and in `scripts/tier3_auto_transcription_queue_probe.csv` (a log of past probe results). They are dead, so we left them. CI scans the working tree, not history, because history would fail every run. The CLAUDE.md bullet also says never to commit a URL whose signature unlocks something private.
+
 ## [Done 2026-10-14] Internet Archive item pages (archive.org/details/{item_id}) resolve into a meeting (WO-1962)
 
 **What was done and why.** The Internet Archive holds a large bulk mirror of local-government YouTube channels. Each mirror item carries the station's YouTube id, an mp4 and an mp3, and about half carry captions. Fetching these from archive.org (plain public HTTP) avoids YouTube. Added `app/platforms/archiveorg.py`, platform `archiveorg`. Nothing was ingested.
