@@ -11825,3 +11825,16 @@ https://download.avcaptureall.cloud/customer-dea65d40-6a44-4bb7-a683-3ec05ccf6ab
 https://media.avcaptureall.cloud/meeting/0d0bed5c-677c-468d-ab69-cf9fb2188a7f,avcaptureall,head+ffprobe,7552.00,2025-02-24,961519047,1,accept,,1.26,2026-10-15T03:52:53+00:00,bulk_ingest,0
 https://media.avcaptureall.cloud/meeting/93fa5d4d-ae3d-4d55-9900-107c56f05039,avcaptureall,head+ffprobe,6383.34,2026-09-09,340865555,1,accept,,1.29,2026-10-15T03:53:05+00:00,bulk_ingest,0
 https://media.avcaptureall.cloud/meeting/5f322dad-1f17-4812-b8bd-b735390d6139,avcaptureall,head+ffprobe,6576.49,2026-09-24,1190422186,1,accept,,0.77,2026-10-15T03:53:10+00:00,bulk_ingest,0
+https://kearney.granicus.com/MediaPlayer.php?view_id=1&clip_id=630,granicus,range-asf-header,,,,0,reject-dead,ranged GET on the media file returned HTTP 403,0.11,2026-10-15T05:13:10+00:00,,0
+https://katyisdtx.new.swagit.com/videos/400838,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.10,2026-10-15T05:13:12+00:00,,0
+https://drive.google.com/file/d/1Z2ir3mX1Fjhz3XlYpc-yLSXbD0dBdloI/view?usp=sharing,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,1.64,2026-10-15T05:13:18+00:00,,0
+https://drive.google.com/file/d/1LnJIGAxGc0DNfzrcs022elV_BD7qDuW-/view?usp=sharing,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.92,2026-10-15T05:13:24+00:00,,0
+https://drive.google.com/file/d/1uo9Zw3WfvgW0ZG8IbnuLmJdCPb4GMs_y/view?usp=sharing,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.73,2026-10-15T05:13:27+00:00,,0
+https://www.bb-sd.com/Downloads/Brentwood%20School%20Board%20Meeting%2004_20_2020.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.10,2026-10-15T05:13:29+00:00,,0
+https://drive.google.com/file/d/1I22Kd5i4CJvr1FI9U43zvoXodz5gTEl3/view?usp=drive_link,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.77,2026-10-15T05:13:32+00:00,,0
+https://ramcountrytv.cablecast.tv/show/27,cablecast,unknown-accepted,,,,0,accept,"length unknown, accepted (Cablecast): Cablecast API show record returned HTTP 404",0.23,2026-10-15T05:13:34+00:00,,0
+https://ramcountrytv.cablecast.tv/show/27,cablecast,unknown-accepted,,,,0,accept,"length unknown, accepted (Cablecast): Cablecast API show record returned HTTP 404",0.02,2026-10-15T05:13:34+00:00,feed_tier3_auto_transcription,0
+https://antigowi.portal.civicclerk.com/event/2220/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.08,2026-10-15T05:13:36+00:00,,0
+https://cap-az.granicus.com/MediaPlayer.php?view_id=5&clip_id=1021,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-15T05:13:40+00:00,,0
+https://alamedactc.granicus.com/MediaPlayer.php?view_id=1&clip_id=995,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-15T05:13:45+00:00,,0
+https://portofoakland.granicus.com/MediaPlayer.php?view_id=2&clip_id=451,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-10-15T05:13:48+00:00,,0

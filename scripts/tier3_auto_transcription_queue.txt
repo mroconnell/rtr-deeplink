@@ -250,18 +250,6 @@ https://vimeo.com/707985726	https://vimeo.com/707985726	us:county:53053
 https://vimeo.com/537299140	https://vimeo.com/537299140	us:place:4532245
 https://vimeo.com/868329507	https://vimeo.com/868329507	us:cousub:2501125730
 https://liveoakcity.primegov.com/Portal/Meeting?meetingTemplateId=1764	https://liveoakcity.primegov.com/Portal/Meeting?meetingTemplateId=1764	us:place:0641936
-https://kearney.granicus.com/MediaPlayer.php?view_id=1&clip_id=630	https://kearney.granicus.com/MediaPlayer.php?view_id=1&clip_id=630	us:place:3125055
-https://katyisdtx.new.swagit.com/videos/400838	https://www.katyisd.org/board/board/board-meeting-videos	us:sd:4825170
-https://drive.google.com/file/d/1Z2ir3mX1Fjhz3XlYpc-yLSXbD0dBdloI/view?usp=sharing	meeting_finder_group4	us:sd:3606210
-https://drive.google.com/file/d/1LnJIGAxGc0DNfzrcs022elV_BD7qDuW-/view?usp=sharing	meeting_finder_group4	us:sd:3607770
-https://drive.google.com/file/d/1uo9Zw3WfvgW0ZG8IbnuLmJdCPb4GMs_y/view?usp=sharing	meeting_finder_group4	us:sd:3904761
-https://www.bb-sd.com/Downloads/Brentwood%20School%20Board%20Meeting%2004_20_2020.mp3	meeting_finder_group4	us:sd:4204140
-https://drive.google.com/file/d/1I22Kd5i4CJvr1FI9U43zvoXodz5gTEl3/view?usp=drive_link	meeting_finder_group4	us:sd:4217010
-https://ramcountrytv.cablecast.tv/show/27	meeting_finder_group4	us:sd:4222560
-https://antigowi.portal.civicclerk.com/event/2220/media	meeting_finder_group4	us:place:5502250
-https://cap-az.granicus.com/MediaPlayer.php?view_id=5&clip_id=1021	meeting_finder_group4	rtr:us:az:central-arizona-water-conservation-district
-https://alamedactc.granicus.com/MediaPlayer.php?view_id=1&clip_id=995	meeting_finder_group4	rtr:us:ca:alameda-county-transportation-commission
-https://portofoakland.granicus.com/MediaPlayer.php?view_id=2&clip_id=451	meeting_finder_group4	rtr:us:ca:port-of-oakland
 https://portcanaveral.granicus.com/MediaPlayer.php?view_id=2&clip_id=973	meeting_finder_group4	rtr:us:fl:canaveral-port-authority
 https://ieua.granicus.com/MediaPlayer.php?view_id=1&clip_id=1483	meeting_finder_group4	rtr:us:ca:inland-empire-utilities-agency
 https://www.cityofleonard.net/upload/page/0075/docs/05-08-18_City_Council_Meeting.mp3	meeting_finder_group4	us:place:4842352
@@ -1503,3 +1491,7 @@ https://download.avcaptureall.cloud/customer-74687b20-8a59-493f-9501-630da4a502a
 https://download.avcaptureall.cloud/customer-93caa98d-825c-488b-88b2-a34b431fa72d/meetings/0f907b42-f0ae-42de-8a74-cebfad23584c/Board%20Meeting%202025-01-22_2025-01-22_04-00-32%20PM.mp4	https://media.avcaptureall.cloud/meeting/0f907b42-f0ae-42de-8a74-cebfad23584c	rtr:us:ut:heber-light-and-power	Heber Light & Power - Board Meeting 2025-01-22	2025-01-22	Legislative
 https://download.avcaptureall.cloud/customer-9e0de6db-17bc-4d7a-a392-e33154e8299e/meetings/f365c9fd-d7db-417e-8ae9-e0422e034c97/Board%20of%20Commissioners%20Meeting_2025-04-01_05-00-13%20PM.mp4	https://media.avcaptureall.cloud/meeting/f365c9fd-d7db-417e-8ae9-e0422e034c97	rtr:us:wa:northshore-fire-department	Northshore Fire Department - Board of Commissioners Meeting	2025-04-01	Legislative
 https://download.avcaptureall.cloud/customer-dea65d40-6a44-4bb7-a683-3ec05ccf6abb/meetings/3ce81981-6381-4791-84e1-41b5ba3297e4/Commission%20Meeting_2024-01-22_05-30-35%20PM.mp4	https://media.avcaptureall.cloud/meeting/3ce81981-6381-4791-84e1-41b5ba3297e4	rtr:us:wa:port-of-olympia	Port of Olympia - Commission Meeting	2024-01-22	Executive
+https://katyisdtx.new.swagit.com/videos/400838	https://www.katyisd.org/board/board/board-meeting-videos	us:sd:4825170
+https://cap-az.granicus.com/MediaPlayer.php?view_id=5&clip_id=1021	meeting_finder_group4	rtr:us:az:central-arizona-water-conservation-district
+https://alamedactc.granicus.com/MediaPlayer.php?view_id=1&clip_id=995	meeting_finder_group4	rtr:us:ca:alameda-county-transportation-commission
+https://portofoakland.granicus.com/MediaPlayer.php?view_id=2&clip_id=451	meeting_finder_group4	rtr:us:ca:port-of-oakland
