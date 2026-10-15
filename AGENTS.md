@@ -105,16 +105,17 @@ under everything else. This repo extracts and fixes just that part.
   redtaperecordings.com) — both already handled by
   `app/platforms/civicclerk.py`'s existing fallback chain with no code
   change needed. Vimeo (added 2026-08-21, WO-29) was built video-first:
-  its signed caption config 403s every plain HTTP client. **Captions do
-  work now, and have since 2026-08-31 (PR #643):** `app/platforms/vimeo.py`
-  renders the player page in the headless browser, reads the signed
-  `captions.vimeo.com/...vtt` URL from its `<track>` element, and parses
-  it through the shared `vtt_parser`; if that fails it falls back to
-  video-only with a reader-facing warning. Re-confirmed live 2026-09-23:
-  Salisbury NC's 9/01/2026 City Council meeting
-  (`player.vimeo.com/video/1223368476`) resolved with 1,336 real caption
-  segments. (This note said "video-only" until 2026-09-23; it was three
-  weeks stale.) Good starting samples: Salisbury NC
+  its signed caption config 403s every plain HTTP client. `app/platforms/
+  vimeo.py` reads captions by rendering the player page in the headless
+  browser and reading the signed `captions.vimeo.com/...vtt` URL from its
+  `<track>` element (PR #643, 2026-08-31; re-confirmed 2026-09-23 on
+  Salisbury NC, `player.vimeo.com/video/1223368476`, 1,336 segments).
+  **Since 2026-09-26 that works from an office Mac but not from Render:**
+  Vimeo answers the server with a 401 challenge, then no `<track>`
+  (BACKLOG.md, WO-1120). So Vimeo is **tier 2**, like YouTube: captions
+  exist, but only a local run can read them. Meeting Finder labels a
+  Vimeo find with captions tier 2 (WO-1146), and the drip's Vimeo lane
+  ingests them (WO-1147). Good starting samples: Salisbury NC
   (`vimeo.com/1212025580`), Chicago IL
   (`chicityclerkelms.chicago.gov/Meeting/?meetingId=
   DF5C52EA-0D6B-F111-A823-001DD8019941`).
@@ -201,10 +202,7 @@ under everything else. This repo extracts and fixes just that part.
   numbers centrally** and agents use the number they're given rather
   than deriving one. Same root cause as the multi-session working-tree
   rule below — concurrent sessions can't infer shared state from a
-  snapshot of it. **As of 2026-09-21, this exact grep against
-  `origin/main` returns `WO-999`** — that's a literal test-fixture string
-  in `tests/test_check_backlog_done_headings.py`, not a real work order.
-  Ignore it; the real max on 2026-09-21 was WO-941.
+  snapshot of it.
 - **An open backlog entry carries the *conclusion*, in a fixed 5-field
   template — the investigation goes in `BACKLOG_DONE.md`, or, for the
   rare still-open one, `docs/investigations/`.** `BACKLOG.md`'s own
@@ -258,7 +256,7 @@ under everything else. This repo extracts and fixes just that part.
   closes one of those gaps but leaves the doc still describing it as
   future/unbuilt work recreates exactly the kind of doc-drift this repo's
   own `AUDIT_BRIEF.md` (the "App-wide audit" brief) already flagged as a
-  real, confirmed problem (see this file's pytest-suite bullet above for one concrete
+  real, confirmed problem (see this file's pytest-suite bullet below for one concrete
   instance of it), not a hypothetical one.
 - **`CLAUDE_BACKLOG.md` is a separate, unreviewed suggestions list**,
   distinct from `BACKLOG.md`. When asked to brainstorm improvements/
@@ -270,7 +268,7 @@ under everything else. This repo extracts and fixes just that part.
   verification) rather than marking it done in place.
 - **`CLAUDE_INBOX_TRIAGE.md` is a third, separate staging file — set up
   2026-08-17 — populated by a daily *unattended* scheduled Routine, not
-  by an interactive session.** The Routine reads Gmail's `rtr-Codex`
+  by an interactive session.** The Routine reads Gmail's `rtr-claude`
   label (Search Console, GitHub Actions failure notifications,
   UptimeRobot, eventually Sentry), reasons about each new item using the
   same standards as everywhere else in this file (chase a real report
@@ -295,7 +293,7 @@ under everything else. This repo extracts and fixes just that part.
   (WO-33, 2026-08-21).** It holds *no Gmail write scope* — Ryan's
   explicit, permanent decision: an unattended job that merges its own PRs
   shouldn't also be able to write to his mailbox — so `label_thread` and
-  the old `label:rtr-Codex -label:rtr-Codex-processed` query are gone
+  the old `label:rtr-claude -label:rtr-claude-processed` query are gone
   for good. Don't propose reauthorizing it. Instead it searches a
   30-day lookback window and filters candidates through
   `CLAUDE_INBOX_TRIAGE_SEEN.txt` via `scripts/inbox_triage_ledger.py`,
@@ -395,6 +393,14 @@ under everything else. This repo extracts and fixes just that part.
   (identity) before writing any ingest wrapper, and see BACKLOG.md's
   "The Archive files a page under whatever `gov_id` a sweep sends" entry.
   `app/platforms/queue_probe.py`'s `has_owner()` cites this rule.
+- **A tier-3 queue line is `url<TAB>source_url<TAB>gov_id<TAB>title<TAB>date<TAB>meeting_body`
+  (columns 4-6 optional, WO-1176).** Read it only with
+  `queue_probe.parse_queue_entry()` and write or rewrite it only with
+  `append_queue_line()` / `swap_queue_line_url()`. Never copy queue lines
+  into a bare-URL list: on 2026-10-02/03 a local Whisper batch did that,
+  dropped the `gov_id`, and 70 live pages landed with no government (see
+  `BACKLOG_DONE.md`'s WO-1176 entry). `scripts/transcribe_backlog_locally.py
+  --urls-file` takes whole queue lines for this reason.
 - **We query sites politely — and "politely" means following a host's
   house rules, not avoiding every technical measure they've put up.** A
   realistic `Referer`/User-Agent so a naive hotlink check doesn't
@@ -442,21 +448,15 @@ under everything else. This repo extracts and fixes just that part.
   failed PRs under a parallel wave whose branch point simply predated a
   heading someone else added to `main` in the meantime, even though the
   PR never touched the file.
-- **A pytest suite exists now (`tests/`, see README's "Running tests")** —
-  run it (`pytest`) before/after touching `app/utils/vtt_parser.py`,
-  `app/platforms/media_scan.py`, `app/platforms/base.py`, or any platform
-  adapter. Every adapter now has real fixture-backed coverage (see
-  README's "Running tests" section for the current, authoritative list —
-  this file previously claimed eScribe/PrimeGov/YouTube had zero coverage;
-  that was stale as of this correction and is exactly the kind of doc-drift
-  this repo's own `AUDIT_BRIEF.md` flags as a real, confirmed
-  problem, not a hypothetical one). It doesn't replace live-testing a new
-  adapter or a genuinely new real-world case (see the first bullet above)
-  — it exists to catch a *previously-covered* case silently regressing
-  between sessions, which live-testing alone doesn't protect against. When
-  you fix a bug found via live testing, consider adding a fixture-backed
-  regression test for it in the same pass, the way the Simi Valley
-  Spanish-caption and blank-VTT cases already are.
+- **Run the pytest suite (`python -m pytest`; README's "Running tests"
+  section lists the current adapter coverage)** before and after touching
+  `app/utils/vtt_parser.py`, `app/platforms/media_scan.py`,
+  `app/platforms/base.py`, or any platform adapter. It doesn't replace
+  live-testing a new adapter or a genuinely new real-world case (see the
+  first bullet above) — it catches a *previously-covered* case silently
+  regressing between sessions. When you fix a bug found via live testing,
+  consider adding a fixture-backed regression test in the same pass, the
+  way the Simi Valley Spanish-caption and blank-VTT cases already are.
 - **Setting up a fresh local venv from scratch (e.g. a new Mac with no
   prior `.venv`) has two real, confirmed gotchas beyond what "Quick
   start"/"Running tests" describe — both cost real time on 2026-08-21.**
@@ -520,26 +520,10 @@ under everything else. This repo extracts and fixes just that part.
   just "Input/output error") before concluding a fix didn't work; the
   SSL layer really was fixed, a second, unrelated problem (below) was
   just producing an identically-worded symptom.
-- **Fixing that SSL layer does not make Viebit meetings transcribable —
-  a second, separate, real wall (already known at the probe level,
-  confirmed at the transcription level 2026-09-15) blocks every one.**
-  `app/platforms/queue_probe.py`'s `_probe_viebit()` already documents
-  (WO-306, 2026-09-12) that Viebit's raw HLS `master.m3u8` 403s even
-  with a correct Referer/Origin/User-Agent, so the *queue-acceptance*
-  probe works around it by accepting with `duration_seconds=None`
-  rather than ever fetching the real media. Confirmed 2026-09-15 across
-  4 independent real Viebit URLs that the same 403 also blocks the
-  *transcription* step itself (`app/platforms/media_probe.py`'s
-  extraction, used by both `scripts/transcribe_backlog_locally.py` and
-  the cloud worker, since they share this code) — with the SSL fix
-  above applied, `transcribe_backlog_locally.py --url` against a real
-  Viebit meeting still skips in ~6s with "ffprobe couldn't read the
-  media," because the actual video file is CDN-gated behind something
-  only a real browser satisfies. Net effect: no Viebit meeting can get
-  a real transcript today, by either transcription path, regardless of
-  this Mac's SSL fix — a materially bigger gap than a trust-store
-  problem, and out of scope to work around here (would need real
-  browser automation against Viebit specifically).
+- **Fixing the SSL layer does not make Viebit meetings transcribable:**
+  their media is CDN-gated for every plain client, probe and transcription
+  alike (`queue_probe._probe_viebit()` documents it). See `BACKLOG.md`
+  for the current status; do not re-diagnose it as a certificate problem.
 - **`archive/db/crud.py` has a `transcript_warnings`-marker convention
   that gates real functionality, not just reporting — a new quality
   marker there needs updating in (at least) three places, not one.** A
@@ -601,18 +585,11 @@ under everything else. This repo extracts and fixes just that part.
   `/internal/schema-info`, same admin-token gate as every other
   `/admin/*` route) reports its real reflected columns and
   `alembic_version` without needing shell access.
-  **A stale premise worth knowing about, since it survived in these docs
-  for ~11 days:** they claimed the resolver's Alembic history "has never
-  been stamped in prod" and that a one-time manual `alembic stamp` on the
-  Render shell was the blocker. That was wrong. The first real call to
-  `/admin/schema-info` (2026-08-21) returned `alembic_version:
-  a9207c0eb761` — already at head, `schema_matches_models: true`, zero
-  mismatched tables. Nobody had recorded the stamp. The lesson isn't
-  about Alembic: **when a doc asserts a fact about production that
-  nothing in the repo can verify, build the read-only endpoint that
-  answers it before acting on the assertion.** Two sessions nearly
-  opened a Render shell to run a destructive-ish command against a
-  premise that a single `curl` disproved.
+  **When a doc asserts a fact about production that nothing in the repo
+  can verify, build the read-only endpoint that answers it before acting
+  on the assertion.** The resolver's `GET /admin/schema-info` exists for
+  this: an old doc claimed its Alembic history was never stamped, and one
+  `curl` disproved it before anyone ran a destructive command.
   **If you ever do need to stamp this history: name the literal revision
   (`a9207c0eb761` today), never the word `head`** — `head` was the
   baseline when older docs said "stamp head", a second revision landed
@@ -658,6 +635,22 @@ under everything else. This repo extracts and fixes just that part.
   gap as an explicit `BACKLOG.md` entry naming both scripts rather than
   letting it go unrecorded. This cuts both directions: a local-script
   improvement worth having in the cloud pipeline needs the same check.
+
+- **Record files merge by rule, not by hand (WO-1184, 2026-10-05).**
+  `.gitattributes` marks `BACKLOG_DONE.md`, the tier-3 feed log and
+  `CLAUDE_INBOX_TRIAGE_SEEN.txt` as `merge=union` (add-only: both sides'
+  new lines are kept). The tier-3 queue, `tier3_long_meetings_deferred.txt`,
+  `tenant_overrides.csv`, `curated_governments.csv` and `governments.csv`
+  use `merge=lineset` (`scripts/merge_line_set.py`, one keyed record per
+  line): these have lines *removed* (the feed consumes queue lines) or
+  edited, which union would undo or duplicate. The probe CSV is left on
+  the normal merge on purpose (rewritten rows, repeated URLs), and so is
+  `BACKLOG.md` (see its generated-doc entry). **Run
+  `scripts/setup_merge_drivers.sh` once per clone** (worktrees share it);
+  without it git quietly uses the normal text merge. GitHub's server-side merge ignores .gitattributes. Two throwaway branches each appended a different line to the feed log (a union file). Merged locally they were clean, but the merges API returned 409 Conflict. So a PR can still show a conflict on GitHub; it disappears when you merge origin/main locally, and that is how we resolve it.
+  The driver also falls back to the normal merge for a repeated key.
+  `tenant_overrides.csv` has none since 2026-10-05, and
+  `tests/test_tenant_overrides_unique_keys.py` keeps it that way.
 
 - **This repo is sometimes worked on by more than one session/dev at the
   same time — check before assuming the working tree is yours alone.**
