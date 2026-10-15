@@ -823,6 +823,22 @@ under everything else. This repo extracts and fixes just that part.
   `load_dotenv()` at runtime (as `app/main.py`/`archive/main.py` already
   do) is fine — the risk is specifically a shell command whose *output*
   lands in the conversation.
+- **Secret scanning runs in CI and as a pre-commit hook (gitleaks, added
+  2026-10-15).** A GitHub issue flagged
+  `scripts/tier3_auto_transcription_queue.txt` for a hard-coded secret; it
+  held two expired signed video links and one public share-link token, no
+  credential (see `BACKLOG_DONE.md`). Rules from that: (1) never commit a
+  URL whose `Signature=`/`token=` unlocks anything private; a signed media
+  link that expires is dead weight in a queue, so drop it rather than park
+  it. (2) `.gitleaks.toml` is the config for both the `secret-scan` CI job
+  and `.pre-commit-config.yaml` (run `pre-commit install` once per clone).
+  It keeps gitleaks' default rules and switches off only the three noisy
+  generic ones (`generic-api-key`, `gcp-api-key`, `jwt`) under `tests/`,
+  and `generic-api-key` alone for the tier-3 queue/probe files, so a real
+  AWS or GitHub key is still caught there. (3) A real public client-side key
+  in code (Invintus' `wsc-api-key`) gets an inline `# gitleaks:allow` with a
+  reason, not a path allowlist. (4) Never paste a real key into a prompt,
+  test or fixture to "see if it works"; use the repo's seed/example files.
 
 ## Related context
 
