@@ -11838,3 +11838,17 @@ https://antigowi.portal.civicclerk.com/event/2220/media,civicclerk,head+ffprobe,
 https://cap-az.granicus.com/MediaPlayer.php?view_id=5&clip_id=1021,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-15T05:13:40+00:00,,0
 https://alamedactc.granicus.com/MediaPlayer.php?view_id=1&clip_id=995,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-15T05:13:45+00:00,,0
 https://portofoakland.granicus.com/MediaPlayer.php?view_id=2&clip_id=451,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-10-15T05:13:48+00:00,,0
+https://portcanaveral.granicus.com/MediaPlayer.php?view_id=2&clip_id=973,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.15,2026-10-15T12:08:05+00:00,,0
+https://ieua.granicus.com/MediaPlayer.php?view_id=1&clip_id=1483,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-15T12:08:08+00:00,,0
+https://www.cityofleonard.net/upload/page/0075/docs/05-08-18_City_Council_Meeting.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.22,2026-10-15T12:08:10+00:00,,0
+https://ashtabulaoh.portal.civicclerk.com/event/675/media,civicclerk,hls-master+variant,6044.54,,,1,accept,,0.23,2026-10-15T12:08:13+00:00,,0
+https://ashtabulaoh.portal.civicclerk.com/event/675/media,civicclerk,hls-master+variant,6044.54,,,1,accept,,0.16,2026-10-15T12:08:13+00:00,feed_tier3_auto_transcription,0
+https://www.barnescounty.us/wp-content/uploads/2026/08/07.07.2026-Full-Commission-Meeting.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.36,2026-10-15T12:08:17+00:00,,0
+https://marthasvineyard.cablecast.tv/internetchannel/show/17012?site=3&query=aquinnah,cablecast,cablecast-api,5380.00,2026-05-06,,1,accept,,0.56,2026-10-15T12:08:19+00:00,,0
+https://marthasvineyard.cablecast.tv/internetchannel/show/17012?site=3&query=aquinnah,cablecast,cablecast-api,5380.00,2026-05-06,,1,accept,,0.07,2026-10-15T12:08:19+00:00,feed_tier3_auto_transcription,0
+https://pinecitymn.gov/vertical/sites/%7B6C78F918-835C-4B30-A7AF-EAF471BF7BB3%7D/uploads/6-24-21_City_Council_Audio_(1st_half).mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.10,2026-10-15T12:08:21+00:00,,0
+https://www.elkrapids.com/uploads/4/6/4/5/46455369/zba_04132026_audio.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.32,2026-10-15T12:08:24+00:00,,0
+https://drive.google.com/file/d/1VlSpOCb1oj1pASMXHNQ8s3GXG2hs4Kl5/view?usp=sharing,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.77,2026-10-15T12:08:26+00:00,,0
+https://rushvillein.suiteonemedia.com/event/?id=1084,suiteone,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.05,2026-10-15T12:08:28+00:00,,0
+https://hunterdonconj.portal.civicclerk.com/event/1483/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.07,2026-10-15T12:08:31+00:00,,0
+https://palisade.colorado.gov/sites/g/files/lrnvjt1146/files/Zoom-Video_Planning-Commission_01.06.2026.mp4,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.13,2026-10-15T12:08:33+00:00,,0
