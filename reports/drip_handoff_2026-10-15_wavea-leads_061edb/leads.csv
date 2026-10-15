@@ -1,0 +1,3 @@
+gov_id,government,state,lane,lead_url,kind,meeting_source_has_no_video,run,all_youtube_addresses_seen,found_context
+us:place:3673000,Syracuse city,NY,youtube,http://youtube.com/@CityofSyracuse,channel,yes,waveA_leads,http://youtube.com/cityofsyracuse http://youtube.com/@CityofSyracuse,
+us:county:36107,Tioga County,NY,youtube,https://www.youtube.com/@TiogaCountyIDA/streams,channel,yes,waveA_leads,https://www.youtube.com/@TiogaCountyIDA/streams,
