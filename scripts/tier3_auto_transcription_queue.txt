@@ -250,18 +250,6 @@ https://vimeo.com/707985726	https://vimeo.com/707985726	us:county:53053
 https://vimeo.com/537299140	https://vimeo.com/537299140	us:place:4532245
 https://vimeo.com/868329507	https://vimeo.com/868329507	us:cousub:2501125730
 https://liveoakcity.primegov.com/Portal/Meeting?meetingTemplateId=1764	https://liveoakcity.primegov.com/Portal/Meeting?meetingTemplateId=1764	us:place:0641936
-https://civplus.tikiliveapi.com/embed?scheme=embedVod&videoId=143756&autoplay=yes		us:place:0640004
-https://reflect-lpctv.cablecast.tv/internetchannel/show/20939	https://reflect-lpctv.cablecast.tv/	us:place:5041200
-https://reflect-willinet.cablecast.tv/internetchannel/show/13195	https://reflect-willinet.cablecast.tv/	us:cousub:2500344385
-https://reflect-sttammany.cablecast.tv/internetchannel/show/2842	https://reflect-sttammany.cablecast.tv/	us:place:2248225
-https://reflect-brunswick-me.cablecast.tv/internetchannel/show/6525	https://reflect-brunswick-me.cablecast.tv/internetchannel/gallery/5	us:sd:2303780
-https://reflect-vod-spencer.cablecast.tv/internetchannel/show/1471	https://reflect-vod-spencer.cablecast.tv/	us:sd:2500002
-https://reflect-awcm.cablecast.tv/internetchannel/show/6770	https://reflect-awcm.cablecast.tv/internetchannel/gallery/124?site=10	us:sd:2502040
-https://reflect-brookline-interactive-group.cablecast.tv/internetchannel/show/8977	https://reflect-brookline-interactive-group.cablecast.tv/internetchannel/gallery/7?site=2	us:sd:2503150
-https://reflect-dctv-18.cablecast.tv/internetchannel/show/13676	https://reflect-dctv-18.cablecast.tv/internetchannel/gallery/12	us:sd:2504020
-https://reflect-brewster-ma.cablecast.tv/internetchannel/show/8302	https://reflect-brewster-ma.cablecast.tv/internetchannel/gallery/21	us:sd:2504560
-https://reflect-falmouth.cablecast.tv/internetchannel/show/22736	https://reflect-falmouth.cablecast.tv/	us:sd:2504860
-https://reflect-mansfield.cablecast.tv/internetchannel/show/9590	https://reflect-mansfield.cablecast.tv/internetchannel/gallery/6	us:sd:2507230
 https://reflect-ncmhub.cablecast.tv/internetchannel/show/13523	https://reflect-ncmhub.cablecast.tv/internetchannel/gallery/7	us:sd:2508580
 https://reflect-npa.cablecast.tv/internetchannel/show/14076	https://reflect-npa.cablecast.tv/internetchannel/gallery/50?site=3	us:sd:2509060
 https://reflect-vod-northtv.cablecast.tv/internetchannel/show/9504	https://reflect-vod-northtv.cablecast.tv/	us:sd:2509690
