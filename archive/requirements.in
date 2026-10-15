@@ -13,7 +13,7 @@ langdetect>=1.0.9
 # has this dependency because its own platform adapters use bs4 directly.
 beautifulsoup4>=4.12
 sqlalchemy[asyncio]>=2.1.2
-asyncpg>=0.29
+asyncpg>=0.32.0
 aiosqlite>=0.20
 python-dotenv>=1.2.4
 alembic>=1.20.0
