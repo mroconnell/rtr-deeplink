@@ -1,0 +1,38 @@
+# Secret scanning config (gitleaks). Added 2026-10-15 after a GitHub issue
+# flagged scripts/tier3_auto_transcription_queue.txt as holding a hard-coded
+# secret. It did not hold a credential: two expired signed video links and
+# one public share-link token (see BACKLOG_DONE.md). The repo had no scanner
+# at all, so this adds one. Same file drives the CI job (test.yml) and the
+# pre-commit hook (.pre-commit-config.yaml).
+#
+# Keep the default rule set (AWS, GitHub, Stripe, private keys, ...) and only
+# switch off the three noisy *generic* rules in places that are known to
+# contain look-alikes. A real AWS key pasted into tests/ is still caught.
+
+title = "rtr-deeplink gitleaks config"
+
+[extend]
+useDefault = true
+
+# Saved real web pages and tests built from them. They carry public
+# client-side keys, analytics ids and page tokens that look like secrets.
+[[allowlists]]
+description = "Test fixtures and tests: saved third-party pages, public client-side ids"
+targetRules = ["generic-api-key", "gcp-api-key", "jwt"]
+paths = ['''^tests/''']
+
+# The tier-3 queue and its probe log store full media URLs, because the
+# media cannot be fetched without them. Some carry a `token=` or a signed
+# `Signature=` parameter from a public meeting page. Only the generic rule
+# is switched off here, so a real key type is still caught in these files.
+[[allowlists]]
+description = "Tier-3 queue/probe files: media URLs with share-link tokens"
+targetRules = ["generic-api-key"]
+paths = ['''^scripts/tier3_[A-Za-z0-9_]*\.(txt|csv)$''']
+
+# One known false positive: a long-word-looking work-order tag in a string
+# replace, not a key. Scoped to the single file and the single rule.
+[[allowlists]]
+description = "wo150 sweep script: tag string replace, not a key"
+targetRules = ["generic-api-key"]
+paths = ['''^scripts/wo150_muni_ladder_sweep\.py$''']

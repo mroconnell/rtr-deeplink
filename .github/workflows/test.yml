@@ -185,3 +185,22 @@ jobs:
 
       - run: npm ci
       - run: npm test
+
+  # 2026-10-15: secret scan. A GitHub issue flagged the tier-3 queue file for
+  # a "hard-coded secret" (it held expired signed video links, no credential)
+  # and the repo had no scanner to say so. Scans the working tree, not
+  # history: history already holds those expired links and would fail every
+  # run forever. Config and allowlists: .gitleaks.toml. The binary is pinned
+  # by version and sha256 (from the release's own checksums file), and runs
+  # as its own job so it never delays the required "test" check.
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: gitleaks (working tree)
+        run: |
+          curl -sSfL -o gitleaks.tar.gz \
+            https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  gitleaks.tar.gz" | sha256sum -c -
+          tar xzf gitleaks.tar.gz gitleaks
+          ./gitleaks dir . --no-banner --redact=100 -c .gitleaks.toml
