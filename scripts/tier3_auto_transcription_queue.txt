@@ -1491,3 +1491,5 @@ https://westamwelltwpnj.portal.civicclerk.com/event/1021/media	https://www.westa
 https://portcanaveral.granicus.com/MediaPlayer.php?view_id=2&clip_id=973	meeting_finder_group4	rtr:us:fl:canaveral-port-authority
 https://ieua.granicus.com/MediaPlayer.php?view_id=1&clip_id=1483	meeting_finder_group4	rtr:us:ca:inland-empire-utilities-agency
 https://nctpa.granicus.com/MediaPlayer.php?view_id=1&clip_id=115	https://nctpa.granicus.com/ViewPublisher.php?view_id=1	rtr:us:ca:napa-valley-transportation-authority
+https://www.municipalitescott.com/wp-content/uploads/2021/05/GMT20210503-225851_Recording.mp3	https://www.municipalitescott.com/seances-du-conseil/gmt20210503-225851_recording/	ca:csd:2426048
+https://vplus-documents.s3.ca-central-1.amazonaws.com/entrelacs/_publication/fichiers/2022-01-12-budget.mp3	https://www.entrelacs.com/publication/seances-du-conseil-proces-verbaux-et-ordre-du-jour	ca:csd:2462053
