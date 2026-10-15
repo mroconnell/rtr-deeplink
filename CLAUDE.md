@@ -202,10 +202,7 @@ under everything else. This repo extracts and fixes just that part.
   numbers centrally** and agents use the number they're given rather
   than deriving one. Same root cause as the multi-session working-tree
   rule below — concurrent sessions can't infer shared state from a
-  snapshot of it. **As of 2026-09-21, this exact grep against
-  `origin/main` returns `WO-999`** — that's a literal test-fixture string
-  in `tests/test_check_backlog_done_headings.py`, not a real work order.
-  Ignore it; the real max on 2026-09-21 was WO-941.
+  snapshot of it.
 - **An open backlog entry carries the *conclusion*, in a fixed 5-field
   template — the investigation goes in `BACKLOG_DONE.md`, or, for the
   rare still-open one, `docs/investigations/`.** `BACKLOG.md`'s own
@@ -259,7 +256,7 @@ under everything else. This repo extracts and fixes just that part.
   closes one of those gaps but leaves the doc still describing it as
   future/unbuilt work recreates exactly the kind of doc-drift this repo's
   own `AUDIT_BRIEF.md` (the "App-wide audit" brief) already flagged as a
-  real, confirmed problem (see this file's pytest-suite bullet above for one concrete
+  real, confirmed problem (see this file's pytest-suite bullet below for one concrete
   instance of it), not a hypothetical one.
 - **`CLAUDE_BACKLOG.md` is a separate, unreviewed suggestions list**,
   distinct from `BACKLOG.md`. When asked to brainstorm improvements/
@@ -451,21 +448,15 @@ under everything else. This repo extracts and fixes just that part.
   failed PRs under a parallel wave whose branch point simply predated a
   heading someone else added to `main` in the meantime, even though the
   PR never touched the file.
-- **A pytest suite exists now (`tests/`, see README's "Running tests")** —
-  run it (`pytest`) before/after touching `app/utils/vtt_parser.py`,
-  `app/platforms/media_scan.py`, `app/platforms/base.py`, or any platform
-  adapter. Every adapter now has real fixture-backed coverage (see
-  README's "Running tests" section for the current, authoritative list —
-  this file previously claimed eScribe/PrimeGov/YouTube had zero coverage;
-  that was stale as of this correction and is exactly the kind of doc-drift
-  this repo's own `AUDIT_BRIEF.md` flags as a real, confirmed
-  problem, not a hypothetical one). It doesn't replace live-testing a new
-  adapter or a genuinely new real-world case (see the first bullet above)
-  — it exists to catch a *previously-covered* case silently regressing
-  between sessions, which live-testing alone doesn't protect against. When
-  you fix a bug found via live testing, consider adding a fixture-backed
-  regression test for it in the same pass, the way the Simi Valley
-  Spanish-caption and blank-VTT cases already are.
+- **Run the pytest suite (`python -m pytest`; README's "Running tests"
+  section lists the current adapter coverage)** before and after touching
+  `app/utils/vtt_parser.py`, `app/platforms/media_scan.py`,
+  `app/platforms/base.py`, or any platform adapter. It doesn't replace
+  live-testing a new adapter or a genuinely new real-world case (see the
+  first bullet above) — it catches a *previously-covered* case silently
+  regressing between sessions. When you fix a bug found via live testing,
+  consider adding a fixture-backed regression test in the same pass, the
+  way the Simi Valley Spanish-caption and blank-VTT cases already are.
 - **Setting up a fresh local venv from scratch (e.g. a new Mac with no
   prior `.venv`) has two real, confirmed gotchas beyond what "Quick
   start"/"Running tests" describe — both cost real time on 2026-08-21.**
@@ -529,26 +520,10 @@ under everything else. This repo extracts and fixes just that part.
   just "Input/output error") before concluding a fix didn't work; the
   SSL layer really was fixed, a second, unrelated problem (below) was
   just producing an identically-worded symptom.
-- **Fixing that SSL layer does not make Viebit meetings transcribable —
-  a second, separate, real wall (already known at the probe level,
-  confirmed at the transcription level 2026-09-15) blocks every one.**
-  `app/platforms/queue_probe.py`'s `_probe_viebit()` already documents
-  (WO-306, 2026-09-12) that Viebit's raw HLS `master.m3u8` 403s even
-  with a correct Referer/Origin/User-Agent, so the *queue-acceptance*
-  probe works around it by accepting with `duration_seconds=None`
-  rather than ever fetching the real media. Confirmed 2026-09-15 across
-  4 independent real Viebit URLs that the same 403 also blocks the
-  *transcription* step itself (`app/platforms/media_probe.py`'s
-  extraction, used by both `scripts/transcribe_backlog_locally.py` and
-  the cloud worker, since they share this code) — with the SSL fix
-  above applied, `transcribe_backlog_locally.py --url` against a real
-  Viebit meeting still skips in ~6s with "ffprobe couldn't read the
-  media," because the actual video file is CDN-gated behind something
-  only a real browser satisfies. Net effect: no Viebit meeting can get
-  a real transcript today, by either transcription path, regardless of
-  this Mac's SSL fix — a materially bigger gap than a trust-store
-  problem, and out of scope to work around here (would need real
-  browser automation against Viebit specifically).
+- **Fixing the SSL layer does not make Viebit meetings transcribable:**
+  their media is CDN-gated for every plain client, probe and transcription
+  alike (`queue_probe._probe_viebit()` documents it). See `BACKLOG.md`
+  for the current status; do not re-diagnose it as a certificate problem.
 - **`archive/db/crud.py` has a `transcript_warnings`-marker convention
   that gates real functionality, not just reporting — a new quality
   marker there needs updating in (at least) three places, not one.** A
@@ -610,18 +585,11 @@ under everything else. This repo extracts and fixes just that part.
   `/internal/schema-info`, same admin-token gate as every other
   `/admin/*` route) reports its real reflected columns and
   `alembic_version` without needing shell access.
-  **A stale premise worth knowing about, since it survived in these docs
-  for ~11 days:** they claimed the resolver's Alembic history "has never
-  been stamped in prod" and that a one-time manual `alembic stamp` on the
-  Render shell was the blocker. That was wrong. The first real call to
-  `/admin/schema-info` (2026-08-21) returned `alembic_version:
-  a9207c0eb761` — already at head, `schema_matches_models: true`, zero
-  mismatched tables. Nobody had recorded the stamp. The lesson isn't
-  about Alembic: **when a doc asserts a fact about production that
-  nothing in the repo can verify, build the read-only endpoint that
-  answers it before acting on the assertion.** Two sessions nearly
-  opened a Render shell to run a destructive-ish command against a
-  premise that a single `curl` disproved.
+  **When a doc asserts a fact about production that nothing in the repo
+  can verify, build the read-only endpoint that answers it before acting
+  on the assertion.** The resolver's `GET /admin/schema-info` exists for
+  this: an old doc claimed its Alembic history was never stamped, and one
+  `curl` disproved it before anyone ran a destructive command.
   **If you ever do need to stamp this history: name the literal revision
   (`a9207c0eb761` today), never the word `head`** — `head` was the
   baseline when older docs said "stamp head", a second revision landed
