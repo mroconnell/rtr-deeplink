@@ -185,6 +185,7 @@ from app.platforms.queue_probe import (  # noqa: E402
     BARE_VIDEO_LINK_PLATFORMS,
     apply_queue_metadata,
     parse_queue_entry,
+    web_source_url,
 )
 from app.platforms.media_probe import (
     chunk_size_seconds_for_platform,
@@ -1633,9 +1634,10 @@ def _page_from_queue_line(line: str) -> dict:
     entry = parse_queue_entry(line)
     normalized = normalize_url(entry.url)
     platform = detect_platform(entry.url)
+    web_source = web_source_url(entry.source_url)
     source_url = (
-        normalize_url(entry.source_url)
-        if entry.source_url and platform in BARE_VIDEO_LINK_PLATFORMS
+        normalize_url(web_source)
+        if web_source and platform in BARE_VIDEO_LINK_PLATFORMS
         else None
     )
     return {

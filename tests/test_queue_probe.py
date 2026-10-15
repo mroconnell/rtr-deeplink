@@ -2209,3 +2209,19 @@ async def test_finish_candidate_still_rejects_non_cablecast_dead_link(tmp_path):
             **paths,
         )
     assert outcome.action == "rejected"
+
+
+# WO-1963: a job label in column 2 must never become a page's source address.
+def test_web_source_url_drops_a_job_label():
+    from app.platforms.queue_probe import web_source_url
+
+    assert web_source_url("meeting_finder_group4") is None
+    assert web_source_url("") is None
+    assert web_source_url(None) is None
+
+
+def test_web_source_url_keeps_a_web_address():
+    from app.platforms.queue_probe import web_source_url
+
+    assert web_source_url("https://x.example/meetings") == "https://x.example/meetings"
+    assert web_source_url(" http://x.example/m ") == "http://x.example/m"

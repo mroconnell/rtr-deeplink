@@ -127,6 +127,7 @@ from app.platforms.queue_probe import (  # noqa: E402
     has_owner,
     parse_queue_entry,
     parse_queue_line,
+    web_source_url,
     probe_queue_entry,
 )
 from app.platforms.media_probe import transcription_media_url  # noqa: E402
@@ -372,6 +373,7 @@ async def _push_if_has_video(
     # bare-portal-root override, and this function applied it
     # unconditionally).
     override_note = ""
+    source_url_override = web_source_url(source_url_override)
     if source_url_override:
         if platform in _BARE_VIDEO_LINK_PLATFORMS:
             result.source_url = source_url_override

@@ -195,7 +195,8 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (66)
   Granicus's video-only RSS listing needs a `view_id` nobody discovers…
   Legistar answers 410 Gone to a meeting link without its `GUID`, and…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (32)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (33)
+  [HUMAN] Archive page 12994 carries a job label as its source address;…
   [HUMAN] Ryan decides which Granicus feeds from his two lead…
   [HUMAN] [LOGIN] WO-1055's live page moves and twin deletes wait for a…
   [HUMAN] WO-1165: 17 CivicMedia pages need a title refresh, a hand…
@@ -2172,6 +2173,12 @@ WO-932 and WO-913.
 Nothing here is blocked on engineering. Most are one dashboard login or
 one deliberate production action away from closing. Grouped by what kind
 of human step they need.
+
+- **[HUMAN] Archive page 12994 carries a job label as its source address; repair it and find who wrote the label into queue column 2 (2026-10-14).**
+  - **Issue**: 24 tier-3 queue lines carry the text `meeting_finder_group4` in column 2 (source page), not a web address. The local Whisper run sent that as the page's source, so the first such ingest (Cambridge Central School District NY, 2026-10-11 11:05) created page 12994 with source `meeting_finder_group4`, and 9 later pushes for other governments matched it and were refused with 409 (`gov_id mismatch`). WO-1963 makes `parse_queue_entry()` treat a non-URL column 2 as blank, which stops it for every reader of the queue.
+  - **Impact**: page 12994 shows the Cambridge transcript but its source address is wrong. 9 finished transcripts are saved as backups under `local_transcription_backups/` (batches 30b, 30c) and need a re-push once WO-1963 is on the Mac that runs them.
+  - **Next action**: an admin sets page 12994's source address to its Drive link `https://drive.google.com/file/d/1Z2ir3mX1Fjhz3XlYpc-yLSXbD0dBdloI/view?usp=sharing`; Find Meeting finds which group4 job wrote the label and stops it; then re-push the 9 backups.
+  - **Constraint**: do not overwrite page 12994 from any queue line. Not verified: whether the drip `direct` lane or the cloud feed ever created another page this way (the 2026-10-14 inventory shows one page with a non-URL source).
 
 - **[HUMAN] Ryan decides which Granicus feeds from his two lead spreadsheets are subscribed, once each host's owner is confirmed (2026-10-07).**
   - **Issue**: Ryan's two `granicus-meeting-links` sheets (73 rows each, view ids found by hand) gave 63 feed addresses never seen in our local records. A direct check (own 3 s pacing, `~/Documents/rtr-findmeeting/data/granicus_norss_rss_check_2026-10-07/results/leads_direct/results.csv`) found 35 feeds with real items on 26 hosts, 10 parsed but empty, and `oregon.granicus.com` gated on every view.

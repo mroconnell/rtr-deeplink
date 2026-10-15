@@ -1883,6 +1883,20 @@ def parse_queue_entry(line: str) -> QueueLine:
     )
 
 
+def web_source_url(value: Optional[str]) -> Optional[str]:
+    """WO-1963: a queue line's column 2 as a usable source address, or
+    `None`. Column 2 is a web address or nothing; a job label such as
+    `meeting_finder_group4` there made the Archive create one page with
+    that text as its source and then refuse (409) every other line that
+    carried it (page 12994, 2026-10-11 to 14). Every reader that turns
+    column 2 into a page's source address calls this first."""
+    v = (value or "").strip()
+    if v and not re.match(r"https?://", v, re.I):
+        logger.warning("queue line has a non-URL source %r; ignoring it", v)
+        return None
+    return v or None
+
+
 def parse_queue_line(line: str) -> tuple[str, Optional[str], Optional[str]]:
     """(url, source_url, gov_id) -- the first three columns of
     `parse_queue_entry()`, for callers that only need those (WO-1016;

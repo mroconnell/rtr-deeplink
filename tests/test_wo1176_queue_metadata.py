@@ -471,3 +471,16 @@ def test_swap_of_a_plain_line_matches_the_old_shapes():
     assert queue_probe.swap_queue_line_url("u", "n") == "n"
     assert queue_probe.swap_queue_line_url("u\ts", "n") == "n\ts"
     assert queue_probe.swap_queue_line_url("u\ts\tg", "n") == "n\ts\tg"
+
+
+# WO-1963: the local Whisper run must not send a job label (queue column 2,
+# real value seen 2026-10-11) as a page's source address.
+def test_local_run_page_ignores_a_job_label_as_source():
+    from scripts import transcribe_backlog_locally as tbl
+
+    page = tbl._page_from_queue_line(
+        "https://drive.google.com/file/d/1LnJIGAxGc0DNfzrcs022elV_BD7qDuW-/view"
+        "?usp=sharing\tmeeting_finder_group4\tus:sd:3607770"
+    )
+    assert page["source_url_override"] is None
+    assert page["gov_id"] == "us:sd:3607770"
