@@ -100,6 +100,7 @@ _HOST_ALIASES: Dict[str, str] = {
     "www.webtv.coop": "webtv.coop",
     "www.swd-live.com": "swd-live.com",
     "www.catstv.net": "catstv.net",
+    "www.archive.org": "archive.org",
 }
 
 
@@ -333,6 +334,11 @@ def _catstv(url: str) -> Optional[str]:
     return None
 
 
+# --- Internet Archive (archiveorg.py, WO-1962): any government's items on one host; an item address names no government, so there is no key (None).
+def _archiveorg(url: str) -> Optional[str]:
+    return None
+
+
 # --- AV Capture All (avcaptureall.py): one viewer site for many customers. A meeting is `/meeting/{guid}` and its address does not name the customer,
 # so there is no key to read from the address (None); avcaptureall.py sends the customer's guid as `video_channel` = `avcapture:{guid}`.
 def _avcaptureall(url: str) -> Optional[str]:
@@ -360,6 +366,7 @@ KEYED_SHARED_HOSTS: Dict[str, Callable[[str], Optional[str]]] = {
     "swd-live.com": _swd_live,
     "catstv.net": _catstv,
     "media.avcaptureall.cloud": _avcaptureall,
+    "archive.org": _archiveorg,
 }
 
 

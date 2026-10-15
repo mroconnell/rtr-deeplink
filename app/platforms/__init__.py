@@ -15,6 +15,7 @@ def register_all_finders() -> None:
     from .ca_legislature import CaliforniaLegislatureAssetFinder
     from .cablecast import CablecastAssetFinder
     from .castus import CastusAssetFinder
+    from .archiveorg import ArchiveOrgAssetFinder
     from .catstv import CatsTvAssetFinder
     from .avcaptureall import AVCaptureAllAssetFinder
     from .champds import ChampDSAssetFinder
@@ -92,6 +93,7 @@ def register_all_finders() -> None:
     register(OpenMediaAssetFinder())
     register(CastusAssetFinder())
     register(CatsTvAssetFinder())
+    register(ArchiveOrgAssetFinder())
     register(AVCaptureAllAssetFinder())
     register(SuiteOneAssetFinder())
     register(VimeoAssetFinder())
