@@ -53,6 +53,7 @@ _init_sentry()
 
 from app.platforms import register_all_finders
 from app.platforms.base import UnsupportedPlatformError, get_finder
+from app.platforms.coverage_check import own_transcript_early_end_warning
 from app.platforms.embedded_captions import EMBEDDED_CAPTIONS_MARKER
 from app.platforms.media_probe import (
     chunk_size_seconds_for_platform,
@@ -917,11 +918,24 @@ async def process_next_chunk(engine: TranscriptionEngine) -> bool:
     drop_previous_tail = count_seam_overlap_segments(
         claim.get("partial_segments") or [], shifted
     )
+    finished_warnings = None
+    if chunk_index + 1 >= total_chunks:
+        finished_warnings = await _finished_transcript_warnings(
+            job_id=job_id,
+            previous_segments=claim.get("partial_segments") or [],
+            drop_previous_tail=drop_previous_tail,
+            shifted=shifted,
+            total_duration=total_duration,
+            media_url=media_url,
+            source_url=source_url,
+            chunk_plan=chunk_plan,
+        )
     result = await crud.report_chunk_result(
         job_id,
         success=True,
         shifted_segments=shifted,
         drop_previous_tail=drop_previous_tail,
+        finished_transcript_warnings=finished_warnings,
     )
     if drop_previous_tail:
         logger.info(
@@ -952,6 +966,58 @@ async def process_next_chunk(engine: TranscriptionEngine) -> bool:
     # _handle_job_failure_result() there. No branch for it needed here.
 
     return True
+
+
+async def _finished_transcript_warnings(
+    *,
+    job_id: int,
+    previous_segments: list,
+    drop_previous_tail: int,
+    shifted: list,
+    total_duration: float,
+    media_url: str,
+    source_url: str,
+    chunk_plan: Optional[list],
+) -> Optional[list]:
+    """Warnings for the whole finished transcript, worked out before the
+    LAST chunk is reported, so report_chunk_result() can store them on the
+    new version. Today: the own-transcript early-end warning, from the one
+    shared check scripts/transcribe_backlog_locally.py also calls
+    (coverage_check.own_transcript_early_end_warning()).
+
+    That check may sample 30 seconds of audio near the end, so it runs
+    here, under the claim heartbeat, not inside report_chunk_result()'s DB
+    session. It reads the job's whole-audio cache when this worker has one
+    (a local file, no network), else the same media URL the chunk was cut
+    from. Never raises: a failure here must not lose a finished transcript.
+    """
+    kept = (
+        previous_segments[: len(previous_segments) - drop_previous_tail]
+        if drop_previous_tail
+        else previous_segments
+    )
+    cached = _job_audio_cache_path(job_id)
+    sample_url = str(cached) if (not chunk_plan and cached.exists()) else media_url
+    try:
+        async with _keeping_claim_alive(job_id):
+            warning = await own_transcript_early_end_warning(
+                [*kept, *shifted],
+                total_duration,
+                media_url=sample_url,
+                source_page_url=source_url,
+                chunk_plan=chunk_plan,
+            )
+    except Exception:
+        logger.warning(
+            "Job %s: early-end check failed, finishing without it",
+            job_id,
+            exc_info=True,
+        )
+        return None
+    if warning:
+        logger.info("Job %s: finished transcript stops early: %s", job_id, warning)
+        return [warning]
+    return None
 
 
 async def _handle_job_failure_result(job_id: int, result: dict) -> None:

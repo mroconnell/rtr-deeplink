@@ -25,6 +25,7 @@ import asyncio
 import json
 import logging
 import re
+import tempfile
 from pathlib import Path
 from typing import Optional, Sequence
 from urllib.parse import urljoin, urlparse
@@ -1345,7 +1346,9 @@ async def extract_chunk_audio(
     own comment. `is_final_chunk=True` skips this half of the check: the
     last chunk of a file is asked for "what is left of the probed duration",
     which the audio may not quite hold, so a cut inside the last chunk is
-    NOT caught here. The caller decides
+    NOT caught here. A finished transcript whose last cue stops 10+ minutes
+    short is caught later instead, by
+    coverage_check.own_transcript_early_end_warning(). The caller decides
     (worker.segment_utils.is_last_window_of_source()); the default is the
     strict check.
 
@@ -1560,6 +1563,104 @@ async def extract_chunk_audio(
                 _stderr_tail(stderr2, 500),
             )
     return True, None
+
+
+# --- Tail-silence sample (own-transcript early-end check) -----------------
+#
+# Our own transcription covers the whole audio, and the voice filter skips
+# silence. So when an own transcript's last cue is far short of the video's
+# end, the usual reason is dead air after the meeting, not a cut. Measured
+# 2026-09-21 on the two real pages that rule flagged (30-second samples,
+# volume only):
+#
+#   page                          speech before      after the last cue
+#   Leon Valley TX show 179       -38 dB (20,050 s)  -83 dB from 20,500 s
+#   (page 1676)
+#   Leon Valley TX show 185       -22 dB (11,750 s)  -71 dB from 12,500 s
+#
+# Speech read -22 to -41 dB, dead air -71 to -83 dB. -60 dB sits in the
+# middle of that gap with about 20 dB of room on each side.
+# coverage_check.own_transcript_early_end_warning() samples once, halfway
+# between the last cue and the video's end, and skips its warning when this
+# says the sample is silent.
+TAIL_SILENCE_SAMPLE_SECONDS = 30.0
+TAIL_SILENCE_MAX_MEAN_VOLUME_DB = -60.0
+
+
+def is_silent_mean_volume(mean_volume_db: Optional[float]) -> bool:
+    """True when a sample's mean volume reads as silence. None (no reading)
+    is never silence: no reading is not a finding."""
+    return (
+        mean_volume_db is not None and mean_volume_db < TAIL_SILENCE_MAX_MEAN_VOLUME_DB
+    )
+
+
+async def sample_mean_volume_db(
+    media_url: str,
+    *,
+    start: float,
+    source_page_url: str,
+    duration: float = TAIL_SILENCE_SAMPLE_SECONDS,
+) -> Optional[float]:
+    """Mean volume (dB) of `duration` seconds of `media_url` from `start`,
+    or None when it cannot be read. Volume only: nothing is transcribed.
+
+    Cuts the sample with `extract_chunk_audio()`, so it gets every fix that
+    function already carries: the browser-like headers, the Cablecast
+    audio-file and output-side-seek retries (WO-45/WO-1062), and the
+    left-channel retry for a stereo source whose mono mix cancels to
+    near-silence (Port Coquitlam). That last one matters here: without it a
+    phase-inverted tail would read as silent. `media_url` may be a local
+    file (a job's whole-audio cache), which needs no network at all.
+
+    `is_final_chunk=True` because a sample near the end of a file may
+    decode a little shorter than asked for, and that is fine for a volume
+    reading. None on any failure (extraction failed, undecodable, no
+    `mean_volume` line); the caller decides what "no reading" means.
+    """
+    with tempfile.TemporaryDirectory(prefix="rtr_tail_sample_") as tmpdir:
+        out_path = Path(tmpdir) / "tail_sample.mp3"
+        ok, reason = await extract_chunk_audio(
+            media_url,
+            start=max(0.0, start),
+            duration=duration,
+            source_page_url=source_page_url,
+            out_path=out_path,
+            is_final_chunk=True,
+        )
+        if not ok:
+            logger.warning(
+                "Tail sample at %ss of %s could not be cut: %s",
+                start,
+                media_url,
+                reason,
+            )
+            return None
+        decodable, mean_volume, _decoded_seconds = await _decode_stats(out_path)
+        if not decodable or mean_volume is None:
+            logger.warning(
+                "Tail sample at %ss of %s gave no volume reading", start, media_url
+            )
+            return None
+        return mean_volume
+
+
+def media_position_in_chunk_plan(
+    chunk_plan: Sequence[dict], meeting_seconds: float
+) -> Optional[tuple[str, float]]:
+    """`(media_url, seconds into that file)` for a point on a WO-79
+    multi-clip meeting's timeline, or None when no plan entry covers it.
+    Each entry's `start` is meeting-relative and `media_start` (WO-95,
+    absent on older plans) is where its window begins inside its own
+    file."""
+    for entry in chunk_plan:
+        entry_start = float(entry["start"])
+        if entry_start <= meeting_seconds < entry_start + float(entry["duration"]):
+            return (
+                entry["media_url"],
+                float(entry.get("media_start", 0.0)) + meeting_seconds - entry_start,
+            )
+    return None
 
 
 # A meeting-card frame is a social/OG image, not a still anyone studies:
