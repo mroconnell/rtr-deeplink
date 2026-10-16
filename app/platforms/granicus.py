@@ -1,10 +1,13 @@
 import asyncio
+import csv
 import html as _html
 import logging
 import random
 import re
 import time
 from datetime import date as _date, datetime, timedelta
+from functools import lru_cache
+from pathlib import Path
 from typing import List, Optional, Dict, Tuple
 from urllib.parse import urlparse, parse_qs, urljoin
 
@@ -26,6 +29,55 @@ from ..utils.vtt_parser import (
 )
 
 logger = logging.getLogger("rtr_deeplink.granicus")
+
+# WO-1965: a Granicus tenant lists its video meetings under a numbered
+# `view_id` (`ViewPublisherRSS.php?view_id=N&mode=video`), and a bare host
+# like `cityoftacoma.granicus.com` does not say which number. The
+# 2026-10-07 measurement (274 tenants with no known feed) found 25 feeds,
+# 11 of them only at ids 44-50, so a short live probe inside a reader's
+# request would miss most of them. This file stores each tenant's view
+# once, found by `scripts/probe_granicus_view_ids.py` (run from the office
+# Mac: this repo's cloud sessions get a 403 from granicus.com). One row
+# per (host, view_id). A host shared by several governments has one row
+# per body, and `channel_title` (the feed's own channel title, minus
+# "(Videos Feed)") is what tells them apart. Same idea as Swagit's
+# `swagit_views.csv`.
+GRANICUS_VIEWS_FILE = (
+    Path(__file__).resolve().parent.parent
+    / "utils"
+    / "jurisdiction_data"
+    / "granicus_views.csv"
+)
+
+
+def _normalize_granicus_host(host: str) -> str:
+    host = (host or "").strip().lower().split(":", 1)[0]
+    return host[4:] if host.startswith("www.") else host
+
+
+@lru_cache(maxsize=1)
+def known_granicus_views() -> Dict[str, List[Tuple[str, str]]]:
+    """Granicus host -> [(view_id, channel_title)], in file order. A
+    repeated (host, view_id) row is dropped."""
+    views: Dict[str, List[Tuple[str, str]]] = {}
+    if not GRANICUS_VIEWS_FILE.exists():
+        return views
+    with GRANICUS_VIEWS_FILE.open(newline="") as f:
+        for row in csv.DictReader(f):
+            host = _normalize_granicus_host(row.get("host") or "")
+            view = (row.get("view_id") or "").strip()
+            if not host or not view.isdigit():
+                continue
+            rows = views.setdefault(host, [])
+            if view not in {v for v, _ in rows}:
+                rows.append((view, (row.get("channel_title") or "").strip()))
+    return views
+
+
+def known_granicus_views_for(host: str) -> List[Tuple[str, str]]:
+    """Every stored (view_id, channel_title) for a Granicus host, or []."""
+    return list(known_granicus_views().get(_normalize_granicus_host(host), []))
+
 
 TARGET_LANGUAGE = "en"
 
@@ -783,6 +835,20 @@ class GranicusAssetFinder(AssetFinder):
         return GranicusAssetFinder._pick_video_url(scan_media_urls(html, player_url))
 
     async def resolve(self, url: str) -> ResolvedMeeting:
+        stored_hub_urls = stored_view_urls_for_bare_host(url)
+        if stored_hub_urls:
+            # WO-1965: a bare tenant host whose view is stored in
+            # granicus_views.csv lists that view's meetings. A host with
+            # no stored row keeps the old behavior below.
+            candidates = await list_stored_view_meetings(stored_hub_urls)
+            if candidates:
+                raise CalendarPageError(
+                    message=(
+                        "This is a Granicus meeting list with multiple "
+                        "meetings, not a link to one specific meeting."
+                    ),
+                    candidates=candidates,
+                )
         if _is_view_publisher_hub(url):
             # A ViewPublisher hub is a list of meetings, not one meeting:
             # hand the user the pick-list instead of "no playable video".
@@ -1607,3 +1673,42 @@ async def list_hub_meetings(
             _hub_cache[key] = (now + _HUB_CACHE_TTL_SECONDS, items)
             return list(items)
     return []
+
+
+def stored_view_urls_for_bare_host(url: str) -> List[str]:
+    """WO-1965: for a bare tenant address (`https://host/`, or
+    `ViewPublisher(RSS).php` with no `view_id`), the stored
+    `ViewPublisher.php?view_id=N` hub for each of that host's rows in
+    `granicus_views.csv`. [] for any other address or an unknown host."""
+    try:
+        parsed = urlparse(url)
+    except ValueError:
+        return []
+    path = parsed.path or "/"
+    if path != "/" and not _HUB_PATH_RE.search(path):
+        return []
+    query = {k.lower() for k in parse_qs(parsed.query)}
+    if query & {"view_id", "clip_id", "event_id", "meta_id"}:
+        return []
+    host = _normalize_granicus_host(parsed.netloc)
+    return [
+        f"https://{host}/ViewPublisher.php?view_id={view_id}"
+        for view_id, _ in known_granicus_views_for(host)
+    ]
+
+
+async def list_stored_view_meetings(
+    hub_urls: List[str], *, limit: int = _HUB_LISTING_MAX
+) -> List[Dict[str, Optional[str]]]:
+    """Newest meetings across a host's stored views: newest first, one row
+    per meeting address, at most `limit`."""
+    seen = set()
+    merged: List[Dict[str, Optional[str]]] = []
+    for hub_url in hub_urls:
+        for item in await list_hub_meetings(hub_url, limit=limit):
+            if item["url"] not in seen:
+                seen.add(item["url"])
+                merged.append(item)
+    if len(hub_urls) > 1:
+        merged.sort(key=lambda item: item.get("date") or "", reverse=True)
+    return merged[:limit]

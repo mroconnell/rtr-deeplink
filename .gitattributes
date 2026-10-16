@@ -15,6 +15,9 @@ scripts/tier3_auto_transcription_queue_feed_log.csv merge=union
 # Append-only seen-ledger (scripts/inbox_triage_ledger.py): 34 commits, none
 # removed a line.
 CLAUDE_INBOX_TRIAGE_SEEN.txt merge=union
+# WO-1965: scripts/probe_granicus_view_ids.py --write only appends rows it
+# has not seen; the loader drops a repeated (host, view_id).
+app/utils/jurisdiction_data/granicus_views.csv merge=union
 
 # lineset = scripts/merge_line_set.py: one record per line, keyed. Used where
 # lines are also removed (the feed consumes queue lines) or edited, which
