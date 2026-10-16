@@ -718,6 +718,13 @@ def _general_purpose_lookup(name: str, state: str, type_preference: str):
     return place, cousub
 
 
+def _not_a_district_municipality(row, type_preference: str) -> bool:
+    """A name that says "District of" may only key to a StatCan district
+    municipality (CSD type DM). "District of Thunder Bay, ON" is the
+    census district, not the City of Thunder Bay (CY)."""
+    return type_preference == "district" and row.type_word.upper() != "DM"
+
+
 def _ca_csd_disambiguate(name: str, state: str, type_preference: str):
     """The one CSD a name means when several share a normalized key --
     or None, which is still the default answer.
@@ -752,10 +759,15 @@ def _ca_csd_disambiguate(name: str, state: str, type_preference: str):
     candidates = exact if exact else rows
     if not type_preference:
         return None
+    # "District of North Vancouver": a BC district municipality (DM)
+    # writes "District", which `CSD_TYPE_WORDS` maps under the generic
+    # "municipality". North Vancouver is both a DM (5915046) and a city
+    # (5915051), so only the raw "District of" can pick the DM.
     matching = [
         r
         for r in candidates
         if tables.CSD_TYPE_WORDS.get(r.type_word.upper()) == type_preference
+        or (type_preference == "district" and r.type_word.upper() == "DM")
     ]
     return matching[0] if len(matching) == 1 else None
 
@@ -972,6 +984,8 @@ def _national_lookup(
         hit = tables.ca_csd().lookup(name, state) or _ca_csd_disambiguate(
             name, state, type_preference
         )
+        if hit and _not_a_district_municipality(hit, type_preference):
+            hit = None
         if hit:
             return (
                 _as_government(
@@ -1945,6 +1959,8 @@ def _squashed_national_hit(
             # satisfied by a same-named place of a DIFFERENT type just
             # because spacing made it the only candidate -- see this
             # function's own WO-198 note above.
+            continue
+        if namespace == "ca:csd" and _not_a_district_municipality(hit, type_preference):
             continue
         return (
             _as_government(

@@ -330,21 +330,16 @@ def test_regional_municipality_of_durham_type_word_widened_but_resolution_unchan
     assert match.meeting_body == "Regional Municipality"
 
 
-def test_district_of_north_vancouver_type_word_extracted_but_not_yet_resolved():
-    # Honest, current-state test, not an aspirational one: "District of
-    # North Vancouver" is a real, current BC municipality, and the
-    # widened `_leading_type_word()` now correctly reads its type word as
-    # "district" (see above). It still does NOT resolve to its real
-    # `ca:csd` row today, because `classify.py`'s SPECIAL_DISTRICT rule
-    # matches the bare word "district" before the municipality rule ever
-    # runs -- a real, separate, already-logged gap (BACKLOG.md), out of
-    # scope for this pass. Pinned here so a future fix to that gap has a
-    # test that starts failing (a signal to update this test, not a
-    # silent behavior change) rather than one that was never written.
+def test_district_of_north_vancouver_type_word_extracted_and_resolved():
+    # Was pinned as "not yet resolved" (WO-105): classify's bare
+    # "district" filed it special_district. Fixed in the 2026-10-16
+    # backlog triage -- a Canadian "District of X" now classifies
+    # municipality, and the "district" type word picks the DM row. See
+    # test_bc_district_of_x_is_a_municipality_not_a_special_district.
     match = resolve("District of North Vancouver, BC")
-    assert match.tier == resolver.TIER_UNVERIFIED
-    assert match.gov_type == classify.SPECIAL_DISTRICT
-    assert match.gov_id == "rtr:ca:bc:north-vancouver"
+    assert match.tier == resolver.TIER_REGISTRY
+    assert match.gov_type == classify.MUNICIPALITY
+    assert match.gov_id == "ca:csd:5915046"
 
 
 # --- The namespaces, one test each -------------------------------------
@@ -4310,4 +4305,39 @@ def test_census_corporation_strip_leaves_indiana_school_corporations_alone():
     assert _normalize_name("Ranson corporation") == "ranson"
     assert _normalize_name("Lebanon Community School Corporation") == (
         "lebanon community school corporation"
+    )
+
+
+@pytest.mark.parametrize(
+    "raw, gov_id",
+    [
+        ("District of North Vancouver, BC", "ca:csd:5915046"),
+        ("District of Squamish, BC", "ca:csd:5931006"),
+        ("District of Saanich, BC", "ca:csd:5917021"),
+        ("District of Sechelt, BC", "ca:csd:5929011"),
+        # The same city's own name still keys to the city (CY), not the DM.
+        ("City of North Vancouver, BC", "ca:csd:5915051"),
+    ],
+)
+def test_bc_district_of_x_is_a_municipality_not_a_special_district(raw, gov_id):
+    """Backlog triage 2026-10-16 (found WO-105). BC district
+    municipalities (StatCan CSD type DM) call themselves "District of X";
+    `_RULES`' bare "district" filed them special_district and every one
+    minted. North Vancouver is both a DM and a city, so only the raw
+    "District of" picks the DM."""
+    assert resolver.resolve_government(raw).gov_id == gov_id
+
+
+def test_district_of_x_never_keys_to_a_csd_that_is_not_a_district_municipality():
+    """ "District of Thunder Bay, ON" is the census district, not the
+    City of Thunder Bay (ca:csd:3558004, type CY). Still mints, as before."""
+    assert (
+        classify.classify_government_type("District of North Vancouver", country="ca")
+        == classify.MUNICIPALITY
+    )
+    assert classify.classify_government_type(
+        "Fraser Valley Regional District", country="ca"
+    ) == (classify.COUNTY)
+    assert resolver.resolve_government("District of Thunder Bay, ON").gov_id == (
+        "rtr:ca:on:thunder-bay"
     )
