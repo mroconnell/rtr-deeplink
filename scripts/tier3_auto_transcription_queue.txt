@@ -250,18 +250,6 @@ https://vimeo.com/707985726	https://vimeo.com/707985726	us:county:53053
 https://vimeo.com/537299140	https://vimeo.com/537299140	us:place:4532245
 https://vimeo.com/868329507	https://vimeo.com/868329507	us:cousub:2501125730
 https://liveoakcity.primegov.com/Portal/Meeting?meetingTemplateId=1764	https://liveoakcity.primegov.com/Portal/Meeting?meetingTemplateId=1764	us:place:0641936
-https://co-parkcounty2.civicplus.com/DocumentCenter/View/10002/GMT20260522-200246_Recording		us:county:08093
-https://nv-whitepinecounty2.civicplus.com/DocumentCenter/View/14094/Local-Emergency-Planning-Committee-20260827-Meeting-Recording		us:county:32033
-https://ny-newscotland.civicplus.com/DocumentCenter/View/2013/GMT20240424-230053_Recording_1920x1080		us:cousub:3600150672
-https://il-northriverside.civicplus.com/Archive.aspx?ADID=429		us:place:1754144
-https://oh-bayvillage.civicplus.com/Archive.aspx?ADID=736		us:place:3904416
-https://tx-llano.civicplus.com/Archive.aspx?ADID=1142		us:place:4843144
-http://krvm-1.shs.lane.edu/4j_board_meetings/Board_Special_20250402.mp3	https://4j.lane.edu/boardmeetings	us:sd:4104740
-https://civplus.tikiliveapi.com/video/141454	https://civplus.tikiliveapi.com/video/141454	us:place:2024575
-https://civplus.tikiliveapi.com/video/134864	https://civplus.tikiliveapi.com/video/134864	us:place:1262625
-https://civplus.tikiliveapi.com/video/138138	https://civplus.tikiliveapi.com/video/138138	us:place:0509460
-https://civplus.tikiliveapi.com/video/134542	https://civplus.tikiliveapi.com/video/134542	rtr:us:ny:great-neck-park-district
-https://civplus.tikiliveapi.com/video/141589	https://civplus.tikiliveapi.com/video/141589	us:county:27025
 https://chesterheights.org/wp-content/uploads/2026/08/2026.08.17_16.48_01.mp3	https://chesterheights.org/government/audio/	us:place:4213232
 https://honesdaleborough.com/wp-content/uploads/2026/09/09-28-2026-Liquor-License-Hearing-Hearing-GMT20260928-213319_Recording.mp3	https://honesdaleborough.com/departments-and-services/government/agenda-deadlines/	us:place:4235520
 https://www.youtube.com/watch?v=1XoLzWJF3Tc	https://www.youtube.com/live/1XoLzWJF3Tc	us:county:06031

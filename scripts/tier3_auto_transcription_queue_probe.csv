@@ -12286,3 +12286,20 @@ https://reflect-sapatv.cablecast.tv/internetchannel/show/43448,cablecast,cableca
 https://reflect-sapatv.cablecast.tv/internetchannel/show/43448,cablecast,cablecast-api,1938.00,2026-05-07,,1,accept,,0.07,2026-10-16T05:00:23+00:00,feed_tier3_auto_transcription,0
 https://il-woodfordcounty.civicplus.com/DocumentCenter/View/11529/May-27-2026-BOH-Recording,civicplus,ranged-get+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.52,2026-10-16T05:00:45+00:00,,0
 https://becity.org/media/audios/2026/10/02/10.1.26-special-council-meeting.mp3,direct_file,head+ffprobe,742.11,2026-10-02,17814800,1,accept,,0.60,2026-10-16T05:24:24+00:00
+https://co-parkcounty2.civicplus.com/DocumentCenter/View/10002/GMT20260522-200246_Recording,civicplus,ranged-get+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.29,2026-10-16T11:55:06+00:00,,0
+https://nv-whitepinecounty2.civicplus.com/DocumentCenter/View/14094/Local-Emergency-Planning-Committee-20260827-Meeting-Recording,civicplus,ranged-get+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.25,2026-10-16T11:55:15+00:00,,0
+https://ny-newscotland.civicplus.com/DocumentCenter/View/2013/GMT20240424-230053_Recording_1920x1080,civicplus,ranged-get+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.23,2026-10-16T11:55:19+00:00,,0
+https://il-northriverside.civicplus.com/Archive.aspx?ADID=429,civicplus,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.18,2026-10-16T11:55:41+00:00,,0
+https://oh-bayvillage.civicplus.com/Archive.aspx?ADID=736,civicplus,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.19,2026-10-16T11:55:50+00:00,,0
+https://tx-llano.civicplus.com/Archive.aspx?ADID=1142,civicplus,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.18,2026-10-16T11:55:54+00:00,,0
+http://krvm-1.shs.lane.edu/4j_board_meetings/Board_Special_20250402.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.33,2026-10-16T11:55:56+00:00,,0
+https://civplus.tikiliveapi.com/video/141454,civicmedia,hls-master+variant,1914.28,,,1,accept,,0.95,2026-10-16T11:56:00+00:00,,0
+https://civplus.tikiliveapi.com/video/141454,civicmedia,hls-master+variant,1914.28,,,1,accept,,0.52,2026-10-16T11:56:01+00:00,feed_tier3_auto_transcription,0
+https://civplus.tikiliveapi.com/video/134864,civicmedia,hls-master+variant,8430.89,,,1,accept,,1.28,2026-10-16T11:56:05+00:00,,0
+https://civplus.tikiliveapi.com/video/134864,civicmedia,hls-master+variant,8430.89,,,1,accept,,0.46,2026-10-16T11:56:05+00:00,feed_tier3_auto_transcription,0
+https://civplus.tikiliveapi.com/video/138138,civicmedia,hls-master+variant,1128.84,,,1,accept,,0.84,2026-10-16T11:56:09+00:00,,0
+https://civplus.tikiliveapi.com/video/138138,civicmedia,hls-master+variant,1128.84,,,1,accept,,0.40,2026-10-16T11:56:10+00:00,feed_tier3_auto_transcription,0
+https://civplus.tikiliveapi.com/video/134542,civicmedia,hls-master+variant,3858.09,,,1,accept,,0.97,2026-10-16T11:56:13+00:00,,0
+https://civplus.tikiliveapi.com/video/134542,civicmedia,hls-master+variant,3858.09,,,1,accept,,0.34,2026-10-16T11:56:13+00:00,feed_tier3_auto_transcription,0
+https://civplus.tikiliveapi.com/video/141589,civicmedia,hls-master+variant,7660.94,,,1,accept,,1.14,2026-10-16T11:56:17+00:00,,0
+https://civplus.tikiliveapi.com/video/141589,civicmedia,hls-master+variant,7660.94,,,1,accept,,0.35,2026-10-16T11:56:17+00:00,feed_tier3_auto_transcription,0
