@@ -2786,7 +2786,7 @@ def finalize_jurisdiction(
     # Granicus RSS title) is markup, not part of the name: unescape it so
     # the stored value and every lookup see the real apostrophe.
     if raw_jurisdiction:
-        raw_jurisdiction = _html_unescape(raw_jurisdiction)
+        raw_jurisdiction = _county_full_state_to_abbr(_html_unescape(raw_jurisdiction))
     known = lookup_by_domain(netloc) if netloc else None
 
     if known and known.strength == "authoritative":
@@ -3231,6 +3231,33 @@ _STATE_NAME_TO_ABBR_LOWER = {
     "wyoming": "wy",
     "district of columbia": "dc",
 }
+# "Park Township, Ottawa County Michigan" -- a full state name right
+# after "County"/"Parish", with no comma and no 2-letter code. Nothing
+# read the state, and the repair trimmed it to "Park, KS" (WO-198's
+# scan). Only after "County"/"Parish", so a name that merely contains a
+# state word ("Washington Township") is untouched.
+_COUNTY_FULL_STATE_RE = re.compile(
+    r"\b(?P<county>county|parish),?\s+(?P<state>"
+    + "|".join(
+        re.escape(n).replace(r"\ ", r"\s+")
+        for n in sorted(_STATE_NAME_TO_ABBR_LOWER, key=len, reverse=True)
+    )
+    + r")\s*$",
+    re.IGNORECASE,
+)
+
+
+def _county_full_state_to_abbr(text: str) -> str:
+    """ "Park Township, Ottawa County Michigan" -> "Park Township, Ottawa
+    County, MI". Unchanged when the shape does not match."""
+    m = _COUNTY_FULL_STATE_RE.search(text)
+    if not m:
+        return text
+    state = " ".join(m.group("state").lower().split())
+    abbr = _STATE_NAME_TO_ABBR_LOWER[state].upper()
+    return f"{text[: m.start()]}{m.group('county')}, {abbr}"
+
+
 _PROVINCE_NAME_TO_ABBR_LOWER = {
     "alberta": "ab",
     "british columbia": "bc",

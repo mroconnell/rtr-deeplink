@@ -4428,3 +4428,24 @@ def test_ma_town_city_places_resolve_by_bare_name(raw, gov_id):
     city"; only "Town of <Name>" reached them, so a bare name minted
     (westspringfieldma.granicus.com) or landed on the county."""
     assert resolver.resolve_government(raw).gov_id == gov_id
+
+
+def test_county_followed_by_a_full_state_name_reads_the_state():
+    """Backlog triage 2026-10-16 (WO-198's scan). "Park Township, Ottawa
+    County Michigan" (a real channel name) was repaired to "Park, KS" and
+    filed as Park city, Kansas. The state word after "County" is now read
+    as the state. MI has two Park townships, so the name honestly stays
+    unresolved rather than landing in the wrong state."""
+    from app.utils.jurisdiction_enrich import finalize_jurisdiction
+
+    raw = "Park Township, Ottawa County Michigan"
+    assert finalize_jurisdiction(raw).jurisdiction == (
+        "Park Township, Ottawa County, MI"
+    )
+    assert resolver.resolve_government(raw).gov_id != "us:place:2054400"
+    assert resolver.resolve_government("Ottawa County Michigan").gov_id == (
+        "us:county:26139"
+    )
+    assert resolver.resolve_government("Washington County New York").gov_id == (
+        "us:county:36115"
+    )
