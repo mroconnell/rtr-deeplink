@@ -1,5 +1,36 @@
 # Backlog — done
 
+## [Done 2026-10-16] `[IMPROVEMENT-ROUND]` `[BIG]` "Feed cities" — should this app ever synthesize coverage for jurisdictions that publish nothing?
+
+Closed as overtaken (WO-1970). Every city `FEED_CITIES.md` names is now
+handled by an adapter. Checked on `main` 2026-10-16:
+
+| City named in FEED_CITIES.md | Handled by |
+|---|---|
+| Phoenix, Philadelphia, Albuquerque (Legistar with no video link) | `app/platforms/youtube_channel.py` (WO-30), which also covers Baltimore and Columbus |
+| Chicago (ELMS agendas plus a separate Vimeo list) | `app/platforms/chicago_elms.py` (WO-29) |
+| El Paso (one Vimeo showcase per body) | `app/platforms/vimeo.py`'s showcase URL shapes (its docstring names El Paso's 13 showcases) |
+| Seattle Channel | `app/platforms/seattlechannel.py` |
+
+The wider question is answered in practice too. The drip Mac's YouTube
+lane and the archive.org mirrors already build a page from a video alone,
+under the identity checks in `docs/COVERAGE_HANDOVER.md`. The stub also
+asked a different question from its file: "jurisdictions that publish
+nothing" have nothing to match, so that version needs no decision.
+`FEED_CITIES.md` keeps the reasoning, with a closing note at its top.
+
+Entry as it stood in `BACKLOG.md` (Parked deliberately):
+
+- **Issue**: open strategic question — whether the app should ever
+  synthesize coverage for jurisdictions with no published meeting data at
+  all.
+- **Impact**: undecided; determines how far coverage expansion can go
+  beyond jurisdictions that already publish something.
+- **Next action**: read [FEED_CITIES.md](FEED_CITIES.md) for the full
+  reasoning and the open questions it turns on. Not a plan and not
+  scheduled — needs Ryan's call before it becomes one.
+- **History**: [FEED_CITIES.md](FEED_CITIES.md).
+
 ## [Done 2026-10-16] WO-1966: agenda and packet text, steps 1 and 2 (versioned table, one extraction path, CivicPlus and CivicClerk)
 
 **Why this ran.** Ryan approved steps 1 and 2 of `AGENDA_TEXT_BIG_VERSION_BRIEF.md` on 2026-10-16 ("A2 would be wonderful right away"), then decided the same day to store packets as well as agendas, with no nightly re-read.
@@ -203,7 +234,7 @@ Entry as it stood in `BACKLOG.md`:
 
 ## [Done 2026-10-16] Invintus meetings from a separate government (regional council, health department) get no government: the registry has no id for them `[NEEDS-AUDIT]`
 
-Fixed in the backlog round-2 PR (commit `4b738d62`): Ryan said yes 2026-10-16. Minted rtr:us:wa:southwest-washington-regional-transportation-council and rtr:us:wa:tacoma-pierce-county-health-department and mapped both in CLIENT_BODY_GOVERNMENTS. Existing pages keep a blank government until backfill_gov_id.py runs after a deploy. Not live until that PR is merged and deployed.
+Fixed in the backlog round-2 PR (#2080, squash-merged to `main` as `609db425`; branch commit `4b738d62`): Ryan said yes 2026-10-16. Minted rtr:us:wa:southwest-washington-regional-transportation-council and rtr:us:wa:tacoma-pierce-county-health-department and mapped both in CLIENT_BODY_GOVERNMENTS. Existing pages keep a blank government until backfill_gov_id.py runs after a deploy. Not live until that PR is merged and deployed.
 
 Entry as it stood in `BACKLOG.md`:
 

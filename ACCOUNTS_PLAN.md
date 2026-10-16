@@ -8,10 +8,21 @@ data model, the phased plan, the business-model framing, and the
 open questions that need Ryan's call before anything past phase 1
 gets built.
 
-Nothing here is committed to. The one live compliance gap split out
-of phase 1 — the never-fired Clerk `user.deleted` purge — stays in
-`BACKLOG.md` under **Needs a human**, because it is real work on
-shipped code rather than a plan.
+Nothing here is committed to. The Clerk `user.deleted` purge split
+out of phase 1 was verified end to end in production on 2026-08-31
+(`BACKLOG_DONE.md`, "Clerk `user.deleted` → `saved_items` purge
+verified end to end"), so no phase-1 gap is left open.
+
+**When (Ryan, 2026-10-16):** phases 2-6 wait until Ryan is back from
+France. Then they are built as part of the KQED trial on rtr-upcoming,
+which needs its own logins.
+
+**Already shipped outside this plan:** saved-search alert emails went
+live on 2026-08-13 (PR #30): `archive/search_alerts.py`, run daily by
+`.github/workflows/send-search-alerts.yml`. Delivery was confirmed in
+the real mailbox for 8 days in a row (`BACKLOG_DONE.md`). So phase 2
+below no longer has to unlock email alerts; what is left of it is the
+profile page and moving alerts onto a `NoteSubscription` row.
 
 Split out of [BACKLOG.md](BACKLOG.md) 2026-08-22; that file keeps a
 short stub entry pointing here. Update both together.
@@ -21,8 +32,8 @@ short stub entry pointing here. Update both together.
 **Phase 1 shipped 2026-08-11 and is live in production** (Clerk-based
 sign-in, saving meetings and searches, `SavedItem`); its full build
 history moved to `BACKLOG_DONE.md`. `CLAUDE.md` points here for what's
-still ahead. The one live compliance gap split out of phase 1 — the
-never-fired `user.deleted` purge — is under **Needs a human**.
+still ahead. The phase-1 `user.deleted` purge was verified in
+production on 2026-08-31.
 
 **Expanded scope, per user request 2026-08-10 — a real social/content
 layer, not just accounts + saved searches.** The user wants: a profile
@@ -59,8 +70,9 @@ scoping pass.
    `SavedItem` — not the magic link, session cookie and base `Note`
    model first sketched here. See `README.md`'s "Accounts (Clerk)"
    section.
-2. Public/private profile pages; `NoteSubscription` (both channels) —
-   this is what unlocks "email alerts."
+2. Public/private profile pages; `NoteSubscription` (both channels).
+   Email alerts for saved searches already shipped 2026-08-13 without
+   it (PR #30); this phase would move them onto `NoteSubscription`.
 3. `post`/`repost` note types — the profile becomes a real feed.
 4. Batch lookup, gated by account (rate-limited per-account instead of
    anonymous) — removes the anonymous-abuse-vector concern the batch-

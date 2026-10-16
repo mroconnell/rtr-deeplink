@@ -100,11 +100,9 @@ Journalists, watchdog orgs, researchers — the people `BACKLOG.md`'s "manual
 transcription" contact CTAs and the civic-scraper research were already
 oriented toward.
 
-- **Read-only public API with API keys**, sitting on top of the Archive
-  once search/filters exist (per `BACKLOG.md`'s roadmap). Civic-tech orgs —
-  the `civic-scraper`/OpenGov community already evaluated for this project —
-  are a natural audience to build on top of resolved data rather than
-  duplicate the scraping work themselves.
+- **Read-only public API with API keys**: declined for now (Ryan,
+  2026-10-16): not until a data product sells. Recorded in `BACKLOG.md`'s
+  Standing decisions.
 
 ## Reach
 
@@ -330,27 +328,8 @@ request, deliberately not built as part of it — see `BACKLOG_DONE.md`'s
   text, one for timing) if both are ever needed at once. Sample size here
   is still small (2 real meetings, 9 windows, 1 garbled-transcript case)
   — a real qualitative signal, not a rigorous benchmark.
-- **Speaker diarization + a UI to map detected speakers to real names —
-  confirmed 2026-08-09 as a good future feature, journalistic-value
-  framing added.** For journalistic use, an unattributed quote is much
-  weaker than one that can be cited as "Councilmember X said..." — this
-  is the difference between a transcript being a navigation aid and being
-  a citable source. The transcription pipeline already uses self-hosted
-  `faster-whisper` specifically because it's the same base model WhisperX
-  builds real diarization on top of (via `pyannote.audio`) — and
-  `TranscriptSegment` (`app/platforms/models.py`) already carries a
-  `speaker` field, and since WO-1967 (2026-10-16) the meeting page and
-  `.txt` download show it where it changes (filled today only from source
-  captions' WebVTT voice tags), so diarization output would display with
-  no further UI or schema work. Real work still needed: running the diarization
-  pass itself (a real compute/latency cost on top of transcription — size
-  it before committing), and a UI for someone to label "Speaker 1" as an
-  actual name (per meeting, or per recurring seat/role if a
-  jurisdiction's council composition is known) — no design started on
-  that UI yet. Real name resolution is the harder, longer-term half of
-  this — worth explicitly sequencing unlabeled diarization first (ship
-  "Speaker 1 vs. Speaker 2" attribution on its own) rather than blocking
-  the whole feature on solving name-mapping too.
+- **Speaker diarization**: accepted by Ryan 2026-10-16 and moved to
+  `BACKLOG.md` ("Split speakers by voice (diarization)").
 - **Compare the finished transcript against the meeting's agenda for
   topic-coverage accuracy.** E.g. flag agenda items that don't seem to
   have been discussed, or roughly locate where each agenda item's
