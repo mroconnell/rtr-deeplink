@@ -75,6 +75,11 @@ _state: dict = {
     # None = not checked yet; False = the migration has not run here.
     "available": None,
     "available_checked_at": None,
+    # The un-keyed half of hub membership, as `crud._hub_groups()` last
+    # worked it out: (host -> (slug, display) of the hub that adopts it, the set of
+    # slugs a real government owns). None = not computed in this process
+    # yet. See `set_unkeyed_membership()`.
+    "unkeyed": None,
 }
 
 
@@ -106,6 +111,34 @@ def reset_cache() -> None:
     _state["loaded_at"] = None
     _state["available"] = None
     _state["available_checked_at"] = None
+    _state["unkeyed"] = None
+
+
+def set_unkeyed_membership(adopted_hosts: Optional[dict], government_slugs) -> None:
+    """Store the host-based membership `crud._hub_groups()` just computed,
+    so a single `/m/` page's hub link can agree with it without a query.
+
+    `adopted_hosts` maps a tenant host to (slug, display name) of the hub
+    that adopts un-keyed pages on it (`crud._unkeyed_membership()`'s
+    adoption map, already resolved to its hub). `government_slugs` is every slug a real
+    government owns -- an un-keyed page whose own text lands on one of
+    those, without being adopted, is on no hub.
+
+    Same safety story as the frozen-slug cache above: it is written only
+    by the hub-groups computation (itself cached for its own TTL), read
+    with no I/O, and a cold cache means "decide exactly as before".
+    `None` makes it cold again.
+    """
+    if adopted_hosts is None:
+        _state["unkeyed"] = None
+        return
+    _state["unkeyed"] = (dict(adopted_hosts), frozenset(government_slugs))
+
+
+def unkeyed_membership():
+    """(adopted_hosts, government_slugs), or None when this process has
+    not computed the hub groups yet."""
+    return _state["unkeyed"]
 
 
 async def table_available(session) -> bool:
@@ -277,8 +310,9 @@ async def apply_gate(session, gov_id: str, *, now: Optional[datetime] = None) ->
     still being ingested freezes on its next ingest the moment it is
     eligible (one extra COUNT, once, for a government that has been
     unfrozen for a week), and a government that has stopped being
-    ingested freezes on the next `scripts/freeze_hub_slugs.py --apply`
-    run. Putting it on a read path was rejected: a write inside a page
+    ingested freezes on the transcription worker's next idle-time
+    `sweep_unfrozen()` pass (or the next `scripts/freeze_hub_slugs.py
+    --apply` run, which also mints missing rows). Putting it on a read path was rejected: a write inside a page
     render is how a slow render becomes an outage.
     """
     now = now or datetime.now(timezone.utc)
@@ -316,3 +350,101 @@ async def apply_gate(session, gov_id: str, *, now: Optional[datetime] = None) ->
         await session.execute(select(HubSlug.hub_slug).where(HubSlug.gov_id == gov_id))
     ).scalar()
     return True
+
+
+# How many governments one idle-time sweep pass may look at. The worker
+# calls `sweep_unfrozen()` from its idle branch (worker/main.py), so a
+# pass has to stay short: one cheap SELECT plus at most this many
+# per-government writes, each in its own transaction.
+SWEEP_LIMIT = 50
+
+
+async def sweep_unfrozen(
+    session_factory=None,
+    *,
+    limit: int = SWEEP_LIMIT,
+    now: Optional[datetime] = None,
+) -> int:
+    """Freeze the governments that have earned it but are no longer being
+    ingested. Returns how many this pass froze.
+
+    The bounded, unattended counterpart of `scripts/freeze_hub_slugs.py
+    --apply` (backlog triage 2026-10-16). It only looks at governments
+    that already have an unfrozen row, are past `FREEZE_AFTER`, and
+    already hold `FREEZE_MIN_PAGES` pages -- the exact set the ingest-side
+    gate would freeze on their next ingest, if one ever came. Minting a
+    row for a government that has none stays the script's job.
+
+    Each government goes through `record_government()`, the same call the
+    script makes, so the slug is refreshed to today's live computation
+    before it freezes (a pin round since the last ingest may have renamed
+    it). One transaction per government, as in the script: a failure
+    costs that one government, never the pass.
+
+    Never call this from a read path -- see `apply_gate()`'s docstring.
+    """
+    # Local imports: crud imports this module, and the engine import is
+    # only needed when no session factory is passed in.
+    from .crud import live_hub_slug
+
+    if session_factory is None:
+        from .engine import async_session as session_factory
+
+    now = now or datetime.now(timezone.utc)
+    cutoff = now - FREEZE_AFTER
+    pages_sq = (
+        select(func.count())
+        .select_from(MeetingPage)
+        .where(MeetingPage.gov_id == HubSlug.gov_id)
+        .scalar_subquery()
+    )
+    async with session_factory() as session:
+        if not await table_available(session):
+            return 0
+        gov_ids = (
+            (
+                await session.execute(
+                    select(HubSlug.gov_id)
+                    .where(
+                        HubSlug.frozen_at.is_(None),
+                        HubSlug.first_seen_at <= cutoff,
+                        pages_sq >= FREEZE_MIN_PAGES,
+                    )
+                    .order_by(HubSlug.first_seen_at.asc())
+                    .limit(limit)
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+    frozen = 0
+    for gov_id in gov_ids:
+        if not _usable(gov_id):
+            continue
+        try:
+            async with session_factory() as session:
+                jurisdiction = (
+                    await session.execute(
+                        select(func.min(MeetingPage.jurisdiction)).where(
+                            MeetingPage.gov_id == gov_id
+                        )
+                    )
+                ).scalar()
+                slug = live_hub_slug(gov_id, jurisdiction)
+                if not slug:
+                    continue
+                await record_government(session, gov_id, slug, now=now)
+                await session.commit()
+                done = (
+                    await session.execute(
+                        select(HubSlug.frozen_at).where(HubSlug.gov_id == gov_id)
+                    )
+                ).scalar()
+            if done is not None:
+                frozen += 1
+        except Exception:  # pragma: no cover - defensive, see docstring
+            logger.exception("hub slug freeze sweep failed for %s", gov_id)
+    if frozen:
+        logger.info("hub slug freeze sweep: froze %d government(s)", frozen)
+    return frozen

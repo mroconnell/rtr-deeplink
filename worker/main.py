@@ -73,7 +73,7 @@ from app.platforms.direct_file import (
 from app.platforms.reresolve import reresolve_for_transcription
 from app.utils.retry import retry_async
 from app.utils.vtt_parser import detect_language_from_texts, is_likely_garbled
-from archive.db import crud
+from archive.db import crud, hub_slugs
 from archive.utils import email as email_utils
 from worker.segment_utils import (
     chunk_duration,
@@ -199,6 +199,15 @@ BULK_TOPUP_CHECK_INTERVAL_SECONDS = 1800  # 30 minutes
 # request always still has headroom.
 BULK_TOPUP_POOL_SIZE = 100
 BULK_TOPUP_JOB_LIMIT = 8
+
+# Idle-time hub-slug freeze sweep (backlog triage 2026-10-16). The Archive
+# web service has no scheduler, so a government that went quiet after
+# earning its freeze would otherwise wait for someone to run
+# scripts/freeze_hub_slugs.py by hand. hub_slugs.sweep_unfrozen() is
+# bounded (hub_slugs.SWEEP_LIMIT governments per pass, one short
+# transaction each) and idempotent, so both worker services running it is
+# harmless. Hourly is plenty: the gate is measured in days.
+HUB_SLUG_FREEZE_CHECK_INTERVAL_SECONDS = 3600
 
 _RESULT_CREATED = "created"  # a real TranscriptionJob now exists
 _RESULT_INGESTED = "ingested"  # resolved directly via embedded captions, no job needed
@@ -527,6 +536,13 @@ async def maybe_generate_batch_auto_jobs() -> int:
     if created:
         logger.info("Batch top-up: created %d job(s) this pass", created)
     return created
+
+
+async def maybe_freeze_hub_slugs() -> int:
+    """One bounded pass of the hub-slug freeze sweep. Returns how many
+    governments it froze. Runs only from run_forever()'s idle branch,
+    never on a read path -- see hub_slugs.apply_gate()'s docstring."""
+    return await hub_slugs.sweep_unfrozen()
 
 
 # --- Keeping a live claim alive ------------------------------------------
@@ -1099,6 +1115,7 @@ async def run_forever() -> None:
     empty_polls = 0
     last_auto_check = 0.0
     last_bulk_topup_check = 0.0
+    last_hub_slug_freeze = 0.0
     while True:
         try:
             processed = await process_next_chunk(engine)
@@ -1151,6 +1168,15 @@ async def run_forever() -> None:
                         empty_polls = 0
                 except Exception:
                     logger.exception("Unhandled error in batch top-up check.")
+
+            # Hub-slug freeze sweep: a cheap DB-only pass, so it does not
+            # reset empty_polls (it is not transcription work).
+            if now - last_hub_slug_freeze >= HUB_SLUG_FREEZE_CHECK_INTERVAL_SECONDS:
+                last_hub_slug_freeze = now
+                try:
+                    await maybe_freeze_hub_slugs()
+                except Exception:
+                    logger.exception("Unhandled error in hub slug freeze sweep.")
 
         await asyncio.sleep(
             POLL_INTERVAL_SECONDS if processed else EMPTY_POLL_BACKOFF_SECONDS

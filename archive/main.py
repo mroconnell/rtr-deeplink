@@ -2994,6 +2994,9 @@ async def meeting_page(
     # crud.list_context_entries_for_meeting() runs in its own session and
     # never raises, so a failure here can never take this page down.
     context_entries = await crud.list_context_entries_for_meeting(page["id"])
+    hub_link = crud.hub_link_for_page(
+        page.get("gov_id"), page.get("jurisdiction"), page.get("source_url")
+    )
 
     return templates.TemplateResponse(
         request,
@@ -3045,9 +3048,11 @@ async def meeting_page(
             # Falls back to the display-string slug for a page the
             # resolver declined to key, which is exactly what this line
             # did before.
-            "hub_slug": crud.hub_slug_for_page(
-                page.get("gov_id"), page.get("jurisdiction")
-            ),
+            # An un-keyed page follows the same host rule /j/ uses to list
+            # it (crud.hub_link_for_page()); `hub_display` names an adopting
+            # hub for a page with no jurisdiction text of its own.
+            "hub_slug": hub_link[0],
+            "hub_display": hub_link[1],
             # og:image / VideoObject.thumbnailUrl / Event.image for
             # non-YouTube pages (WO-28). Only true once a real frame is
             # actually stored -- advertising a card URL that would 404 is

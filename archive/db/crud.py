@@ -8701,10 +8701,53 @@ def _hub_identity(gov_id: Optional[str], jurisdiction: Optional[str]) -> tuple:
     return (gov_id or slug or ""), slug, display, None
 
 
-def hub_slug_for_page(gov_id: Optional[str], jurisdiction: Optional[str]):
+def hub_slug_for_page(
+    gov_id: Optional[str],
+    jurisdiction: Optional[str],
+    source_url: Optional[str] = None,
+):
     """The `/j/{slug}` a single page belongs to -- the public shape of
-    `_hub_identity()`, for archive/main.py's meeting-page render."""
-    return _hub_identity(gov_id, jurisdiction)[1]
+    `_hub_identity()`, for archive/main.py's meeting-page render. The slug
+    half of `hub_link_for_page()`."""
+    return hub_link_for_page(gov_id, jurisdiction, source_url)[0]
+
+
+def hub_link_for_page(
+    gov_id: Optional[str],
+    jurisdiction: Optional[str],
+    source_url: Optional[str] = None,
+) -> tuple:
+    """(slug, adopting hub's display name or None) for one page's
+    "More {Jurisdiction} meetings" link. The display name is set only when
+    the page was adopted by host, so a page with no text of its own can
+    still name the hub it links to.
+
+    For an un-keyed page (no `gov_id`, or the `rtr:unknown:` placeholder)
+    pass its `source_url` too, so the link follows the same host rule
+    `_hub_groups()` uses to decide whether the page is on a hub at all
+    (WO-256 part 2's two leftover asymmetries, backlog triage 2026-10-16):
+
+      * a page adopted onto a government's hub by shared host links to
+        that hub, even with no jurisdiction text of its own;
+      * a page NOT adopted, whose own text lands on a hub a real
+        government owns, links nowhere -- that hub does not list it.
+
+    No query: it reads the membership `_hub_groups()` last cached in
+    `hub_slugs`. When that cache is cold, it decides exactly as before.
+    """
+    slug = _hub_identity(gov_id, jurisdiction)[1]
+    if hub_slugs._usable(gov_id) or not source_url:
+        return slug, None
+    membership = hub_slugs.unkeyed_membership()
+    if membership is None:
+        return slug, None
+    adopted_hosts, government_slugs = membership
+    host = (urlparse(source_url).netloc or "").lower().split(":")[0]
+    if host in adopted_hosts:
+        return adopted_hosts[host]
+    if slug and slug in government_slugs:
+        return None, None
+    return slug, None
 
 
 def effective_jurisdiction(
@@ -8877,6 +8920,9 @@ async def _hub_groups(session, *, bypass_cache: bool = False) -> dict[str, dict]
             g["page_count"] += count
 
         if not unkeyed_seen:
+            # Nothing un-keyed is on a hub: no membership to hand on, so
+            # a single page's link decides as it did before WO-256.
+            hub_slugs.set_unkeyed_membership(None, ())
             return groups
 
         # Pass 2: the un-keyed pages, by HOST rather than by raw text
@@ -8886,6 +8932,17 @@ async def _hub_groups(session, *, bypass_cache: bool = False) -> dict[str, dict]
         # hosts.
         adoption, unkeyed = await _unkeyed_membership(session)
         gov_group = {gov_id: g for g in groups.values() for gov_id in g["gov_ids"]}
+        # Hand the same decision to `hub_slug_for_page()` (a `/m/` page's
+        # hub link), which is sync and must not query: which hub each
+        # adopting host lands on, and which slugs a real government owns.
+        hub_slugs.set_unkeyed_membership(
+            {
+                host: (gov_group[owner]["slug"], gov_group[owner]["display"])
+                for host, owner in adoption.items()
+                if owner in gov_group
+            },
+            [slug for slug, g in groups.items() if g["gov_ids"]],
+        )
         for page_id, gov_id, jurisdiction, host, gov_type, last_updated in unkeyed:
             owner = adoption.get(host)
             g = gov_group.get(owner) if owner else None
