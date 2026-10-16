@@ -136,6 +136,36 @@ def _join_lingering_threads(*, timeout: float = 2.0) -> int:
     return sum(1 for t in remaining if t.is_alive())
 
 
+def _run_without_executor_wait(coro):
+    """`asyncio.run(coro)` minus its final wait on the default executor.
+
+    `asyncio.run()` ends with `loop.shutdown_default_executor()`, which
+    waits for every `asyncio.to_thread()` worker to finish: forever on
+    Python 3.11, up to 300 s on 3.12+. A `--gov-timeout-minutes`-abandoned
+    government's hung sync fetch is one of those workers, so `main()`
+    never reached WO-1042's `os._exit()` (measured 2026-09-26, BACKLOG.md's
+    "cannot exit while an abandoned fetch is hung" entry). This runs the
+    loop, cancels leftover tasks as `asyncio.run()` does, then closes the
+    loop, whose own executor shutdown does not wait."""
+    loop = asyncio.new_event_loop()
+    try:
+        asyncio.set_event_loop(loop)
+        return loop.run_until_complete(coro)
+    finally:
+        try:
+            pending = [t for t in asyncio.all_tasks(loop) if not t.done()]
+            for task in pending:
+                task.cancel()
+            if pending:
+                loop.run_until_complete(
+                    asyncio.gather(*pending, return_exceptions=True)
+                )
+            loop.run_until_complete(loop.shutdown_asyncgens())
+        finally:
+            asyncio.set_event_loop(None)
+            loop.close()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", required=True, type=Path)
@@ -221,7 +251,7 @@ def main() -> None:
         print(f"No rows with a url column found in {args.input}")
         return
 
-    rows = asyncio.run(
+    rows = _run_without_executor_wait(
         run_inputs(
             inputs,
             args.out,

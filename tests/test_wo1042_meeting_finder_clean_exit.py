@@ -107,3 +107,41 @@ def test_multiple_lingering_threads_are_all_counted():
         stop.set()
         for t in threads:
             t.join(timeout=5.0)
+
+
+def test_a_hung_to_thread_call_does_not_hold_the_run_open():
+    """Backlog triage 2026-10-16: `asyncio.run()` waited for an abandoned
+    `to_thread()` call before `main()` ever reached `os._exit()`. In a fresh
+    interpreter, abandon a 60 s `to_thread(time.sleep)` the way
+    `--gov-timeout-minutes` does, then exit the way `main()` does. The
+    process must end in seconds, not after the 60 s sleep."""
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    script = """
+import asyncio, os, time
+from scripts.meeting_finder import _join_lingering_threads, _run_without_executor_wait
+
+async def _run():
+    try:
+        await asyncio.wait_for(asyncio.to_thread(time.sleep, 60), timeout=0.1)
+    except asyncio.TimeoutError:
+        pass
+    return "rows written"
+
+print(_run_without_executor_wait(_run()), flush=True)
+_join_lingering_threads(timeout=0.1)
+os._exit(0)
+"""
+    started = time.monotonic()
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True,
+        text=True,
+        cwd=Path(__file__).resolve().parent.parent,
+        timeout=50,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "rows written" in result.stdout
+    assert time.monotonic() - started < 30
