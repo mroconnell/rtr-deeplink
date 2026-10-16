@@ -1,5 +1,11 @@
 # Backlog phases and deliverables
 
+> **Retired 2026-10-16.** This plan stopped being updated on 2026-09-22.
+> Its Phase 2-4 status lines are out of date: coverage growth (Phase 4)
+> has been the main work since then. The big remaining items, including
+> Track B's product steps, now live on the Backlog Kanban board
+> (https://claude.ai/artifact/QpbFxqYVLhfExLVKJ2U7tC). Kept for history.
+
 Written 2026-09-21 (WO-930), from `origin/main` at commit `2c0ab6a` (PR #1280),
 then corrected the same day for later PRs (#1281, #1282) and the conductor's review.
 It turns `BACKLOG.md` into an ordered plan: what to do first, what each step
