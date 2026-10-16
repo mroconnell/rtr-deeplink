@@ -129,8 +129,10 @@ _DEFAULT_LISTING_SEARCH_TERMS = (
 # (6 of 6 had neither a download link nor a VOD2 stream; 1 is an event
 # scheduled on a live channel, 0 has no media target). Class 2 does NOT
 # mean a playable download: Signal Mountain has 193 class-2 events and
-# only 5 download links. Nothing in a search row tells the two apart --
-# see `event_has_download()`.
+# only 5 download links. Nothing in a search row tells the two apart.
+# Since 2026-10-16 (Ryan) that no longer matters to Meeting Finder: a
+# VOD2-only recording counts as video (a tier-3 find), so class 2 alone
+# decides it and the per-event download check was removed.
 MEDIA_CLASS_RECORDED = 2
 
 _NOT_A_CUSTOMER_SEGMENTS = frozenset(
@@ -161,23 +163,6 @@ def parse_account_url(url: str) -> Optional[tuple]:
     if len(segs) >= 3 and segs[1].lower() == "archive" and segs[2].isdigit():
         archive_id = int(segs[2])
     return segs[0].lower(), archive_id
-
-
-async def event_has_download(customer: str, event_id) -> Optional[bool]:
-    """True when the event's own API record carries a `DownloadURL` (the
-    MP4 a reader's player can play -- see ChampDSAssetFinder), False when
-    it answers without one, None when the API could not be read. One
-    request. The search listing has no such field (checked on a real
-    download event, Signal Mountain 152, against its neighbour 151: the
-    two search rows differ only in ids and dates), so this is the only
-    way to find the few downloadable events in an account whose
-    recordings are mostly VOD2-only."""
-    api_url = f"https://playapi.champds.com/{customer}/event/{event_id}"
-    async with aiohttp.ClientSession(headers=ChampDSAssetFinder().headers) as session:
-        data, _reason = await ChampDSAssetFinder._fetch_json(session, api_url)
-    if not data:
-        return None
-    return bool((data.get("MediaInfo") or {}).get("DownloadURL"))
 
 
 async def list_archive_events(

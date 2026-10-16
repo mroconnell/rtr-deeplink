@@ -360,7 +360,7 @@
            fallback. Meeting dates only: transcript/agenda offsets are
            durations, not datetimes -- see that filter's own note. #}
         {%- if page.date %}{% if page.jurisdiction or page.meeting_body %} &middot; {% endif %}{{ page.date|meeting_date_html }}{% endif -%}
-        {%- if hub_slug %} &middot; <a href="/j/{{ hub_slug }}">More {{ page.jurisdiction_display }} meetings</a>{% endif -%}
+        {%- if hub_slug %} &middot; <a href="/j/{{ hub_slug }}">More {{ page.jurisdiction_display or hub_display }} meetings</a>{% endif -%}
         {%- if state_slug %} &middot; <a href="/state/{{ state_slug }}">More {{ state_name }} meetings</a>{% endif -%}
       </p>
       {#- Date-status notice (archive/utils/date_status.py): a page with

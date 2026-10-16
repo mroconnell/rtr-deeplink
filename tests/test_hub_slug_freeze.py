@@ -340,3 +340,89 @@ async def test_day_one_backfill_is_a_no_op_for_every_live_url():
         )
         await session.commit()
     hub_slugs.reset_cache()
+
+
+# --- the idle-time sweep (backlog triage 2026-10-16) -------------------------
+
+
+async def _gov_id_for(slug: str) -> str:
+    async with async_session() as session:
+        return (
+            await session.execute(
+                select(MeetingPage.gov_id).where(MeetingPage.slug == slug)
+            )
+        ).scalar()
+
+
+async def test_the_worker_sweep_freezes_a_quiet_government_that_earned_it():
+    """A government that got its second page and then went quiet is frozen
+    by `sweep_unfrozen()` -- the worker's idle-time pass -- with no further
+    ingest and no hand-run script. A one-page government of the same age
+    is left alone, and so is a two-page one that is still too new."""
+    slug = await _seed(
+        "granicus:freeze-sandcity-1",
+        jurisdiction="Sand City, CA",
+        title="Sand City Council",
+        date="2016-02-02",
+    )
+    await _seed(
+        "granicus:freeze-sandcity-2",
+        jurisdiction="Sand City, CA",
+        title="Sand City Planning Commission",
+        date="2016-02-09",
+    )
+    quiet = await _gov_id_for(slug)
+    lone_slug = await _seed(
+        "granicus:freeze-loyalton-1",
+        jurisdiction="Loyalton, CA",
+        title="Loyalton City Council",
+        date="2016-02-02",
+    )
+    lone = await _gov_id_for(lone_slug)
+    new_slug = await _seed(
+        "granicus:freeze-etna-1",
+        jurisdiction="Etna, CA",
+        title="Etna City Council",
+        date="2016-02-02",
+    )
+    await _seed(
+        "granicus:freeze-etna-2",
+        jurisdiction="Etna, CA",
+        title="Etna Planning Commission",
+        date="2016-02-09",
+    )
+    fresh = await _gov_id_for(new_slug)
+    assert quiet and lone and fresh and len({quiet, lone, fresh}) == 3
+
+    await _backdate(quiet, days=8)
+    await _backdate(lone, days=8)
+    assert (await _row(quiet))[2] is None, "ingest alone must not have frozen it"
+
+    frozen = await hub_slugs.sweep_unfrozen(async_session)
+
+    assert frozen >= 1
+    row = await _row(quiet)
+    assert row[2] is not None
+    assert row[0] == crud.live_hub_slug(quiet, "Sand City, CA")
+    assert hub_slugs.frozen_hub_slug(quiet) == row[0]
+    assert (await _row(lone))[2] is None, "one page is not enough"
+    assert (await _row(fresh))[2] is None, "seven days have not passed"
+
+    # Idempotent: a second pass finds nothing new for this government.
+    await hub_slugs.sweep_unfrozen(async_session)
+    assert (await _row(quiet))[2] == row[2]
+
+
+async def test_the_worker_idle_loop_calls_the_bounded_sweep(monkeypatch):
+    """worker/main.py's hook is a thin call into the bounded sweep."""
+    import worker.main
+
+    calls = []
+
+    async def _fake_sweep(*args, **kwargs):
+        calls.append(kwargs)
+        return 3
+
+    monkeypatch.setattr(worker.main.hub_slugs, "sweep_unfrozen", _fake_sweep)
+    assert await worker.main.maybe_freeze_hub_slugs() == 3
+    assert len(calls) == 1

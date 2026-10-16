@@ -18,8 +18,11 @@ Two jobs in one sweep, both idempotent:
 
 Why the sweep exists at all, given that ingest records a government's row
 itself: a government that has stopped being ingested would never reach
-its own gate. Run this after a pin round, after a scoring run, or on any
-day the hub-slug table and the archive might have drifted. See
+its own gate. The transcription worker now covers the freeze half of
+that on its own, in a bounded idle-time pass (`hub_slugs.sweep_unfrozen()`,
+hourly); this script is still the one that mints a missing row. Run it
+after a pin round, after a scoring run, or on any day the hub-slug table
+and the archive might have drifted. See
 `archive/db/models.py`'s `HubSlug` docstring for the design and
 `docs/investigations/hub_architecture_audit.md` §4 for the measurements
 behind it.

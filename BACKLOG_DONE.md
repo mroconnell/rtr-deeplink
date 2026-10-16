@@ -1,5 +1,244 @@
 # Backlog — done
 
+## [Done 2026-10-16] The "no adapter" comment on `MULTI_GOV_HOSTS` is out of date: BoxCast has an adapter, and Dropbox and Drive single files resolve through `direct_file` `[JUST-DO-IT]` `[EASY]`
+
+Fixed in the backlog round-2 PR (commit `ba252719`): Comment split into "no adapter" and "kept for pin safety"; no behaviour change. Not live until that PR is merged and deployed.
+
+Entry as it stood in `BACKLOG.md`:
+
+- **Issue**: `app/utils/gov_registry/registry.py` lists `facebook.com`, `fb.watch`, `boxcast.tv`, `livestream.com`, `soundcloud.com`, `drive.google.com`, `drive.usercontent.google.com`, `dropbox.com` and `sharepoint.com` under a comment saying no adapter in `app/platforms/` resolves them. That is wrong for two of them: `app/platforms/boxcast.py` exists (rtr-business `UNSUPPORTED_PLATFORMS.md` already says the old BoxCast note predates the build), and a Dropbox or Drive link with a real filename and extension resolves through `direct_file.py`. `livestream.com` is dead rather than unsupported: on 2026-10-13 its robots.txt and an event page both answered 302 to `vimeo.com/features/livestreaming`. `tenant_key.py`'s `OUT_OF_SCOPE_HOSTS` has the same list without `boxcast.tv`.
+- **Impact**: none at run time. The comment misleads the next reader into thinking BoxCast cannot resolve.
+- **Next action**: reword the comment into two groups. Truly unsupported: `facebook.com`, `fb.watch`, `soundcloud.com`, `sharepoint.com`, plus `livestream.com` (dead, see `UNSUPPORTED_PLATFORMS.md`). Kept for pin safety although something resolves them: `boxcast.tv` (`boxcast.py`), `dropbox.com` and the two Drive hosts (single files, via `direct_file.py`). No behaviour change.
+- **Constraint**: do not remove any host from the set. The safeguard still refuses a blank-match pin on all of them.
+- **History**: found 2026-10-13 while checking `livestream.com` against the unsupported-platform file (rtr-business `research/UNSUPPORTED_PLATFORMS.md`, `ENUMERATION_METHODS.md` §401 follow-ups).
+
+## [Done 2026-10-16] [JUST-DO-IT] CLAUDE.md's sample-sheet note calling Whitehall, OH's CivicClerk tenant "agenda-only" is stale -- it now posts video on every recent meeting.
+
+Fixed in the backlog round-2 PR (commit `cdfc1b9b`): Stale Whitehall "agenda-only" note removed from CLAUDE.md and AGENTS.md. Not live until that PR is merged and deployed.
+
+Entry as it stood in `BACKLOG.md`:
+
+- **[JUST-DO-IT] CLAUDE.md's sample-sheet note calling Whitehall, OH's CivicClerk tenant "agenda-only" is stale -- it now posts video on every recent meeting.**
+  - **Issue**: CLAUDE.md's "Working conventions" bullet (dated 2026-08-08) lists "Whitehall OH (CivicClerk, agenda-only)" as a sample. Checked live 2026-09-23 while building WO-1024's Meeting Finder: `whitehalloh.api.civicclerk.com/v1/Events` shows `hasMedia: true` on every real meeting from 2026-07-28 through 2026-09-22 (10 of 10 checked) -- `app/platforms/meeting_finder`'s own live check resolved `whitehalloh.portal.civicclerk.com/event/325/media` to a real tier-3 video (152 minutes).
+  - **Impact**: none functionally -- this is a doc-only staleness, not a code bug. It does mean a future session looking for a real agenda-only CivicClerk sample shouldn't reach for Whitehall.
+  - **Next action**: update CLAUDE.md's sample-sheet bullet to drop or replace the Whitehall "agenda-only" claim; find a currently-agenda-only CivicClerk tenant if one is still needed as a sample.
+  - **Constraint**: none.
+  - **History**: found and reported in WO-1024's final report (2026-09-23, `docs/MEETING_FINDER.md`'s "Interface details WO-1024 settled" section).
+
+## [Done 2026-10-16] [NEEDS-AUDIT] `[EASY]` A video whose own title is a camera or file name ("video1516165031", "20251021", "CC20260908.mp4") becomes the page title as-is, on every platform: Ryan chose the fallback title "<government name> archive video"
+
+Fixed in the backlog round-2 PR (commit `ac2b50c2`): New pages with a file-name title get "<government> archive video, <Month YYYY>"; one shared file-name test; stored pages not rewritten. Not live until that PR is merged and deployed.
+
+Entry as it stood in `BACKLOG.md`:
+
+- **Issue**: `vimeo.com/1199438213` still returns the title "video1516165031" (checked live 2026-09-21; its page 10200, Oak Bluffs MA, was fixed by hand in WO-925). The gate (`app/utils/video_hand_check.py`, WO-933) treats `^video\d+$`, `^IMG_\d+` and `^\d+$` as no title (`cannot_tell`), but the adapters still use the source's own title as-is. The count, from the local export of 2026-09-21 (10,280 pages): **12 pages (0.1%)**. Viebit 7 (raw file names: `NYCC-PV-CH-CHA_251218-163834.mp4`, `NYCC-250-8-2_251218-120823.mp4`, `8-18-26_Council-Meeting.mp4`, `CC20260908.mp4`, `DDA_Meeting_08_20_26.mp4`, `9_8_26_Council_Meeting.mp4`, `TBC_06_09_2026Mtg.mp4`), Granicus 3 (date-only titles `20251021`, `171205`, `20260901`, all Laramie County WY), YouTube 2 (`7959635610958757251`, `video1254656692`), Vimeo 0.
+- **Impact**: 12 pages show a meaningless title and address. Small, but the same shape recurs on every platform that passes a file name through. The gate's `is_placeholder_title()` recognizes 5 of the 12 (Granicus 3, YouTube 2); the 7 Viebit `.mp4` names it does not.
+- **Next action**: Ryan decided on 2026-09-21 (chat): the fallback title is "<government name> archive video", on every platform, not only Vimeo. Build it once in a shared place with a test, and use one shared test for what counts as a camera or file name (today the gate has its own). Ryan also decided (2026-09-21, chat): when the date is known, keep the month and year only, for example "Laramie County, WY archive video, October 2025", not the exact day, because an upload date and a filming date can differ (page 10200 was uploaded 2026-06-08 but its meeting was 2026-06-04). Not decided: whether the 7 Viebit names that carry a date or meeting words (for example `8-18-26_Council-Meeting.mp4`) are replaced too, or only cleaned.
+- **Constraint**: never invent a meeting name from the government's agenda page; the fallback must come from data on the video itself (the government name, and the month and year when a date is known).
+- **History**: `BACKLOG_DONE.md` WO-925 (the hand fix), WO-933 (the gate) and WO-931 (Ryan's decision and the count).
+
+## [Done 2026-10-16] [JUST-DO-IT] `[EASY]` A government that stops being ingested only freezes its hub slug when somebody runs the sweep by hand
+
+Fixed in the backlog round-2 PR (commit `ecf6595c`): Workers now run a bounded freeze sweep hourly when idle (governments that already have a hub_slugs row). Not live until that PR is merged and deployed.
+
+Entry as it stood in `BACKLOG.md`:
+
+- **[JUST-DO-IT] `[EASY]` A government that stops being ingested only freezes its hub slug when somebody runs the sweep by hand**
+  - **Issue**: WO-256's freeze gate runs in two places — on the writer path (so an actively-ingested government freezes on its next ingest once eligible) and in `scripts/freeze_hub_slugs.py`. The Archive service has no scheduler, so a government that gained its second page and then went quiet sits unfrozen until a human runs the sweep.
+  - **Impact**: small and self-correcting — an unfrozen government behaves exactly as every hub did before WO-256 (slug computed live), so the only cost is that it keeps the old churn risk until the next sweep.
+  - **Next action**: either run `python scripts/freeze_hub_slugs.py --apply` as a standing step after each pin round (it is already in the WO-256 entry's recommendation), or add it to a worker's idle-time loop the way the re-resolve sweep works.
+  - **Constraint**: don't put the gate on a read path — a write inside a page render is how a slow render becomes an outage, which is why it isn't there today.
+  - **History**: `BACKLOG_DONE.md`'s WO-256 entry; `archive/db/hub_slugs.py`'s `apply_gate()` docstring.
+
+## [Done 2026-10-16] [JUST-DO-IT] `[EASY]` Two hub-membership asymmetries left by WO-256's host rule — a page on a hub with no link back, and a page linking to a hub it isn't on
+
+Fixed in the backlog round-2 PR (commit `52542950`): Hub link now uses the cached host-adoption map; no query added to /m/{slug}. Not live until that PR is merged and deployed.
+
+Entry as it stood in `BACKLOG.md`:
+
+- **[JUST-DO-IT] `[EASY]` Two hub-membership asymmetries left by WO-256's host rule — a page on a hub with no link back, and a page linking to a hub it isn't on**
+  - **Issue**: a meeting page's "More {Jurisdiction} meetings" link comes from `crud.hub_slug_for_page(gov_id, jurisdiction)`, which is synchronous and sees only that one page's own two fields — it cannot consult the host-based membership `crud._unkeyed_membership()` works out per render. So an un-keyed page adopted onto a government's hub by shared host, but with no jurisdiction text of its own, shows on the hub with no link back to it; and an un-keyed page excluded from a hub by the host rule still links *to* that hub, because its own stored text still slugifies onto it.
+  - **Impact**: cosmetic, no broken links — both targets resolve. The second is the more annoying one: a reader follows "More Orem, UT meetings" from a page that Orem's hub does not list.
+  - **Next action**: pass the page's `source_url_normalized` into the hub-link decision and reuse the same adoption map, cached alongside the frozen-slug cache in `archive/db/hub_slugs.py`, rather than recomputing it per meeting render.
+  - **Constraint**: don't add a per-render query to `/m/{slug}` — it is the hottest page on the site, which is why this was left rather than fixed inline.
+  - **History**: `BACKLOG_DONE.md`'s WO-256 part 2 entry; `docs/investigations/hub_architecture_audit.md` §5.
+
+## [Done 2026-10-16] [NEEDS-AUDIT] `[EASY]` Two of WO-226's six real "slug takes upload date, not title date" cases use a 2-digit year in the title (`8-24-26`, `8/17/26`) -- the WO-285 fix that closed the other four doesn't parse that shape
+
+Fixed in the backlog round-2 PR (commit `a676d8cc`): Title dates like 8-24-26 and 8/17/26 now read as 20YY, with 8 negative tests. Not live until that PR is merged and deployed.
+
+Entry as it stood in `BACKLOG.md`:
+
+- **Issue**: WO-226's spot-check found six real pages where the
+  archived slug/date is the YouTube upload date, not the meeting date
+  the video's own title states. WO-285 (2026-09-12) fixed the root
+  cause -- `youtube.py` now prefers a date parsed from the title over
+  release_date/upload_date -- and re-checking the real stored titles
+  for all six confirms four are now fixed prospectively (any FUTURE
+  resolve of these exact titles gets the right date): Littleton CO
+  ("Arts & Culture Board - 07/09/2026"), Waldwick NJ
+  ("07-14-2026 Council Regular Meeting"), Richlands VA ("Town of
+  Richlands February 10, 2026 1"), Brookshire TX ("09/03/2026 - 7:00PM
+  City of Brookshire City Council Regular Meeting") -- all four state
+  a full 4-digit year. The remaining two don't: Harvey IL ("Finance
+  committee meeting 8-24-26") and Dallas OR ("8/17/26 City Council
+  Meeting") both use a 2-digit year, which `_parse_meeting_date_from_
+  title()`'s numeric-slash pattern deliberately requires 4 digits for
+  (a 2-digit number is a much weaker date signal -- more likely to
+  collide with something else in a real title) and so doesn't match.
+  These 6 pages themselves are NOT backfilled by WO-285 either way --
+  see the separate `[NEEDS-AUDIT]` "1,298 pages disagree" entry below
+  for that.
+- **Impact**: small -- 2 known real pages, cosmetic (video/transcript
+  are still correct either way).
+- **Next action**: only worth widening `_parse_meeting_date_from_
+  title()` to a 2-digit-year shape once a second, independently
+  confirmed real example turns up beyond these two, per this repo's
+  "test against a real URL first" rule -- these two alone were both
+  found by the same WO-226 spot-check, not independently.
+- **Constraint**: don't regress a page whose title genuinely has no
+  parseable date -- upload date is still the only signal for those.
+- **History**: `BACKLOG_DONE.md`'s WO-226 entry, 2026-09-11; WO-285,
+  2026-09-12 (`BACKLOG_DONE.md`) fixed the other four and the general
+  precedence bug.
+
+## [Done 2026-10-16] ChampDS in Meeting Finder: count VOD2-only recordings as video, and how deep to look for a download link? `[HUMAN]`
+
+Fixed in the backlog round-2 PR (commit `3bb69b03`): Ryan decided 2026-10-16 that a VOD2-only recording counts as a tier-3 find (a transcript that links back to the source still helps). Resolve accepts the VOD2 stream as tier 3 and the listing counts every event with a recording as video; the 40-event download search is gone. Not live until that PR is merged and deployed.
+
+Entry as it stood in `BACKLOG.md`:
+
+- **Issue:** Meeting Finder now lists ChampDS accounts (`BACKLOG_DONE.md`, "ChampDS listing", 2026-10-02). It counts an event as video only when it has a download link. Most ChampDS recordings are VOD2-only: our transcription can read them (WO-1045), but a reader's page has no player. It checks at most 40 recordings (about 100 s, paced) for a download link.
+- **Impact:** Signal Mountain TN (193 recordings, 5 downloads) and Yuba County CA (89 recordings, 1 download, from the bare page) come back `meeting-without-video`: their newest downloads are the 113th and 77th newest recordings. Walden TN (79 recordings, 0 downloads) and Largo FL's newest meetings are VOD2-only too.
+- **Next action:** Ryan decides two things. (1) Should a VOD2-only recording count as a tier-3 find (transcript, no player)? If yes, Resolve can accept `server_media_url` and the download search becomes unneeded. (2) If not, is 40 checks the right depth, or 120 (about 5 minutes per account)? Both are constants in `app/platforms/meeting_finder/listing.py` and one rule in `resolve.py`.
+- **Constraint:** the 2.5 s per-host pace is shared by every government in a batch, so a deeper search slows every ChampDS account in the run.
+- **History:** `BACKLOG_DONE.md`, "ChampDS listing" (2026-10-02); the VOD2 player gap is its own entry ("ChampDS's VOD2 stream ... can be transcribed but still can't play on our pages").
+
+## [Done 2026-10-16] Invintus meetings from a separate government (regional council, health department) get no government: the registry has no id for them `[NEEDS-AUDIT]`
+
+Fixed in the backlog round-2 PR (commit `4b738d62`): Ryan said yes 2026-10-16. Minted rtr:us:wa:southwest-washington-regional-transportation-council and rtr:us:wa:tacoma-pierce-county-health-department and mapped both in CLIENT_BODY_GOVERNMENTS. Existing pages keep a blank government until backfill_gov_id.py runs after a deploy. Not live until that PR is merged and deployed.
+
+Entry as it stood in `BACKLOG.md`:
+
+- **Issue**: on the two mixed Invintus channels, two bodies that are their own governments still resolve blank, because the registry has no id to give them: CVTV `2917038973` "Regional Transportation Council"; Pierce County channel `1872740071` "Tac-PC Board of Health" (Tacoma-Pierce County Health Department). CVTV's "City Council Workshops" also stays blank: its category and description name no city.
+- **Impact**: in the 2026-09-25 dry run, 8 of CVTV's 36 accepted meetings (workshops 7, RTC 1) and 1 Pierce meeting get no government.
+- **Next action**: neither body is in `cog_units.csv`, so an id would have to be minted (Ryan's call, as for WO-916). Once one exists, add it to `CLIENT_BODY_GOVERNMENTS` in `invintus.py`. For the workshops, only file under Vancouver if the event itself starts naming the city.
+- **Constraint**: never file these under Vancouver, Clark County or Pierce County, and never add the channel's state to the raw name: that mints an id from the city's name, worse than blank. Programming rows ("Election Programs", "Clark County Close Up", "Community Events") are not meetings and should stay blank.
+- **History**: `BACKLOG_DONE.md` WO-1066 (Leon County pin, CVTV place prefixes) and WO-1067 (Port of Vancouver and C-TRAN registry ids).
+
+## [Closed, decided 2026-10-16] [HUMAN] The bare `/j/victoria` slug may be pinned to the wrong destination — the one real `hub_slug_aliases.csv` collision WO-112 left for Ryan, still unresolved.
+
+Ryan, 2026-10-16: keep `/j/victoria` pointing at Victoria, BC.
+
+Entry as it stood in `BACKLOG.md`:
+
+- **[HUMAN] The bare `/j/victoria` slug may be pinned to the wrong destination — the one real `hub_slug_aliases.csv` collision WO-112 left for Ryan, still unresolved.**
+  - **Issue**: `archive/data/hub_slug_aliases.csv` currently redirects `victoria` to `victoria-bc` (`ca:csd:5917034`). WO-112 (2026-09-03) fixed the other two same-shaped collisions found that day (`hamilton`, `woodland`) by Ryan's direct call, but he did not mention `victoria`, and it's flagged as a genuinely different case: `victoria-bc` may itself be the wrong committed value, not just the less-preferred one.
+  - **Impact**: `/j/victoria` may be sending readers to the wrong government's hub. Low reach unless someone actually links or searches the bare slug.
+  - **Next action**: Ryan checks whether `victoria-bc` is the right redirect target for a bare `/j/victoria`, the way he already resolved `hamilton`/`woodland`. WO-940's new merge logic in `_write_hub_slug_aliases()` will keep the current value unless a future run's fresh candidates disagree with it, in which case it now prints a collision instead of silently guessing — so this stays visible until someone decides it.
+  - **Constraint**: don't auto-flip this one — it's exactly the kind of judgment call the collision report exists to surface, not resolve.
+  - **History**: `BACKLOG_DONE.md`'s WO-109/WO-112 writeup; WO-940 (2026-09-22, this repo's `BACKLOG_DONE.md`).
+
+## [Closed, decided 2026-10-16] How stale is too stale for a tier-3 queue candidate? `[HUMAN]`
+
+Ryan, 2026-10-16: no age cutoff. Queue a real meeting of the right body at any age.
+
+Entry as it stood in `BACKLOG.md`:
+
+- **Issue:** WO-349 (2026-09-13, CivicPlus full run) hand-checked 3 real,
+  identifiable, correctly-bodied videos that the listing walker reached
+  as the *newest* candidate at its search depth, but that are 21-52
+  months old: Grinnell city IA ("Regular City Council Session", Dec
+  2024), Hastings-on-Hudson village NY ("Information Session on the Plus
+  One ADU Program", Oct 2024 — also not clearly a legislative meeting),
+  Easton town CT ("Affordable Housing Committee", Apr 2022). This round's
+  only precedent (WO-341, Pierce County WA) rejected a similarly-shaped
+  find, but that video was over 4 years old *and* of uncertain body —
+  these three are less extreme and split on the second factor.
+  Left un-applied to `jurisdiction_coverage.csv` rather than guessed
+  either way (`research/wo349_handcheck.csv`).
+- **Impact:** 3 real governments' only known video sits unused pending a
+  policy call; the same ambiguity will recur every time a listing walker
+  finds only one, old candidate — not a one-off.
+- **Next action:** Ryan decides a freshness cutoff (or "no cutoff, queue
+  it regardless of age" per the existing "queue a long one rather than
+  defer" precedent for duration) — then whichever of the 3 above still
+  qualifies gets applied via a small follow-up to `wo349_apply_to_jc.py`'s
+  pattern.
+- **Constraint:** don't invent a cutoff and apply it silently — this is
+  exactly the kind of judgment call this section exists for.
+- **History:** `BACKLOG_DONE.md`'s WO-349 entry; `rtr-business/research/wo349_handcheck.csv`.
+
+## [Closed, decided 2026-10-16] [HUMAN] Atlantic City NJ's CITISTAT broadcasts (22.5 and 30.9 min, probed clean) -- queue or not is Ryan's call.
+
+Ryan, 2026-10-16: no, do not queue CITISTAT broadcasts.
+
+Entry as it stood in `BACKLOG.md`:
+
+- **[HUMAN] Atlantic City NJ's CITISTAT broadcasts (22.5 and 30.9 min, probed clean) -- queue or not is Ryan's call.**
+  - **Issue**: WO-226's spot-check confirmed two CITISTAT broadcasts on
+    Atlantic City NJ's Boxcast channel (`lqsszohc5p0q4yemoddl`) probe
+    clean at roughly 22.5 and 30.9 minutes, alongside the real City
+    Council meetings already on file.
+  - **Impact**: CITISTAT is a performance-management briefing, not a
+    legislative meeting in the usual sense -- whether it belongs
+    on-mission is a product call, not an engineering one.
+  - **Next action**: Ryan decides whether CITISTAT broadcasts should be
+    queued alongside Atlantic City's council meetings once Boxcast
+    ingest actually ships for that channel. The signed-URL gap this
+    used to wait on is fixed (WO-229, `BACKLOG_DONE.md`); whether
+    BoxCast re-signs a playlist after it expires is the separate
+    `[WAIT]` entry in this file.
+  - **History**: `BACKLOG_DONE.md`'s WO-226 entry, 2026-09-11.
+
+## [Closed, decided 2026-10-16] Nothing records that a page was deliberately deleted, so a later sweep can put it straight back `[NEEDS-AUDIT]`
+
+Ryan, 2026-10-16: no do-not-ingest list for now.
+
+Entry as it stood in `BACKLOG.md`:
+
+- **Issue**: `POST /internal/admin/delete-pages` removes the row and nothing else. The repo has no list of deleted slugs or rejected source URLs (a search finds only title blocklists inside adapters and sweeps). `scripts/wo134_confirmed_hits_ingest.py` returns a candidate that already has caption segments before any probe runs, so a probe-sidecar `reject-*` row protects only the no-captions (tier-3) path.
+- **Impact**: real example. Toledo OR's 2-minute closed-session opening (`toledo-or-2026-09-16-city-council-executive-session`, CivicClerk event 104) was deleted on 2026-09-20 on Ryan's yes. The next resolve of that tenant from a machine that can fetch YouTube would take event 104 again, since it is the first event with video and captions, and recreate the page.
+- **Next action**: decide where a "do not ingest this source URL" list lives and who reads it. The `/internal/ingest` route in `archive/main.py` is the one place every path passes. Not built in WO-913.
+- **Constraint**: don't solve it with a blanket title block: "executive session" also names real meetings that carry a public portion.
+- **History**: `BACKLOG_DONE.md`'s WO-913 entry (the Toledo delete and the narrow probe-sidecar reject).
+
+## [Closed, decided 2026-10-16] [NEEDS-AUDIT] A `tenant_overrides.csv` pin only affects future resolutions — nothing retroactively re-applies it to already-archived pages, and the one tool meant to make that reliable doesn't track every pin
+
+Ryan, 2026-10-16: keep re-keying old pages by hand (backfill_gov_id.py after each deploy) for now.
+
+Entry as it stood in `BACKLOG.md`:
+
+- **Issue**: a `tenant_overrides.csv` pin affects only future resolves. `backfill_gov_id.py --hosts-file` reads `reports/pin_worklist_hosts.txt`, which only `apply_pin_worklist.py` writes. Hand-added pins (most pins since 2026-09-25) are invisible to it, so full backfills are run by hand (WO-1060, #1448).
+- **Next action**: Ryan picks the shape. Either track which hosts have a pin newer than their last backfill, or have the hosts-file writer pick up every changed `tenant_overrides.csv` row (for example, from `git diff`).
+- **Constraint**: Ryan declined running `backfill_gov_id.py --apply` in `preDeployCommand`. Do not re-propose it.
+- **History**: found 2026-09-05 (Edmonton, Niagara Falls).
+
+## [Done 2026-10-16] [HUMAN] [LOGIN] WO-1055's live page moves and twin deletes wait for a deploy, then one worklist run.
+
+Ryan, 2026-10-16: done on the Archive's Render shell. The prepare step found all 14 page moves already done; the 3 approved deletes (pages 1171, 3964, 5775) ran and deleted.
+
+Entry as it stood in `BACKLOG.md`:
+
+- **[HUMAN] [LOGIN] WO-1055's live page moves and twin deletes wait for a deploy, then one worklist run.**
+  - **Issue**: WO-1055 committed the registry fixes (METRO, The Harris Center, the Port of Corpus Christi, the Metropolitan Water District, six county hosts) but moved no live page. Its session had no Archive token. Pages to fix: 399, 4177, 5908 (to METRO), 3759 (to The Harris Center), 2659 and the 2026-08-18 Port Commission page (to the Port), 2535 and any other `mwdh2o.granicus.com` page (to the Metropolitan Water District of Southern California), any page on the six county hosts still under a city (two Sedgwick pages sit on a "County of Sedgwick" hub), and three deletes: twins 1171 and 3964, trailer 5775.
+  - **Impact**: about 11 live pages show the wrong government; two meetings show twice; one promo trailer shows as a meeting.
+  - **Next action**: deploy the Archive with WO-1055. Then, on the Archive's Render shell: `python scripts/wo1055_prepare_worklist.py` (read-only), `python scripts/repair_wrong_pages.py run reports/wo1055_worklist.csv` (dry run; Ryan approved all three deletes, 1171, 3964 and 5775, so the rows come out approved), then `run ... --apply --allow-deletes`, then one more `run` to see every row "already done".
+  - **Constraint**: the rekeys to the new ids fail until the deploy is live (the Archive checks the id exists). Deletes go after the deploy so the `_SLUG_REDIRECTS` entries are already live.
+  - **History**: `BACKLOG_DONE.md` WO-1055.
+
+## [Done 2026-10-16] [HUMAN] Run `scripts/backfill_video_channel.py --apply` from the Archive's Render Shell to store the 1,903 known YouTube channels, then run the gov_id backfill.
+
+Ryan, 2026-10-16: dry run on the Archive shell found nothing to set (would set 0). An earlier run already filled every page the channel maps cover; 266 YouTube pages have a video id in no map, 1 has no extractable id.
+
+Entry as it stood in `BACKLOG.md`:
+
+- **[HUMAN] Run `scripts/backfill_video_channel.py --apply` from the Archive's Render Shell to store the 1,903 known YouTube channels, then run the gov_id backfill.**
+  - **Issue**: WO-246 (2026-09-11) built and tested `scripts/backfill_video_channel.py`, which sets `meeting_pages.video_channel` from per-video maps already in the repo (`reports/pin_worklist_youtube.csv`, `reports/shared_host_lookups.csv`) -- no YouTube calls. It has not been run against production: writing thousands of rows is exactly the "no bulk write from a laptop" standing decision, so it needs a human to run it from the Render Shell.
+  - **Impact**: until this runs, every one of the 1,138 `channel=@handle` pins in `tenant_overrides.csv` stays inert for already-archived pages -- `video_channel` is NULL on all 3,580 archived YouTube pages today. The script covers 1,903 of them (53%); the rest have no channel on record anywhere in the repo yet (see the next entry).
+  - **Next action**: from the Archive service's Render Shell: `python scripts/backfill_video_channel.py --dry-run` to confirm the count, then `python scripts/backfill_video_channel.py --apply --report /tmp/wo246_video_channel_report.csv`. Once that's done, run `python scripts/backfill_gov_id.py --apply` (also from the Render Shell) so pages whose new channel matches an existing pin get re-keyed -- WO-246's own report has a projected estimate.
+  - **Constraint**: run both scripts from the Render Shell, never from a laptop against the production `DATABASE_URL` -- both are safe to interrupt (commit-per-row, skip-already-set) and safe to re-run.
+  - **History**: `BACKLOG_DONE.md`, WO-246, 2026-09-11.
 ## [Done 2026-10-16] Own transcription: a warning for a transcript that stops early needs a tail-silence check built with it; held by Ryan's decision `[NEEDS-AUDIT]`
 
 Fixed in the early-end warning PR (commit `8b09f0b8`): Ryan said on 2026-10-16 to build it now. The warning is built with the tail-silence check: when the last cue is under 90% of the video with 10+ minutes uncovered, 30 seconds of audio halfway into the gap are sampled and the warning is skipped if the mean volume is under -60 dB. One shared function is used by the cloud worker, transcribe_backlog_locally.py and retranscribe_first_chunk.py. A locally made transcript now waits 30 days before the finders pick it again. Count with scripts/count_own_transcript_early_end_flags.py --list on the Archive shell. Not live until that PR is merged and deployed.

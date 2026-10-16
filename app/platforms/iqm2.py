@@ -200,6 +200,37 @@ _HUB_CACHE_TTL_SECONDS = 300
 _HUB_CACHE: Dict[str, Tuple[float, List[dict]]] = {}
 
 
+def _meeting_body_from_calendar(html: str, meeting_id: str) -> Optional[str]:
+    """The meeting body for one meeting, read from a calendar list page.
+
+    IQM2's detail page title runs body and meeting type together ("Board
+    of Supervisors Regular Meeting"), with nothing to split on. The
+    calendar list page keeps them apart: each `MeetingRow` carries a
+    `RowDetails` cell reading "{body} - {type}" (confirmed live 2026-09-20
+    on Atlanta GA and Santa Clara County CA; real shape in
+    tests/fixtures/iqm2/crowwing_calendar_2025.html).
+
+    The row is matched by its own `Detail_Meeting.aspx?ID=` link, never by
+    position -- a day can hold several meetings. A row whose text has no
+    " - " gives None rather than a guess at where the body ends.
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    for row in soup.select("div.MeetingRow"):
+        link = row.find("a", href=_HUB_MEETING_LINK_RE)
+        if link is None:
+            continue
+        m = _HUB_MEETING_LINK_RE.search(link["href"])
+        if not m or m.group(1) != meeting_id:
+            continue
+        details = row.select_one(".RowDetails")
+        text = details.get_text(" ", strip=True) if details else ""
+        body, sep, _type = text.partition(" - ")
+        if not sep:
+            return None
+        return body.strip() or None
+    return None
+
+
 def _today() -> _dt.date:
     """Injectable in tests (patch `app.platforms.iqm2._today`)."""
     return _dt.datetime.now(_dt.timezone.utc).date()
@@ -315,6 +346,15 @@ class IQM2AssetFinder(AssetFinder):
 
             video_url = self._extract_video_url(split_html) if split_html else None
 
+            # One extra GET, for one day of the calendar: the only place
+            # IQM2 shows the meeting body on its own. A failed fetch keeps
+            # the page, just without a body.
+            meeting_body = None
+            if date:
+                meeting_body = await self._fetch_meeting_body(
+                    session, origin, base_path, meeting_id, date
+                )
+
             if not video_url:
                 return ResolvedMeeting(
                     platform=self.platform_name,
@@ -322,6 +362,7 @@ class IQM2AssetFinder(AssetFinder):
                     title=title,
                     date=date,
                     jurisdiction=jurisdiction,
+                    meeting_body=meeting_body,
                     agenda_items=agenda_items,
                     video_warnings=["No video found for this meeting."],
                 )
@@ -358,12 +399,43 @@ class IQM2AssetFinder(AssetFinder):
             title=title,
             date=date,
             jurisdiction=jurisdiction,
+            meeting_body=meeting_body,
             video_url=video_url,
             video_format=video_format,
             agenda_items=agenda_items,
             segments=segments,
             transcript_warnings=transcript_warnings,
         )
+
+    async def _fetch_meeting_body(
+        self,
+        session: aiohttp.ClientSession,
+        origin: str,
+        base_path: str,
+        meeting_id: str,
+        date: str,
+    ) -> Optional[str]:
+        """GET the calendar list for the meeting's own day and read its
+        body from the row whose link carries this meeting id. None on any
+        failure -- see `_meeting_body_from_calendar()`."""
+        try:
+            day = _dt.date.fromisoformat(date)
+        except ValueError:
+            return None
+        stamp = f"{day.month}/{day.day}/{day.year}"
+        calendar_url = (
+            f"{origin}{base_path}/calendar.aspx?View=List&From={stamp}&To={stamp}"
+        )
+        html = await self._fetch_text(session, calendar_url)
+        if not html:
+            return None
+        try:
+            return _meeting_body_from_calendar(html, meeting_id)
+        except Exception:
+            logger.warning(
+                "IQM2 calendar parse failed for %s", calendar_url, exc_info=True
+            )
+            return None
 
     async def _raise_hub_listing(self, url: str) -> None:
         """Raises CalendarPageError with the tenant's newest past meetings,

@@ -48,6 +48,7 @@ from app.utils.gov_registry import governments as registry_governments
 from app.utils.gov_registry import hub_slug as gov_hub_slug
 from app.utils.gov_registry import state_gov_id
 from app.utils.jurisdiction_enrich import finalize_jurisdiction
+from app.utils.video_titles import is_file_name_title, page_title_for_video
 from app.platforms.youtube_ids import extract_video_id as _extract_youtube_video_id
 
 # WO-1065: the substring app/platforms/embedded_captions.py's resolve-time
@@ -1166,6 +1167,18 @@ async def _find_or_create_page(
         raise GovernmentMismatch(page.id, page.slug, page.gov_id, caller_gov_id)
 
     created = page is None
+    # A video whose own title is a camera or file name ("video1516165031",
+    # "20251021", "CC20260908.mp4") gets "<government> archive video[,
+    # Month YYYY]" instead, on every platform (Ryan, 2026-09-21; WO-931).
+    # One shared rule in `app/utils/video_titles.py`; with no government
+    # name the source title is kept as it is.
+    source_title = payload.get("title")
+    title_is_file_name = is_file_name_title(source_title)
+    page_title = page_title_for_video(
+        source_title,
+        _display_jurisdiction(gov, jurisdiction),
+        payload.get("date"),
+    )
     if page is None:
         # The display name, so a new page's slug matches the government
         # its hub is filed under -- "fresno-county-ca-..." whichever
@@ -1173,7 +1186,7 @@ async def _find_or_create_page(
         base_slug = build_base_slug(
             _display_jurisdiction(gov, jurisdiction) or "",
             payload.get("date") or "",
-            payload.get("title") or "",
+            page_title or "",
         )
         slug = await _unique_slug(session, base_slug)
         page = MeetingPage(
@@ -1181,7 +1194,7 @@ async def _find_or_create_page(
             platform=platform,
             external_id=external_id,
             source_url_normalized=source_url_normalized,
-            title=payload.get("title"),
+            title=page_title,
             date=payload.get("date"),
             jurisdiction=_display_jurisdiction(gov, jurisdiction),
             jurisdiction_raw=payload.get("jurisdiction") or None,
@@ -1243,7 +1256,13 @@ async def _find_or_create_page(
         # than hardcoding something else, so this can't regress an
         # already-correct page.
         page.platform = payload.get("platform") or page.platform
-        page.title = payload.get("title") or page.title
+        # A file-name title never overwrites a page's existing title (a
+        # hand fix like page 10200's, WO-925, must survive a re-ingest);
+        # stored pages are not rewritten here either way.
+        if title_is_file_name and page.title:
+            pass
+        else:
+            page.title = page_title or page.title
         page.date = payload.get("date") or page.date
         # WO-215: rung 1b (WO-210, `MULTI_GOV_HOSTS`) answers `blank` --
         # gov_id `rtr:unknown:<host>` -- for EVERY re-ingest on a shared
@@ -8682,10 +8701,53 @@ def _hub_identity(gov_id: Optional[str], jurisdiction: Optional[str]) -> tuple:
     return (gov_id or slug or ""), slug, display, None
 
 
-def hub_slug_for_page(gov_id: Optional[str], jurisdiction: Optional[str]):
+def hub_slug_for_page(
+    gov_id: Optional[str],
+    jurisdiction: Optional[str],
+    source_url: Optional[str] = None,
+):
     """The `/j/{slug}` a single page belongs to -- the public shape of
-    `_hub_identity()`, for archive/main.py's meeting-page render."""
-    return _hub_identity(gov_id, jurisdiction)[1]
+    `_hub_identity()`, for archive/main.py's meeting-page render. The slug
+    half of `hub_link_for_page()`."""
+    return hub_link_for_page(gov_id, jurisdiction, source_url)[0]
+
+
+def hub_link_for_page(
+    gov_id: Optional[str],
+    jurisdiction: Optional[str],
+    source_url: Optional[str] = None,
+) -> tuple:
+    """(slug, adopting hub's display name or None) for one page's
+    "More {Jurisdiction} meetings" link. The display name is set only when
+    the page was adopted by host, so a page with no text of its own can
+    still name the hub it links to.
+
+    For an un-keyed page (no `gov_id`, or the `rtr:unknown:` placeholder)
+    pass its `source_url` too, so the link follows the same host rule
+    `_hub_groups()` uses to decide whether the page is on a hub at all
+    (WO-256 part 2's two leftover asymmetries, backlog triage 2026-10-16):
+
+      * a page adopted onto a government's hub by shared host links to
+        that hub, even with no jurisdiction text of its own;
+      * a page NOT adopted, whose own text lands on a hub a real
+        government owns, links nowhere -- that hub does not list it.
+
+    No query: it reads the membership `_hub_groups()` last cached in
+    `hub_slugs`. When that cache is cold, it decides exactly as before.
+    """
+    slug = _hub_identity(gov_id, jurisdiction)[1]
+    if hub_slugs._usable(gov_id) or not source_url:
+        return slug, None
+    membership = hub_slugs.unkeyed_membership()
+    if membership is None:
+        return slug, None
+    adopted_hosts, government_slugs = membership
+    host = (urlparse(source_url).netloc or "").lower().split(":")[0]
+    if host in adopted_hosts:
+        return adopted_hosts[host]
+    if slug and slug in government_slugs:
+        return None, None
+    return slug, None
 
 
 def effective_jurisdiction(
@@ -8858,6 +8920,9 @@ async def _hub_groups(session, *, bypass_cache: bool = False) -> dict[str, dict]
             g["page_count"] += count
 
         if not unkeyed_seen:
+            # Nothing un-keyed is on a hub: no membership to hand on, so
+            # a single page's link decides as it did before WO-256.
+            hub_slugs.set_unkeyed_membership(None, ())
             return groups
 
         # Pass 2: the un-keyed pages, by HOST rather than by raw text
@@ -8867,6 +8932,17 @@ async def _hub_groups(session, *, bypass_cache: bool = False) -> dict[str, dict]
         # hosts.
         adoption, unkeyed = await _unkeyed_membership(session)
         gov_group = {gov_id: g for g in groups.values() for gov_id in g["gov_ids"]}
+        # Hand the same decision to `hub_slug_for_page()` (a `/m/` page's
+        # hub link), which is sync and must not query: which hub each
+        # adopting host lands on, and which slugs a real government owns.
+        hub_slugs.set_unkeyed_membership(
+            {
+                host: (gov_group[owner]["slug"], gov_group[owner]["display"])
+                for host, owner in adoption.items()
+                if owner in gov_group
+            },
+            [slug for slug, g in groups.items() if g["gov_ids"]],
+        )
         for page_id, gov_id, jurisdiction, host, gov_type, last_updated in unkeyed:
             owner = adoption.get(host)
             g = gov_group.get(owner) if owner else None

@@ -1483,3 +1483,4 @@ https://delvalleisdtx.new.swagit.com/videos/401213		us:sd:4816620
 https://sanfrancisco.granicus.com/MediaPlayer.php?view_id=47&clip_id=53209		us:sd:0634410
 https://fulton.legistar.com/MeetingDetail.aspx?LEGID=6395&GID=817&G=197058BF-F352-4423-BE44-04DFABBD8188		us:county:13121
 https://beaufort.granicus.com/MediaPlayer.php?view_id=3&clip_id=4774		us:place:4534045
+https://archivesvilledelaval.webtv.coop/assemblee-extraordinaire-de-la-ville-de-laval-du-27-avril-2026/		ca:csd:2465005	Assemblée extraordinaire de la Ville de Laval du 27 avril 2026	2026-04-27
