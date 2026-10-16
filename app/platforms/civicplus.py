@@ -1,4 +1,5 @@
 import logging
+import re
 from datetime import datetime
 from typing import List, Optional
 from urllib.parse import urljoin, urlparse
@@ -22,6 +23,10 @@ from ..utils.url_guard import read_capped_text
 
 
 logger = logging.getLogger("rtr_deeplink.civicplus")
+
+# `_parse_date()`'s output shape; a row whose date didn't parse keeps its
+# raw text instead.
+_ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 class CivicPlusAssetFinder(AssetFinder):
@@ -251,9 +256,9 @@ class CivicPlusAssetFinder(AssetFinder):
         soup = BeautifulSoup(html, "html.parser")
         all_candidates = self._find_candidate_rows(soup, final_url)
 
-        # Walk the real (title+date) candidates newest-first -- same
-        # rendering order this page already uses, per the class docstring
-        # -- checking up to `_RETRY_LIMIT` of them for a real video link.
+        # Walk the real (title+date) candidates newest-first -- sorted by
+        # date across all category panels by `_find_candidate_rows()` --
+        # checking up to `_RETRY_LIMIT` of them for a real video link.
         # This is the "retry" for a newer meeting that just hasn't had
         # video posted yet (same idea as adhoc_cdx_iqm2_pipeline.py trying
         # several of the most recent meeting ids): stop as soon as ANY
@@ -373,8 +378,9 @@ class CivicPlusAssetFinder(AssetFinder):
     def _find_candidate_rows(self, soup: BeautifulSoup, page_url: str) -> List[dict]:
         """Every REAL `tr.catAgendaRow` on this AgendaCenter listing page --
         a real title and a real date required, a real video link
-        optional -- in the page's own newest-first DOM order (per the
-        class docstring). `url` is the real delegate-video link
+        optional -- sorted newest-first by date across the whole page
+        (each category panel is only newest-first within itself). `url`
+        is the real delegate-video link
         (validated by `_is_real_video_link()`, unchanged) when this row
         has one, or None otherwise -- callers decide what "no video"
         means for a given row, this only reports what's actually on the
@@ -454,7 +460,17 @@ class CivicPlusAssetFinder(AssetFinder):
                     "meeting_body": meeting_body,
                 }
             )
-        return candidates
+        # Each category panel is newest-first only within itself; the
+        # panels are concatenated in category order (confirmed live on
+        # lowellma.gov, WO-137). Sort by parsed date, newest first, so the
+        # first `_RETRY_LIMIT` rows are the newest on the whole page. The
+        # sort is stable, so same-date rows keep DOM order; rows whose
+        # date didn't parse (raw text kept) go last, in DOM order.
+        return sorted(
+            candidates,
+            key=lambda c: c["date"] if _ISO_DATE_RE.match(c["date"]) else "",
+            reverse=True,
+        )
 
     @staticmethod
     def _is_real_video_link(href: str) -> bool:
