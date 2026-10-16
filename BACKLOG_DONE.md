@@ -71622,3 +71622,19 @@ Tarentum: oEmbed answers with no title and no owner (the owner hid the video). B
 - An owner can be a shared account (a state agency, a regional TV station, a foundation). The shared-hub government filter in `list_account()` still runs on the list.
 
 **Tests.** `tests/test_vimeo_owner_listing.py`, 28 tests, all from real, unmodified captures taken 2026-10-02 (`tests/fixtures/vimeo/oembed_{malverne,clinton,howells,tarentum}_*.json`, `v2_videos_*.json`, `rss_malvernetv.xml`, the page-4 403 page, and the human-check page). Full suite: 9,313 passed, 18 skipped, 4 xfailed.
+
+## [Done 2026-10-16] Granicus feeds from Ryan's two lead sheets: owners checked by hand
+
+Ryan said yes on 2026-10-16 to subscribing the feeds from his two `granicus-meeting-links` sheets, once each host's owner was confirmed by hand.
+
+**What was checked.** The direct check (`~/Documents/rtr-findmeeting/data/granicus_norss_rss_check_2026-10-07/results/leads_direct/results.csv`) found 35 feeds with real items on 26 hosts. Left out as asked: Clark (view 17 is an iframe copy), Somerton (newest item 2021), Jackson Health (newest item 2024), and `oregon.granicus.com`. That left 23 hosts. For each, I read the host's own view page once (one request, 3 seconds apart, no 429) and looked at its meeting names. For the two hosts not yet pinned, I also read one agenda.
+
+| Result | Count of 23 hosts |
+|---|---|
+| Already pinned, and the page's meeting names agree with the pin | 21 |
+| Newly pinned in this change | 2 |
+| Owner could not be confirmed | 0 |
+
+**New pins.** `gretnala.granicus.com` to Gretna city, LA (`us:place:2231915`): the agenda is headed "THE CITY OF GRETNA", 740 Second Street, Gretna, LA. `huroncounty.ca.granicus.com` to the County of Huron, ON (`ca:cd:3540`, the same id as the existing `huron.granicus.com` pin): the agenda is headed "County of Huron", with a 519 phone number. Test: `tests/test_granicus_lead_sheet_pins.py`.
+
+**Subscriptions (rtr-findmeeting).** 30 of the feeds were already subscribed on 2026-10-07. One new: Huron County view 1, as secondary (no meeting word in "Huron County ON"). findmeeting's feed-address check accepted only one-label hosts, so a `.ca` label is now allowed. Gretna view 1 is held back by the internal/test title rule ("New View"); it is in the open `BACKLOG.md` entry for Ryan, with the Scranton authority views.

@@ -493,6 +493,7 @@ greencountywi.portal.civicclerk.com,,us:county:55045,fallback,wildcard_http_swee
 greenstone.civicweb.net,,ca:csd:3558075,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Greenstone
 greenville.granicus.com,,us:place:3728080,fallback,ryan_stated,"Greenville, NC -- us_places.csv Greenville city"
 greenwood.escribemeetings.com,,ca:csd:5905042,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Greenwood
+gretnala.granicus.com,,us:place:2231915,fallback,landing_page+agenda_2026-10-16,"Gretna city, LA -- hand check 2026-10-16: the host's own view 1 lists ""Mayor and City Council"", ""Historic District Commission"", ""Planning and Zoning Commission""; its agenda for event 1004 is headed ""THE CITY OF GRETNA ... Gretna City Hall, 740 Second Street, Gretna, LA 70053""; feed channel title ""Gretna, LA"". Whole-host pin. Ryan approved subscribing his lead-sheet feeds 2026-10-16"
 grey.escribemeetings.com,,ca:csd:4609018,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Grey
 greyhighlands.civicweb.net,,ca:csd:3542015,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Grey Highlands
 gridleyca.gov,,us:place:0631260,fallback,ryan_stated,"Gridley, CA -- us_places.csv Gridley city"
@@ -556,6 +557,7 @@ huntsvilleal.granicus.com,,us:place:0137000,fallback,ryan_stated,"Huntsville, AL
 huntsvilleon.civicweb.net,,ca:csd:3544042,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Huntsville
 huron-township.cablecast.tv,,us:cousub:2616340040,fallback,ryan_stated,"Huron charter Township, Wayne County, MI (hurontownship-mi.gov says Huron CHARTER Township, Wayne County; the earlier pin matched the same-named Huron township in Huron County) -- Ryan 2026-09-12, WO-319"
 huron.granicus.com,,ca:cd:3540,fallback,wildcard_http_sweep_1,HTTP 302 -> registry: ca_cd.csv Huron
+huroncounty.ca.granicus.com,,ca:cd:3540,fallback,landing_page+agenda_2026-10-16,"County of Huron, ON -- hand check 2026-10-16: the host's own view 1 lists ""County Council"", ""Library Board"", ""Special Session of Council"", ""Accessibility Advisory Committee""; its agenda for event 187 is headed ""County of Huron ... Huron County Accessibility Advisory Committee"" with a 519 (Ontario) phone number; feed channel title ""Huron County ON"". Same government as the existing huron.granicus.com pin. Whole-host pin. Ryan approved subscribing his lead-sheet feeds 2026-10-16"
 huronkinloss.escribemeetings.com,,ca:csd:3541015,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Huron-Kinloss
 huronshores.escribemeetings.com,,ca:csd:3557035,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Huron Shores
 iberiaparishla.portal.civicclerk.com,,us:county:22045,fallback,wildcard_http_sweep_2,HTTP 404 api-supported-versions present -> registry: us_counties.csv Iberia Parish
