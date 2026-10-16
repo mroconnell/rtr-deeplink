@@ -373,6 +373,82 @@ async def test_backfill_gov_id_apply_writes_an_alias_when_it_retires_a_slug(
     assert hub_aliases.redirect_target("rockaway-borough-nj") is None
 
 
+async def test_backfill_apply_drops_a_stale_reverse_row_and_prints_the_changes(
+    tmp_path, monkeypatch, capsys
+):
+    """BACKLOG 2026-09-25: `--apply` writes the alias file on the instance
+    it runs on, which the live site never reads -- so it must print the
+    rows (and write them next to `--report`) for a PR. And a stale row
+    FROM the hub the pages now land on (here `rockaway-borough-nj ->
+    rockaway-nj`, the baltimore-md / baltimore-city-md shape) is dropped
+    rather than left to loop with the new row. Same real Rockaway, NJ
+    setup as the test above. An unrelated row keeps its exact bytes
+    (including a stray CRLF) even though a row before it was dropped."""
+    alias_file = tmp_path / "hub_slug_aliases.csv"
+    alias_file.write_bytes(
+        b"old_slug,gov_id,new_slug,evidence\n"
+        b"rockaway-borough-nj,rtr:old,rockaway-nj,stale reverse row\n"
+        b"unrelated-old,gov:u,unrelated-new,keep me\r\n"
+    )
+    monkeypatch.setattr(hub_aliases, "ALIAS_FILE", alias_file)
+    hub_aliases.hub_slug_aliases.cache_clear()
+
+    source_url = "https://wo4226-alias-report-test.example.com/meeting/1"
+    payload = {
+        "platform": "boxcast",
+        "source_url": source_url,
+        "external_id": "boxcast:wo4226-alias-report-test",
+        "title": "Council Meeting",
+        "date": "2026-09-02",
+        "jurisdiction": "Wo4226 Alias Report Placeholder Government, ZZ",
+        "video_url": None,
+        "video_format": None,
+        "segments": [],
+        "agenda_items": [],
+        "transcript_language": None,
+        "transcript_warnings": [],
+    }
+    slug = (await crud.ingest_resolution(payload, source_url))["slug"]
+    async with async_session() as session:
+        page = (
+            await session.execute(select(MeetingPage).where(MeetingPage.slug == slug))
+        ).scalar_one()
+        page.gov_id = None
+        page.gov_type = None
+        page.jurisdiction = "Rockaway, NJ"
+        page.jurisdiction_confidence = "blank"
+        await session.commit()
+
+    report = tmp_path / "run.csv"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "backfill_gov_id.py",
+            "--hosts",
+            "wo4226-alias-report-test.example.com",
+            "--apply",
+            "--report",
+            str(report),
+        ],
+    )
+    await backfill_gov_id.main()
+    out = capsys.readouterr().out
+
+    hub_aliases.hub_slug_aliases.cache_clear()
+    assert hub_aliases.redirect_target("rockaway-nj") == "rockaway-borough-nj"
+    assert hub_aliases.redirect_target("rockaway-borough-nj") is None
+    assert b"unrelated-old,gov:u,unrelated-new,keep me\r\n" in alias_file.read_bytes()
+
+    alias_report = tmp_path / "run_hub_slug_aliases.csv"
+    rows = list(csv.DictReader(alias_report.open(encoding="utf-8")))
+    by_action = {(r["action"], r["old_slug"]): r for r in rows}
+    assert by_action[("set", "rockaway-nj")]["new_slug"] == "rockaway-borough-nj"
+    assert ("remove", "rockaway-borough-nj") in by_action
+    assert len(rows) == 2
+    assert alias_report.read_text(encoding="utf-8") in out
+
+
 def test_the_four_wo293_repaired_targets_resolve_in_one_hop():
     """The real, live-confirmed 2026-09-12 repairs -- each of these
     301'd to a 404 before this WO; each must now be exactly one hop from
