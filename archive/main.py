@@ -15,7 +15,7 @@ from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from markupsafe import Markup
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_serializer
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 load_dotenv()
@@ -1700,6 +1700,27 @@ class TranscriptSegmentIn(BaseModel):
     # which would otherwise quietly break a future diarization pass that
     # assumes this value survives the resolver -> Archive boundary.
     speaker: Optional[str] = None
+    # Whisper's own per-segment confidence numbers (WO-1968). Sent only by
+    # the local transcription script's ingest; the cloud worker writes
+    # partial_segments straight to the DB and never passes through here.
+    # Declared for the same reason as `speaker`: Pydantic would otherwise
+    # drop them at this boundary. Names must match worker/segment_utils.py's
+    # WHISPER_CONFIDENCE_FIELDS (tests/test_whisper_confidence.py checks).
+    # Nothing displays them yet.
+    avg_logprob: Optional[float] = None
+    no_speech_prob: Optional[float] = None
+    compression_ratio: Optional[float] = None
+
+    @model_serializer(mode="wrap")
+    def _omit_absent_confidence(self, handler):
+        # A scraped-caption segment has none of these. Leaving them out when
+        # unset keeps every such segment's stored JSON exactly as before,
+        # instead of adding three nulls to every caption cue in the Archive.
+        data = handler(self)
+        for key in ("avg_logprob", "no_speech_prob", "compression_ratio"):
+            if data.get(key) is None:
+                data.pop(key, None)
+        return data
 
 
 class AlternateTranscriptIn(BaseModel):
