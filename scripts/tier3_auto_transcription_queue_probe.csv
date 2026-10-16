@@ -12286,3 +12286,4 @@ https://reflect-sapatv.cablecast.tv/internetchannel/show/43448,cablecast,cableca
 https://reflect-sapatv.cablecast.tv/internetchannel/show/43448,cablecast,cablecast-api,1938.00,2026-05-07,,1,accept,,0.07,2026-10-16T05:00:23+00:00,feed_tier3_auto_transcription,0
 https://il-woodfordcounty.civicplus.com/DocumentCenter/View/11529/May-27-2026-BOH-Recording,civicplus,ranged-get+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.52,2026-10-16T05:00:45+00:00,,0
 https://becity.org/media/audios/2026/10/02/10.1.26-special-council-meeting.mp3,direct_file,head+ffprobe,742.11,2026-10-02,17814800,1,accept,,0.60,2026-10-16T05:24:24+00:00
+https://vimeo.com/321604076,vimeo,vimeo-oembed,2445.00,2019-03-05,,1,accept,,6.40,2026-10-16T05:35:42+00:00
