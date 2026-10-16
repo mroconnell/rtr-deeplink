@@ -133,37 +133,26 @@ Standing decisions — do NOT re-raise  (23)
   `[LATER]` Prompt injection isn't a live product risk today, but the…
   `[LATER]` If a Content-Security-Policy is ever added, it must allow…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (6)
-  The "no adapter" comment on `MULTI_GOV_HOSTS` is out of date: BoxCast…
-  Coverage registry: per-state view and other dashboard additions…  (2)
-    [JUST-DO-IT] `[EASY]` A government that stops being ingested only…
-    [JUST-DO-IT] `[EASY]` Two hub-membership asymmetries left by WO-256's…
-  iQM2's meeting body is only on the calendar listing page; fetch it…  (1)
-    [JUST-DO-IT] CLAUDE.md's sample-sheet note calling Whitehall, OH's…
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (3)
+  Coverage registry: per-state view and other dashboard additions…
+  iQM2's meeting body is only on the calendar listing page; fetch it…
   Granicus: discover a tenant's `view_id` so a bare tenant hub lists…
-  [NEEDS-AUDIT] `[EASY]` A video whose own title is a camera or file…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (38)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (31)
   [HUMAN] Archive page 12994 carries a job label as its source address;…
   [HUMAN] Ryan decides which Granicus feeds from his two lead…
-  [HUMAN] [LOGIN] WO-1055's live page moves and twin deletes wait for a…
   [HUMAN] WO-1165: 15 CivicMedia page renames, one refresh and one…
   [HUMAN] Promote the hidden transcript version on about 6 pages where…
   [HUMAN] 19 Cablecast pages still show label-only or empty station…
   [HUMAN] Run the re-transcription queue for the pre-voice-filter…
   [HUMAN] Other Cablecast pages with no `external_id` may be twins of a…
-  [HUMAN] The bare `/j/victoria` slug may be pinned to the wrong…
   Pin audit follow-up (WO-1186): 16 re-keyed Archive pages still carry…
   Existing Invintus pages need one re-resolve after WO-1065 deploys, to…
   After WO-1056 and WO-1057 deploy, re-resolve archived pages so…
-  ChampDS in Meeting Finder: count VOD2-only recordings as video, and…
-  How stale is too stale for a tier-3 queue candidate? `[HUMAN]`
   Finish the WO-310 fixes: 2 identity joins, 1 blank gov_id and 42…
-  Production actions only Ryan should take  (7)
-    [HUMAN] Run `scripts/backfill_video_channel.py --apply` from the…
+  Production actions only Ryan should take  (5)
     [HUMAN] ~1,676 archived YouTube video ids have no channel on record…
     [HUMAN] Apply the reviewed wrong-page sheet,…
-    [HUMAN] Atlantic City NJ's CITISTAT broadcasts (22.5 and 30.9 min,…
     [HUMAN] 13 archived YouTube pages point at a video that is gone (7…
     [HUMAN] Two TelVue stations (`gmcC3sJ6...`, `5ZgpAPx0...`) still have…
     [HUMAN] Town Square Television: 3 shows need re-filing, and South St.…
@@ -174,7 +163,6 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (38)
   [JUST-DO-IT] WO-1004 built a domain-health check for the registry's…
   `[NEEDS-AUDIT]` SharePoint share links (Yakima County, WA) resolve,…
   [JUST-DO-IT] `[EASY]` Page 8494 (Middletown Township, Delaware County…
-  [NEEDS-AUDIT] A `tenant_overrides.csv` pin only affects future…
   High Plains Water District (Granicus) transcribed to zero usable…
   [HUMAN] Five `youtu.be` pages for the Wasatch Front Waste & Recycling…
   [EASY] `scripts/wo288_youtube_date_backfill.py` is built and dry-run…
@@ -184,7 +172,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (38)
   `[IMPROVEMENT-ROUND]` Full Context entries on YouTube-backed meetings…
   [IMPROVEMENT-ROUND] Lifecycle-triggered transactional emails (Resend)…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (73)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (76)
   [NEEDS-AUDIT] Tampa deep links assume the video starts at the first…
   [NEEDS-AUDIT] Some stored captions do not line up with their video,…
   [NEEDS-AUDIT] Meeting Finder picks the wrong clip from a Granicus…
@@ -261,6 +249,9 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (73)
   [JUST-DO-IT] `[EXAMPLE]` Winona County, MN's own homepage links an…
   Five platform URL-shape findings from rtr-upcoming, not yet verified…
   Mad River Valley TV's three playlist pins still sit outside its…
+  Three Archive pages store a source address ending in a backslash, so…
+  `repair_wrong_pages.py --apply` refuses on the Archive's own shell…
+  16 pins in `tenant_overrides.csv` name a minted id with no registry…
 
 Reliability, ops & cost  (6)
   `[BIG]` Make BACKLOG.md a generated doc: one file per entry
@@ -274,12 +265,10 @@ Reliability, ops & cost  (6)
     [NEEDS-AUDIT] Search Console "Missing field" flags (Videos…
   `/coverage` as a QA surface
 
-Trust, safety & data quality  (14)
+Trust, safety & data quality  (12)
   No endpoint can correct a wrong word or name in a stored transcript
   Pinned hosts: machine-made pins with no Archive pages yet are…
-  Invintus meetings from a separate government (regional council,…
   Own transcription: a warning for a transcript that stops early needs…
-  Nothing records that a page was deliberately deleted, so a later…
   2 already-pinned YouTube channels still disagree with the Archive's…
   27 real Quebec municipalities are marked `reject_reason=off-mission`,…
   `jurisdiction_coverage.csv` rows whose recorded website belongs to…
@@ -316,7 +305,7 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (19)
   37 of the 212 dead government addresses over 5,000 people were not…
   Tier 1.5: show a transcript that has no timestamps…
 
-Dormant — needs a real example first `[LATER]`  (25)
+Dormant — needs a real example first `[LATER]`  (24)
   Granicus `TranscriptViewer.php` as a transcript fallback: wait for a…
   `hub_slug_aliases.csv` can only redirect an old slug to ONE new home,…
   PrimeGov has a real, structured `committeeId` field — but no…
@@ -334,7 +323,6 @@ Dormant — needs a real example first `[LATER]`  (25)
   [NEEDS-AUDIT] No adapter for a meeting recording pointing at a…
   [NEEDS-AUDIT] Garbled source transcripts still produce garbled…
   `[LATER]` ~25 smaller consolidated city-county governments still need…
-  [NEEDS-AUDIT] `[EASY]` Two of WO-226's six real "slug takes upload…
   [NEEDS-AUDIT] Vimeo Whisper-fallback audio: unverified whether the…
   [JUST-DO-IT] City-YouTube-channel fallback: duplicate-posted meetings…
   [LATER] `[EXAMPLE]` Town Hall Streams: transcript endpoint…
@@ -873,15 +861,13 @@ sync. History: `BACKLOG_DONE.md` `[Done 2026-08-22]`.
   before adding a CSP.
 - **History**: `BACKLOG_DONE.md`'s WO-943 and WO-945 entries.
 
+- **Ryan, 2026-10-16**: keep `/j/victoria` pointing at Victoria, BC. (Was the entry "[HUMAN] The bare `/j/victoria` slug may be pinned to the wrong destination — the one real"; see `BACKLOG_DONE.md`.)
+- **Ryan, 2026-10-16**: no age cutoff. Queue a real meeting of the right body at any age. (Was the entry "How stale is too stale for a tier-3 queue candidate? `[HUMAN]`"; see `BACKLOG_DONE.md`.)
+- **Ryan, 2026-10-16**: no, do not queue CITISTAT broadcasts. (Was the entry "[HUMAN] Atlantic City NJ's CITISTAT broadcasts (22.5 and 30.9 min, probed clean) -- queue"; see `BACKLOG_DONE.md`.)
+- **Ryan, 2026-10-16**: no do-not-ingest list for now. (Was the entry "Nothing records that a page was deliberately deleted, so a later sweep can put it straight"; see `BACKLOG_DONE.md`.)
+- **Ryan, 2026-10-16**: keep re-keying old pages by hand (backfill_gov_id.py after each deploy) for now. (Was the entry "[NEEDS-AUDIT] A `tenant_overrides.csv` pin only affects future resolutions — nothing retro"; see `BACKLOG_DONE.md`.)
+
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
-
-### The "no adapter" comment on `MULTI_GOV_HOSTS` is out of date: BoxCast has an adapter, and Dropbox and Drive single files resolve through `direct_file` `[JUST-DO-IT]` `[EASY]`
-
-- **Issue**: `app/utils/gov_registry/registry.py` lists `facebook.com`, `fb.watch`, `boxcast.tv`, `livestream.com`, `soundcloud.com`, `drive.google.com`, `drive.usercontent.google.com`, `dropbox.com` and `sharepoint.com` under a comment saying no adapter in `app/platforms/` resolves them. That is wrong for two of them: `app/platforms/boxcast.py` exists (rtr-business `UNSUPPORTED_PLATFORMS.md` already says the old BoxCast note predates the build), and a Dropbox or Drive link with a real filename and extension resolves through `direct_file.py`. `livestream.com` is dead rather than unsupported: on 2026-10-13 its robots.txt and an event page both answered 302 to `vimeo.com/features/livestreaming`. `tenant_key.py`'s `OUT_OF_SCOPE_HOSTS` has the same list without `boxcast.tv`.
-- **Impact**: none at run time. The comment misleads the next reader into thinking BoxCast cannot resolve.
-- **Next action**: reword the comment into two groups. Truly unsupported: `facebook.com`, `fb.watch`, `soundcloud.com`, `sharepoint.com`, plus `livestream.com` (dead, see `UNSUPPORTED_PLATFORMS.md`). Kept for pin safety although something resolves them: `boxcast.tv` (`boxcast.py`), `dropbox.com` and the two Drive hosts (single files, via `direct_file.py`). No behaviour change.
-- **Constraint**: do not remove any host from the set. The safeguard still refuses a blank-match pin on all of them.
-- **History**: found 2026-10-13 while checking `livestream.com` against the unsupported-platform file (rtr-business `research/UNSUPPORTED_PLATFORMS.md`, `ENUMERATION_METHODS.md` §401 follow-ups).
 
 ### Coverage registry: per-state view and other dashboard additions `[JUST-DO-IT]`
 
@@ -899,33 +885,14 @@ sync. History: `BACKLOG_DONE.md` `[Done 2026-08-22]`.
   hosted copy omits two URL columns for that reason, see the script).
 - **History:** Asked 2026-09-09 in the WO-124 review.
 
-- **[JUST-DO-IT] `[EASY]` A government that stops being ingested only freezes its hub slug when somebody runs the sweep by hand**
-  - **Issue**: WO-256's freeze gate runs in two places — on the writer path (so an actively-ingested government freezes on its next ingest once eligible) and in `scripts/freeze_hub_slugs.py`. The Archive service has no scheduler, so a government that gained its second page and then went quiet sits unfrozen until a human runs the sweep.
-  - **Impact**: small and self-correcting — an unfrozen government behaves exactly as every hub did before WO-256 (slug computed live), so the only cost is that it keeps the old churn risk until the next sweep.
-  - **Next action**: either run `python scripts/freeze_hub_slugs.py --apply` as a standing step after each pin round (it is already in the WO-256 entry's recommendation), or add it to a worker's idle-time loop the way the re-resolve sweep works.
-  - **Constraint**: don't put the gate on a read path — a write inside a page render is how a slow render becomes an outage, which is why it isn't there today.
-  - **History**: `BACKLOG_DONE.md`'s WO-256 entry; `archive/db/hub_slugs.py`'s `apply_gate()` docstring.
-- **[JUST-DO-IT] `[EASY]` Two hub-membership asymmetries left by WO-256's host rule — a page on a hub with no link back, and a page linking to a hub it isn't on**
-  - **Issue**: a meeting page's "More {Jurisdiction} meetings" link comes from `crud.hub_slug_for_page(gov_id, jurisdiction)`, which is synchronous and sees only that one page's own two fields — it cannot consult the host-based membership `crud._unkeyed_membership()` works out per render. So an un-keyed page adopted onto a government's hub by shared host, but with no jurisdiction text of its own, shows on the hub with no link back to it; and an un-keyed page excluded from a hub by the host rule still links *to* that hub, because its own stored text still slugifies onto it.
-  - **Impact**: cosmetic, no broken links — both targets resolve. The second is the more annoying one: a reader follows "More Orem, UT meetings" from a page that Orem's hub does not list.
-  - **Next action**: pass the page's `source_url_normalized` into the hub-link decision and reuse the same adoption map, cached alongside the frozen-slug cache in `archive/db/hub_slugs.py`, rather than recomputing it per meeting render.
-  - **Constraint**: don't add a per-render query to `/m/{slug}` — it is the hottest page on the site, which is why this was left rather than fixed inline.
-  - **History**: `BACKLOG_DONE.md`'s WO-256 part 2 entry; `docs/investigations/hub_architecture_audit.md` §5.
-
 ### iQM2's meeting body is only on the calendar listing page; fetch it there `[JUST-DO-IT]`
+- **Update 2026-10-16**: Partly fixed in the backlog round-2 PR (`d0173e72`): Calendar fetch built and tested on fixtures; live check on Atlanta GA and Santa Clara County CA still needed.
 
 - **Issue**: `iqm2.py` reads only the meeting detail page, whose title runs body and meeting type together. The calendar (`Citizens/calendar.aspx?View=List&From={date}&To={date}`) answers a plain GET, and each `MeetingRow`'s `RowDetails` splits cleanly on `" - "` into body and type (checked live 2026-09-20 on Atlanta GA and Santa Clara County CA).
 - **Impact**: iQM2 pages have no `meeting_body`.
 - **Next action**: after the detail fetch, GET the calendar for that one day, find the row whose `Detail_Meeting.aspx?ID=` matches, and take the text before `" - "`. Live-check on Atlanta and Santa Clara, then add a fixture test.
 - **Constraint**: match the row by meeting id, never by position.
 - **History**: `BACKLOG_DONE.md` WO-904/905/906.
-
-- **[JUST-DO-IT] CLAUDE.md's sample-sheet note calling Whitehall, OH's CivicClerk tenant "agenda-only" is stale -- it now posts video on every recent meeting.**
-  - **Issue**: CLAUDE.md's "Working conventions" bullet (dated 2026-08-08) lists "Whitehall OH (CivicClerk, agenda-only)" as a sample. Checked live 2026-09-23 while building WO-1024's Meeting Finder: `whitehalloh.api.civicclerk.com/v1/Events` shows `hasMedia: true` on every real meeting from 2026-07-28 through 2026-09-22 (10 of 10 checked) -- `app/platforms/meeting_finder`'s own live check resolved `whitehalloh.portal.civicclerk.com/event/325/media` to a real tier-3 video (152 minutes).
-  - **Impact**: none functionally -- this is a doc-only staleness, not a code bug. It does mean a future session looking for a real agenda-only CivicClerk sample shouldn't reach for Whitehall.
-  - **Next action**: update CLAUDE.md's sample-sheet bullet to drop or replace the Whitehall "agenda-only" claim; find a currently-agenda-only CivicClerk tenant if one is still needed as a sample.
-  - **Constraint**: none.
-  - **History**: found and reported in WO-1024's final report (2026-09-23, `docs/MEETING_FINDER.md`'s "Interface details WO-1024 settled" section).
 
 ### Granicus: discover a tenant's `view_id` so a bare tenant hub lists its video meetings `[IMPROVEMENT-ROUND]`
 
@@ -934,14 +901,6 @@ sync. History: `BACKLOG_DONE.md` `[Done 2026-08-22]`.
 - **Next action**: build a bounded `view_id` probe on Meeting Finder's `Fetcher` and call it ahead of `list_recent_video_meetings()` in the listing path and in `granicus.py`'s `resolve()`. Use the 2026-10-07 measurement to choose which ids to probe.
 - **Constraint**: ids 1..5 are not enough (11 of 25 feeds only at 44-50; Alexandria at 29 and 57). `ViewPublisher.php` without a view_id is gated on purpose. Probe bounded numeric ids only, with a hard delay and no redirects followed.
 - **History**: `meeting_finder/listing.py` WO-1030 comment; `~/Documents/rtr-findmeeting/data/granicus_norss_rss_check_2026-10-07/`; findmeeting PR 73.
-
-### [NEEDS-AUDIT] `[EASY]` A video whose own title is a camera or file name ("video1516165031", "20251021", "CC20260908.mp4") becomes the page title as-is, on every platform: Ryan chose the fallback title "<government name> archive video"
-
-- **Issue**: `vimeo.com/1199438213` still returns the title "video1516165031" (checked live 2026-09-21; its page 10200, Oak Bluffs MA, was fixed by hand in WO-925). The gate (`app/utils/video_hand_check.py`, WO-933) treats `^video\d+$`, `^IMG_\d+` and `^\d+$` as no title (`cannot_tell`), but the adapters still use the source's own title as-is. The count, from the local export of 2026-09-21 (10,280 pages): **12 pages (0.1%)**. Viebit 7 (raw file names: `NYCC-PV-CH-CHA_251218-163834.mp4`, `NYCC-250-8-2_251218-120823.mp4`, `8-18-26_Council-Meeting.mp4`, `CC20260908.mp4`, `DDA_Meeting_08_20_26.mp4`, `9_8_26_Council_Meeting.mp4`, `TBC_06_09_2026Mtg.mp4`), Granicus 3 (date-only titles `20251021`, `171205`, `20260901`, all Laramie County WY), YouTube 2 (`7959635610958757251`, `video1254656692`), Vimeo 0.
-- **Impact**: 12 pages show a meaningless title and address. Small, but the same shape recurs on every platform that passes a file name through. The gate's `is_placeholder_title()` recognizes 5 of the 12 (Granicus 3, YouTube 2); the 7 Viebit `.mp4` names it does not.
-- **Next action**: Ryan decided on 2026-09-21 (chat): the fallback title is "<government name> archive video", on every platform, not only Vimeo. Build it once in a shared place with a test, and use one shared test for what counts as a camera or file name (today the gate has its own). Ryan also decided (2026-09-21, chat): when the date is known, keep the month and year only, for example "Laramie County, WY archive video, October 2025", not the exact day, because an upload date and a filming date can differ (page 10200 was uploaded 2026-06-08 but its meeting was 2026-06-04). Not decided: whether the 7 Viebit names that carry a date or meeting words (for example `8-18-26_Council-Meeting.mp4`) are replaced too, or only cleaned.
-- **Constraint**: never invent a meeting name from the government's agenda page; the fallback must come from data on the video itself (the government name, and the month and year when a date is known).
-- **History**: `BACKLOG_DONE.md` WO-925 (the hand fix), WO-933 (the gate) and WO-931 (Ryan's decision and the count).
 
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
@@ -956,17 +915,11 @@ of human step they need.
   - **Constraint**: do not overwrite page 12994 from any queue line. Not verified: whether the drip `direct` lane or the cloud feed ever created another page this way (the 2026-10-14 inventory shows one page with a non-URL source).
 
 - **[HUMAN] Ryan decides which Granicus feeds from his two lead spreadsheets are subscribed, once each host's owner is confirmed (2026-10-07).**
+  - **Decision 2026-10-16**: Ryan, 2026-10-16: yes, subscribe them after a hand check of each owner. Needs a run from Ryan's Mac (the cloud cannot reach granicus.com; subscriptions live in rtr-findmeeting).
   - **Issue**: Ryan's two `granicus-meeting-links` sheets (73 rows each, view ids found by hand) gave 63 feed addresses never seen in our local records. A direct check (own 3 s pacing, `~/Documents/rtr-findmeeting/data/granicus_norss_rss_check_2026-10-07/results/leads_direct/results.csv`) found 35 feeds with real items on 26 hosts, 10 parsed but empty, and `oregon.granicus.com` gated on every view.
   - **Impact**: possible new governments, mostly special districts and authorities; "never seen in our records" is not "no Archive page", since the Archive inventory was not readable.
   - **Next action**: confirm each host's owner (a hand check, not the sheet's match), pin it, then subscribe under findmeeting's PR 73 rules (pinned tenant, real items, no internal or test channel title). Leave out iframe-copy views (Clark, view 17 and 23) and stale feeds (Somerton 2021, Jackson Health 2024).
   - **Constraint**: the sheets flag 11 ownership mismatches (`cityofgonzales` is Gonzales CA, not the county in TX; `alameda` is the City of Alameda, not the school district; `pinole` is the City of Pinole). Never pin from the sheet's match.
-
-- **[HUMAN] [LOGIN] WO-1055's live page moves and twin deletes wait for a deploy, then one worklist run.**
-  - **Issue**: WO-1055 committed the registry fixes (METRO, The Harris Center, the Port of Corpus Christi, the Metropolitan Water District, six county hosts) but moved no live page. Its session had no Archive token. Pages to fix: 399, 4177, 5908 (to METRO), 3759 (to The Harris Center), 2659 and the 2026-08-18 Port Commission page (to the Port), 2535 and any other `mwdh2o.granicus.com` page (to the Metropolitan Water District of Southern California), any page on the six county hosts still under a city (two Sedgwick pages sit on a "County of Sedgwick" hub), and three deletes: twins 1171 and 3964, trailer 5775.
-  - **Impact**: about 11 live pages show the wrong government; two meetings show twice; one promo trailer shows as a meeting.
-  - **Next action**: deploy the Archive with WO-1055. Then, on the Archive's Render shell: `python scripts/wo1055_prepare_worklist.py` (read-only), `python scripts/repair_wrong_pages.py run reports/wo1055_worklist.csv` (dry run; Ryan approved all three deletes, 1171, 3964 and 5775, so the rows come out approved), then `run ... --apply --allow-deletes`, then one more `run` to see every row "already done".
-  - **Constraint**: the rekeys to the new ids fail until the deploy is live (the Archive checks the id exists). Deletes go after the deploy so the `_SLUG_REDIRECTS` entries are already live.
-  - **History**: `BACKLOG_DONE.md` WO-1055.
 
 - **[HUMAN] WO-1165: 15 CivicMedia page renames, one refresh and one title decision after the resolver and Archive deploy.**
   - **Issue**: WO-1165 (#1610) gives CivicMedia pages the government's own title, and the follow-up (#1611) added 15 `_SLUG_REDIRECTS` entries in `archive/main.py`. The renames themselves have not been run. Rosetown, East Baton Rouge and Fort Madison were already re-ingested; Chanute stays as it is.
@@ -1003,13 +956,6 @@ of human step they need.
   - **Constraint**: deleting a page needs a `_SLUG_REDIRECTS` entry first; never bulk-delete.
   - **History**: `BACKLOG_DONE.md` WO-925 and WO-941.
 
-- **[HUMAN] The bare `/j/victoria` slug may be pinned to the wrong destination — the one real `hub_slug_aliases.csv` collision WO-112 left for Ryan, still unresolved.**
-  - **Issue**: `archive/data/hub_slug_aliases.csv` currently redirects `victoria` to `victoria-bc` (`ca:csd:5917034`). WO-112 (2026-09-03) fixed the other two same-shaped collisions found that day (`hamilton`, `woodland`) by Ryan's direct call, but he did not mention `victoria`, and it's flagged as a genuinely different case: `victoria-bc` may itself be the wrong committed value, not just the less-preferred one.
-  - **Impact**: `/j/victoria` may be sending readers to the wrong government's hub. Low reach unless someone actually links or searches the bare slug.
-  - **Next action**: Ryan checks whether `victoria-bc` is the right redirect target for a bare `/j/victoria`, the way he already resolved `hamilton`/`woodland`. WO-940's new merge logic in `_write_hub_slug_aliases()` will keep the current value unless a future run's fresh candidates disagree with it, in which case it now prints a collision instead of silently guessing — so this stays visible until someone decides it.
-  - **Constraint**: don't auto-flip this one — it's exactly the kind of judgment call the collision report exists to surface, not resolve.
-  - **History**: `BACKLOG_DONE.md`'s WO-109/WO-112 writeup; WO-940 (2026-09-22, this repo's `BACKLOG_DONE.md`).
-
 ### Pin audit follow-up (WO-1186): 16 re-keyed Archive pages still carry the old place in their web address `[HUMAN]`
 
 - **Issue**: every store the 2026-10-06 pin audit named is now fixed (pins, Archive pages, 26 rtr-business research lines in commit 599789d6, 9 rtr-discovery ledger fixes on 2026-10-07). What is left: 16 re-keyed pages keep their old addresses, for example `/m/sunnyside-nl-2026-09-09-...` for a Sunnyside WA meeting.
@@ -1034,40 +980,6 @@ of human step they need.
 - **Constraint**: Render shell only, never a laptop against production (the script's own docstring).
 - **History**: `BACKLOG_DONE.md` WO-1056 and WO-1057.
 
-### ChampDS in Meeting Finder: count VOD2-only recordings as video, and how deep to look for a download link? `[HUMAN]`
-
-- **Issue:** Meeting Finder now lists ChampDS accounts (`BACKLOG_DONE.md`, "ChampDS listing", 2026-10-02). It counts an event as video only when it has a download link. Most ChampDS recordings are VOD2-only: our transcription can read them (WO-1045), but a reader's page has no player. It checks at most 40 recordings (about 100 s, paced) for a download link.
-- **Impact:** Signal Mountain TN (193 recordings, 5 downloads) and Yuba County CA (89 recordings, 1 download, from the bare page) come back `meeting-without-video`: their newest downloads are the 113th and 77th newest recordings. Walden TN (79 recordings, 0 downloads) and Largo FL's newest meetings are VOD2-only too.
-- **Next action:** Ryan decides two things. (1) Should a VOD2-only recording count as a tier-3 find (transcript, no player)? If yes, Resolve can accept `server_media_url` and the download search becomes unneeded. (2) If not, is 40 checks the right depth, or 120 (about 5 minutes per account)? Both are constants in `app/platforms/meeting_finder/listing.py` and one rule in `resolve.py`.
-- **Constraint:** the 2.5 s per-host pace is shared by every government in a batch, so a deeper search slows every ChampDS account in the run.
-- **History:** `BACKLOG_DONE.md`, "ChampDS listing" (2026-10-02); the VOD2 player gap is its own entry ("ChampDS's VOD2 stream ... can be transcribed but still can't play on our pages").
-
-### How stale is too stale for a tier-3 queue candidate? `[HUMAN]`
-
-- **Issue:** WO-349 (2026-09-13, CivicPlus full run) hand-checked 3 real,
-  identifiable, correctly-bodied videos that the listing walker reached
-  as the *newest* candidate at its search depth, but that are 21-52
-  months old: Grinnell city IA ("Regular City Council Session", Dec
-  2024), Hastings-on-Hudson village NY ("Information Session on the Plus
-  One ADU Program", Oct 2024 — also not clearly a legislative meeting),
-  Easton town CT ("Affordable Housing Committee", Apr 2022). This round's
-  only precedent (WO-341, Pierce County WA) rejected a similarly-shaped
-  find, but that video was over 4 years old *and* of uncertain body —
-  these three are less extreme and split on the second factor.
-  Left un-applied to `jurisdiction_coverage.csv` rather than guessed
-  either way (`research/wo349_handcheck.csv`).
-- **Impact:** 3 real governments' only known video sits unused pending a
-  policy call; the same ambiguity will recur every time a listing walker
-  finds only one, old candidate — not a one-off.
-- **Next action:** Ryan decides a freshness cutoff (or "no cutoff, queue
-  it regardless of age" per the existing "queue a long one rather than
-  defer" precedent for duration) — then whichever of the 3 above still
-  qualifies gets applied via a small follow-up to `wo349_apply_to_jc.py`'s
-  pattern.
-- **Constraint:** don't invent a cutoff and apply it silently — this is
-  exactly the kind of judgment call this section exists for.
-- **History:** `BACKLOG_DONE.md`'s WO-349 entry; `rtr-business/research/wo349_handcheck.csv`.
-
 ### Finish the WO-310 fixes: 2 identity joins, 1 blank gov_id and 42 research rows wrongly marked transcribed `[HUMAN]`
 - **Issue**: WO-310 hand-checked 51 `jurisdiction_coverage.csv` rows marked `transcribed=true` with no Archive page. Hamilton Township NJ (page 7302) is now pinned. Still open: Lexington-Fayette KY (pages 338, 5789 to `us:place:2146027`, no pin yet), North Bay ON (pages 1036, 1805; check the `pub-northbay.escribemeetings.com` form is covered by the existing `northbay.escribemeetings.com` pin), Waukesha WI's blank `gov_id` (`us:place:5584250`), and 42 rows with no live page that should have `transcribed` blanked.
 - **Impact**: real coverage that readers cannot find under the right government, and 42 rows that overstate coverage.
@@ -1077,14 +989,8 @@ of human step they need.
 
 ### Production actions only Ryan should take
 
-- **[HUMAN] Run `scripts/backfill_video_channel.py --apply` from the Archive's Render Shell to store the 1,903 known YouTube channels, then run the gov_id backfill.**
-  - **Issue**: WO-246 (2026-09-11) built and tested `scripts/backfill_video_channel.py`, which sets `meeting_pages.video_channel` from per-video maps already in the repo (`reports/pin_worklist_youtube.csv`, `reports/shared_host_lookups.csv`) -- no YouTube calls. It has not been run against production: writing thousands of rows is exactly the "no bulk write from a laptop" standing decision, so it needs a human to run it from the Render Shell.
-  - **Impact**: until this runs, every one of the 1,138 `channel=@handle` pins in `tenant_overrides.csv` stays inert for already-archived pages -- `video_channel` is NULL on all 3,580 archived YouTube pages today. The script covers 1,903 of them (53%); the rest have no channel on record anywhere in the repo yet (see the next entry).
-  - **Next action**: from the Archive service's Render Shell: `python scripts/backfill_video_channel.py --dry-run` to confirm the count, then `python scripts/backfill_video_channel.py --apply --report /tmp/wo246_video_channel_report.csv`. Once that's done, run `python scripts/backfill_gov_id.py --apply` (also from the Render Shell) so pages whose new channel matches an existing pin get re-keyed -- WO-246's own report has a projected estimate.
-  - **Constraint**: run both scripts from the Render Shell, never from a laptop against the production `DATABASE_URL` -- both are safe to interrupt (commit-per-row, skip-already-set) and safe to re-run.
-  - **History**: `BACKLOG_DONE.md`, WO-246, 2026-09-11.
-
 - **[HUMAN] ~1,676 archived YouTube video ids have no channel on record anywhere in the repo -- needs a real lookup from the YouTube-drip Mac, not this one.**
+  - **Update 2026-10-16**: the `backfill_video_channel.py` dry run on the Archive shell found 266 YouTube pages whose video id is in no channel map (and 1 with no readable id). That is the real size of this gap now.
   - **Issue**: WO-246 (2026-09-11) found no per-video channel record (in `reports/pin_worklist_youtube.csv`, `reports/shared_host_lookups.csv`, or `tenant_overrides.csv`'s pin evidence) for 1,676 of the 3,562 distinct archived YouTube video ids. `scripts/backfill_archived_pages.py --platform youtube` fills these in via a real yt-dlp re-resolve, but that calls YouTube, and this Mac's office connection has no YouTube budget of its own -- the drip Mac (Ol McClaude's) owns it (see MEMORY.md's "YouTube drip ownership" note).
   - **Impact**: these pages' `channel=` pins (existing or future) stay unreachable until someone runs a real lookup from a machine with YouTube budget.
   - **Next action**: run `scripts/backfill_video_channel.py --apply` first (the entry above), then from the YouTube-drip Mac, with the drip's own lanes stopped or dropped to `--lanes captions,feed` (shared YouTube budget): first a small `--dry-run`, then the real run -- `python scripts/backfill_archived_pages.py --platform youtube --missing-channel-only --dry-run --limit 20`, then `python scripts/backfill_archived_pages.py --platform youtube --missing-channel-only --delay 3`. WO-295 (2026-09-12) added `--missing-channel-only`, so this now restricts to pages whose `video_channel` is still NULL/blank instead of re-touching all ~3,464 archived YouTube pages -- see `docs/YOUTUBE_DRIP_RUNBOOK.md`'s "Backfill sweeps" section for the full command and the accommodation with the drip's lanes.
@@ -1092,27 +998,13 @@ of human step they need.
   - **History**: `BACKLOG_DONE.md`, WO-246, 2026-09-11; WO-295, 2026-09-12.
 
 - **[HUMAN] Apply the reviewed wrong-page sheet, `reports/wrong_page_worklist.csv` (82 rows): deploy, then run the tool on the Archive's Render shell.**
+  - **Update 2026-10-16**: ran on the Archive shell: 51 rows already done, 25 re-keyed, page 3385 already on a better id (Shawsheen Valley Technical School District). Left: the 6906 Sebring and 7086 Malibu deletes need a fresh check (the 2026-09-21 one is past the 14-day limit), and page 2504, whose row now expects `(none)`.
   - **Issue**: WO-934 built `scripts/repair_wrong_pages.py` and the sheet. Ryan decided the first 48 rows on 2026-09-21; #1568 added 32 reviewed rows on 2026-09-28. Approved deletes: 6114, 6101, 6830, plus Sebring 6906 and Malibu 7086, whose replacement videos were ingested on 2026-09-21 (#1370).
   - **Impact**: dozens of live pages show the wrong government (or none), and 5 show a video that is not a meeting or does not play.
   - **Next action**: on the Archive's Render shell, after a deploy that includes the minted governments: `python scripts/repair_wrong_pages.py check reports/wrong_page_worklist.csv`; `... run ...` (dry run, read it); `... run ... --apply --batch-size 5` until nothing is left; then `... --apply --allow-deletes --only-ids 6114,6101,6830,6906,7086`, dry run first. Page 2504 (Minnesota PUC): re-push with `scripts/repoint_page.py` on the resolver's shell. Then re-run `scripts/wrong_page_screen.py --from-archive` (read-only).
   - **Constraint**: commit no draft `tenant_overrides.csv` line for a shared host. Copy the log out before any deploy (a deploy wipes `/tmp`). The tool refuses a delete until the replacement page is live under the same government.
   - **History**: `BACKLOG_DONE.md` WO-934 and its follow-ups.
 
-- **[HUMAN] Atlantic City NJ's CITISTAT broadcasts (22.5 and 30.9 min, probed clean) -- queue or not is Ryan's call.**
-  - **Issue**: WO-226's spot-check confirmed two CITISTAT broadcasts on
-    Atlantic City NJ's Boxcast channel (`lqsszohc5p0q4yemoddl`) probe
-    clean at roughly 22.5 and 30.9 minutes, alongside the real City
-    Council meetings already on file.
-  - **Impact**: CITISTAT is a performance-management briefing, not a
-    legislative meeting in the usual sense -- whether it belongs
-    on-mission is a product call, not an engineering one.
-  - **Next action**: Ryan decides whether CITISTAT broadcasts should be
-    queued alongside Atlantic City's council meetings once Boxcast
-    ingest actually ships for that channel. The signed-URL gap this
-    used to wait on is fixed (WO-229, `BACKLOG_DONE.md`); whether
-    BoxCast re-signs a playlist after it expires is the separate
-    `[WAIT]` entry in this file.
-  - **History**: `BACKLOG_DONE.md`'s WO-226 entry, 2026-09-11.
 - **[HUMAN] 13 archived YouTube pages point at a video that is gone (7 deleted, 3 private, 3 malformed ids) says a 2026-09-09 study, but the 13 are not on record and no delete is approved on that finding.**
   - **Issue**: the study kept only counts per oEmbed status. `reports/shared_host_lookups.csv` has no status column (a blank channel only means the video did not answer, which also covers embedding-off videos), so the 13 cannot be rebuilt. Of the 184 live pages with a blank-channel lookup there, 181 have English transcripts, so their videos exist; only 3 have none (pages 6114, 6906, 7086). The 2026-09-21 export has 101 YouTube pages with no transcript (89 "Captions disabled / video unavailable", 12 blank). The stored warnings are counts (1 or 0), so local data cannot tell a gone video from disabled captions.
   - **Impact**: no page can be named as gone, so none can be deleted or hidden on evidence. Deleting from the unchecked 101 would remove pages whose videos are alive and only lack captions, which the drip's audio lane can transcribe.
@@ -1136,6 +1028,7 @@ of human step they need.
 ### Decisions about already-live content
 
 ### Laval's own archive: walk its ~260 meeting posts, then decide on the 273 channel-less Laval videos on webtv.coop `[HUMAN]`
+- **Decision 2026-10-16**: Ryan, 2026-10-16: queue one meeting only, the shortest available. Needs a run from Ryan's Mac (the cloud cannot reach webtv.coop).
 
 - **Issue**: the webtv.coop adapter now reads Laval's own archive site (`archivesvilledelaval.webtv.coop`, a WordPress site, one post per meeting) and the host is pinned to Laval (`ca:csd:2465005`). Nothing has been walked, queued or ingested from it yet. See `BACKLOG_DONE.md`, "Laval's own archive".
 - **Impact**: the site's WordPress API counts 260 posts, 2015-05-05 to 2026-10-07 (not all are council meetings: the categories include ceremonies, press conferences and public consultations). No post has a caption track seen, so each one is Tier 3 (our own transcription). The recent ones are 3 to 4 hours long. Separately, 273 videos on the main webtv.coop site are titled "date + Laval" but carry no channel number, so they stay unpinned; they are NOT covered by this work.
@@ -1181,13 +1074,6 @@ of human step they need.
 - **Next action**: Ryan: confirm the Archive deploy carries the WO-925 redirects, then run the five `reslug-page` calls in `BACKLOG_DONE.md`'s WO-925 entry (dry run first) and move this entry to `BACKLOG_DONE.md`.
 - **Constraint**: do not re-key the page; never re-key from a slug or title.
 - **History**: `BACKLOG_DONE.md` WO-310, WO-316, WO-318, WO-925.
-
-### [NEEDS-AUDIT] A `tenant_overrides.csv` pin only affects future resolutions — nothing retroactively re-applies it to already-archived pages, and the one tool meant to make that reliable doesn't track every pin
-
-- **Issue**: a `tenant_overrides.csv` pin affects only future resolves. `backfill_gov_id.py --hosts-file` reads `reports/pin_worklist_hosts.txt`, which only `apply_pin_worklist.py` writes. Hand-added pins (most pins since 2026-09-25) are invisible to it, so full backfills are run by hand (WO-1060, #1448).
-- **Next action**: Ryan picks the shape. Either track which hosts have a pin newer than their last backfill, or have the hosts-file writer pick up every changed `tenant_overrides.csv` row (for example, from `git diff`).
-- **Constraint**: Ryan declined running `backfill_gov_id.py --apply` in `preDeployCommand`. Do not re-propose it.
-- **History**: found 2026-09-05 (Edmonton, Niagara Falls).
 
 ### High Plains Water District (Granicus) transcribed to zero usable segments `[NEEDS-AUDIT]`
 
@@ -1424,6 +1310,7 @@ of human step they need.
 - **History**: #1363 (cloud adapter), #1951, #1956.
 
 - **[NEEDS-AUDIT] `[EASY]` Two writers still emit the dead `<id-prefix>:<id>` pin shape: `archive/db/crud.py::_multi_gov_match_for_video_url()` (Vimeo) and 1,374 committed YouTube `youtube:<id>` rows.**
+  - **Update 2026-10-16**: Partly fixed in the backlog round-2 PR (`cc51c866`): 1,117 youtube:<id> pins rewritten to the bare id and 255 exact duplicates dropped; has_owner() now misses 0 (was 1,054). Left: 2 pins that disagree with a bare pin (lNJoncQNJbM Clinton town vs village NY; s2TTtUcnzag Millinocket school district vs town), then make match_shape_problem() refuse the prefixed shape.
   - **Issue**: (1) `_multi_gov_match_for_video_url()` (`archive/db/crud.py` line ~4053) drafts a Vimeo rule as `vimeo:<id>`, which the loader refuses since WO-924. (2) `tenant_overrides.csv` has 1,374 `youtube:<id>` rows; they match at ingest through the `external_id` hint but not in `queue_probe.has_owner()`, which passes no hints.
   - **Impact**: (1) a wrong draft that fails CI if pasted. (2) a YouTube queue line can be refused as "no owner" though a pin exists; count not measured.
   - **Next action**: (1) return the bare Vimeo id and update the docstring and its test. (2) measure how many `youtube:` rows `has_owner()` misses, rewrite them to the bare 11-character id, and make `registry.match_shape_problem()` refuse the prefixed shape.
@@ -2092,6 +1979,30 @@ actionability sections above.
 - **Next action**: check (one request each) that the three playlists answer under `videoplayer.telvue.com/player/rb5Cd5C4A-.../playlists/{n}`, then rewrite the three pins with the token and empty `KNOWN_UNMAPPED_PINS`.
 - **History**: `BACKLOG_DONE.md` WO-1056 and WO-1057.
 
+### Three Archive pages store a source address ending in a backslash, so a re-ingest cannot find them `[NEEDS-AUDIT]` `[EASY]`
+
+- **Issue**: `normalize_url()` now drops a trailing backslash, but pages 1142 (Abilene TX), 1151 (West Chester PA) and 1178 (Kaufman County TX) still store a `source_url_normalized` that ends in one. `scripts/wo1055_prepare_worklist.py` lists them (run on the Archive shell 2026-10-16).
+- **Impact**: a new ingest of the same meeting looks the page up by its address, finds nothing, and can create a second copy.
+- **Next action**: rewrite the three stored keys to the normalized form (an admin endpoint or a small Render-shell script), after checking no page already holds the clean key.
+- **Constraint**: run it from the Archive's Render shell; check for a twin before rewriting each key.
+- **History**: found 2026-10-16 in the WO-1055 prepare run. Page 1171 had the same problem and was deleted as a twin that day.
+
+### `repair_wrong_pages.py --apply` refuses on the Archive's own shell unless given `--base-url` `[EASY]`
+
+- **Issue**: the Archive's Render shell sets `ARCHIVE_BASE_URL` to `http://rtr-deeplink-archive:10000`. `resolve_base_url()` prefers that over `127.0.0.1:$PORT`, and `--apply` refuses any address that is not this machine.
+- **Impact**: every apply run on the right shell fails once, then needs `--base-url "http://127.0.0.1:$PORT"` (2026-10-16).
+- **Next action**: prefer `http://127.0.0.1:$PORT` when `PORT` is set and the script runs on the Archive service, or treat the service's own internal hostname as local. Add a test.
+- **Constraint**: keep refusing a real remote address, such as a laptop pointed at production.
+- **History**: 2026-10-16 after-deploy runs (WO-1055 deletes, wrong-page sheet).
+
+### 16 pins in `tenant_overrides.csv` name a minted id with no registry row, so the loader drops them `[NEEDS-AUDIT]`
+
+- **Issue**: on 2026-10-16 the `backfill_gov_id.py` dry run printed 16 "dropping row" warnings. 13 are `wildcard_http_sweep_2` fallback pins for eScribe and CivicWeb tenants (Alaska; Bathurst, Hillsborough, Moncton, Saint Andrews and Sussex NB; Souris PE; Athabasca, Ponoka, Red Deer, Vulcan and Westlock counties AB; North Battleford SK). 3 are Great Neck Park District NY CivicMedia channels (91485, 91500, 91505).
+- **Impact**: these pins do nothing. Pages on those hosts get no government from them.
+- **Next action**: mint the missing ids with the registry write helper (most are real Statistics Canada subdivisions, which may already have a `ca:csd:` id to use instead), or drop the rows.
+- **Constraint**: never re-point a pin to a namesake; check each host's owner by hand.
+- **History**: `backfill_gov_id.py` dry run on the Archive shell, 2026-10-16.
+
 ## Reliability, ops & cost
 
 ### `[BIG]` Make BACKLOG.md a generated doc: one file per entry
@@ -2182,14 +2093,6 @@ actionability sections above.
 - **Constraint**: report before re-filing any existing page.
 - **History**: `BACKLOG_DONE.md` WO-1068, WO-1074, WO-1075; per-page table in `docs/investigations/whole_host_pin_mismatch_2026-09-25.md`.
 
-### Invintus meetings from a separate government (regional council, health department) get no government: the registry has no id for them `[NEEDS-AUDIT]`
-
-- **Issue**: on the two mixed Invintus channels, two bodies that are their own governments still resolve blank, because the registry has no id to give them: CVTV `2917038973` "Regional Transportation Council"; Pierce County channel `1872740071` "Tac-PC Board of Health" (Tacoma-Pierce County Health Department). CVTV's "City Council Workshops" also stays blank: its category and description name no city.
-- **Impact**: in the 2026-09-25 dry run, 8 of CVTV's 36 accepted meetings (workshops 7, RTC 1) and 1 Pierce meeting get no government.
-- **Next action**: neither body is in `cog_units.csv`, so an id would have to be minted (Ryan's call, as for WO-916). Once one exists, add it to `CLIENT_BODY_GOVERNMENTS` in `invintus.py`. For the workshops, only file under Vancouver if the event itself starts naming the city.
-- **Constraint**: never file these under Vancouver, Clark County or Pierce County, and never add the channel's state to the raw name: that mints an id from the city's name, worse than blank. Programming rows ("Election Programs", "Clark County Close Up", "Community Events") are not meetings and should stay blank.
-- **History**: `BACKLOG_DONE.md` WO-1066 (Leon County pin, CVTV place prefixes) and WO-1067 (Port of Vancouver and C-TRAN registry ids).
-
 ### Own transcription: a warning for a transcript that stops early needs a tail-silence check built with it; held by Ryan's decision `[NEEDS-AUDIT]`
 
 - **Issue**: WO-925 read page 1676 (Leon Valley TX show 179, our own Whisper, 4,541 cues, last cue 5:34:53 of a 6:29:59 video) as a partial transcript that no re-check could warn about. WO-935 built the warning (WO-923's rule and marker, called from `report_chunk_result()` and `transcribe_meeting()`) and Ryan held it on 2026-09-21. Sampled audio shows the last cue is followed by silence on both real pages checked: page 1676 speaks until about 20,050 s and reads about -83 dB from 20,500 s; Leon Valley show 185 reads about -71 dB from 12,500 s. Our own transcription covers the whole audio, so a short last cue mostly means trailing silence, and the WO-925 reading of page 1676 as "partial at 86%" looks wrong (two pages sampled at four points each, not proven). A real cut in a cloud job is already marked "the transcription was interrupted". Separately, WO-935's short-chunk check exempts the last chunk of a file, so a cut inside it is caught by nothing.
@@ -2197,14 +2100,6 @@ actionability sections above.
 - **Next action**: Ryan decides when. Then build the warning and a tail-silence check as one piece. When the last cue is under 90% of the video with 10+ minutes uncovered, sample 30 seconds of audio halfway between the last cue and the video's end (volume only), and skip the warning if it is silent (mean volume under about -60 dB; speech read -22 to -41 dB and dead air -71 to -83 dB on the two pages). Put it in one shared function called by both paths. The first version, with a 24-case test file, is in the first commit (`2cf4f49`) of PR #1301. Also decide whether a locally made transcript should wait before the cloud finder picks it again, and give `scripts/retranscribe_first_chunk.py` the same call: it splices a new first chunk onto an existing transcript, pushes only hallucination warnings, and so would drop an early-end flag from the transcript it started with. Then count how many own transcripts the rule flags, from the Render shell.
 - **Constraint**: Ryan's decision, 2026-09-21: hold until the tail-silence check is built with it. Do not change the 90% / 10-minute threshold or the marker text. Sampling audio changes the plan's rule 3 ("compare only the last cue"), so that change needs Ryan's yes. No bulk sweep of the production Archive from a laptop.
 - **History**: `BACKLOG_DONE.md` WO-925 (the 86% reading) and WO-935 (the measurements above). Replaces the entry "A partial transcript made by our own transcription cannot get the reader warning through a re-check" (rewritten by WO-931 after WO-935).
-
-### Nothing records that a page was deliberately deleted, so a later sweep can put it straight back `[NEEDS-AUDIT]`
-
-- **Issue**: `POST /internal/admin/delete-pages` removes the row and nothing else. The repo has no list of deleted slugs or rejected source URLs (a search finds only title blocklists inside adapters and sweeps). `scripts/wo134_confirmed_hits_ingest.py` returns a candidate that already has caption segments before any probe runs, so a probe-sidecar `reject-*` row protects only the no-captions (tier-3) path.
-- **Impact**: real example. Toledo OR's 2-minute closed-session opening (`toledo-or-2026-09-16-city-council-executive-session`, CivicClerk event 104) was deleted on 2026-09-20 on Ryan's yes. The next resolve of that tenant from a machine that can fetch YouTube would take event 104 again, since it is the first event with video and captions, and recreate the page.
-- **Next action**: decide where a "do not ingest this source URL" list lives and who reads it. The `/internal/ingest` route in `archive/main.py` is the one place every path passes. Not built in WO-913.
-- **Constraint**: don't solve it with a blanket title block: "executive session" also names real meetings that carry a public portion.
-- **History**: `BACKLOG_DONE.md`'s WO-913 entry (the Toledo delete and the narrow probe-sidecar reject).
 
 ### 2 already-pinned YouTube channels still disagree with the Archive's own pages `[NEEDS-AUDIT]`
 
@@ -2839,41 +2734,6 @@ actionability sections above.
   remaining consolidated city-county, same process used for the 13
   already done.
 - **History**: `BACKLOG_DONE.md`, 2026-08-20/21.
-
-### [NEEDS-AUDIT] `[EASY]` Two of WO-226's six real "slug takes upload date, not title date" cases use a 2-digit year in the title (`8-24-26`, `8/17/26`) -- the WO-285 fix that closed the other four doesn't parse that shape
-
-- **Issue**: WO-226's spot-check found six real pages where the
-  archived slug/date is the YouTube upload date, not the meeting date
-  the video's own title states. WO-285 (2026-09-12) fixed the root
-  cause -- `youtube.py` now prefers a date parsed from the title over
-  release_date/upload_date -- and re-checking the real stored titles
-  for all six confirms four are now fixed prospectively (any FUTURE
-  resolve of these exact titles gets the right date): Littleton CO
-  ("Arts & Culture Board - 07/09/2026"), Waldwick NJ
-  ("07-14-2026 Council Regular Meeting"), Richlands VA ("Town of
-  Richlands February 10, 2026 1"), Brookshire TX ("09/03/2026 - 7:00PM
-  City of Brookshire City Council Regular Meeting") -- all four state
-  a full 4-digit year. The remaining two don't: Harvey IL ("Finance
-  committee meeting 8-24-26") and Dallas OR ("8/17/26 City Council
-  Meeting") both use a 2-digit year, which `_parse_meeting_date_from_
-  title()`'s numeric-slash pattern deliberately requires 4 digits for
-  (a 2-digit number is a much weaker date signal -- more likely to
-  collide with something else in a real title) and so doesn't match.
-  These 6 pages themselves are NOT backfilled by WO-285 either way --
-  see the separate `[NEEDS-AUDIT]` "1,298 pages disagree" entry below
-  for that.
-- **Impact**: small -- 2 known real pages, cosmetic (video/transcript
-  are still correct either way).
-- **Next action**: only worth widening `_parse_meeting_date_from_
-  title()` to a 2-digit-year shape once a second, independently
-  confirmed real example turns up beyond these two, per this repo's
-  "test against a real URL first" rule -- these two alone were both
-  found by the same WO-226 spot-check, not independently.
-- **Constraint**: don't regress a page whose title genuinely has no
-  parseable date -- upload date is still the only signal for those.
-- **History**: `BACKLOG_DONE.md`'s WO-226 entry, 2026-09-11; WO-285,
-  2026-09-12 (`BACKLOG_DONE.md`) fixed the other four and the general
-  precedence bug.
 
 ### [NEEDS-AUDIT] Vimeo Whisper-fallback audio: unverified whether the headless route reaches the media file
 
