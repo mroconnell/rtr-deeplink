@@ -268,7 +268,7 @@ Reliability, ops & cost  (6)
 
 Trust, safety & data quality  (12)
   Shade the stretches of a Whisper transcript where Whisper itself was…
-  No endpoint can correct a wrong word or name in a stored transcript
+  Known wrong names in Whisper transcripts are not fixed yet…
   Pinned hosts: machine-made pins with no Archive pages yet are…
   2 already-pinned YouTube channels still disagree with the Archive's…
   27 real Quebec municipalities are marked `reject_reason=off-mission`,…
@@ -359,7 +359,7 @@ something hasn't been decided.
 ### English Whisper stays shown over a station's English captions; fix wrong names instead `[STANDING]`
 
 - **Issue**: some pages hold two English versions: our Whisper transcript and the station's own captions. Whisper reads more cleanly. The captions are more word-for-word and sometimes get a name right that Whisper missed ("Groton Hill", not "Grotten Hill").
-- **What this means**: Ryan, 2026-09-29: keep Whisper shown. Do not promote sourced English captions over it by default. Where a name is wrong, correct the word (see "Trust, safety & data quality": no endpoint can edit transcript words yet).
+- **What this means**: Ryan, 2026-09-29: keep Whisper shown. Do not promote sourced English captions over it by default. Where a name is wrong, correct the word with `POST /internal/transcript-version/correct-text` (WO-1964; see "Trust, safety & data quality").
 - **History**: `BACKLOG_DONE.md` WO-1160 (the 3 TelVue pages, caption versions 12320, 12322, 12326 left hidden).
 
 ### No Viebit meeting can get a real transcript today -- confirmed at both the probe level and the transcription level `[STANDING]`
@@ -897,11 +897,11 @@ sync. History: `BACKLOG_DONE.md` `[Done 2026-08-22]`.
 
 ### Granicus: discover a tenant's `view_id` so a bare tenant hub lists its video meetings `[IMPROVEMENT-ROUND]`
 
-- **Issue**: `granicus.py`'s `list_recent_video_meetings()` returns `[]` without a `view_id`, and nothing discovers one from a bare host like `cityoftacoma.granicus.com`. `wo134_confirmed_hits_ingest.granicus_locate_listing()` tries only `view_id=1..5` on its own session.
-- **Impact**: about 240 Granicus tenants, the largest pool. A bare hub, pasted in or swept, finds no meeting even when one exists.
-- **Next action**: build a bounded `view_id` probe on Meeting Finder's `Fetcher` and call it ahead of `list_recent_video_meetings()` in the listing path and in `granicus.py`'s `resolve()`. Use the 2026-10-07 measurement to choose which ids to probe.
-- **Constraint**: ids 1..5 are not enough (11 of 25 feeds only at 44-50; Alexandria at 29 and 57). `ViewPublisher.php` without a view_id is gated on purpose. Probe bounded numeric ids only, with a hard delay and no redirects followed.
-- **History**: `meeting_finder/listing.py` WO-1030 comment; `~/Documents/rtr-findmeeting/data/granicus_norss_rss_check_2026-10-07/`; findmeeting PR 73.
+- **Issue**: a bare Granicus host like `cityoftacoma.granicus.com` does not say which `view_id` lists its videos. Meeting Finder's live probe (`_granicus_discover_view_id()`) tries only ids 1-6. WO-1965 added the stored map `app/utils/jurisdiction_data/granicus_views.csv`, read first by that probe and by `granicus.py`'s `resolve()` for a pasted bare host, and the script that fills it. The map holds only 4 seed rows (feeds saved as test fixtures).
+- **Impact**: about 240 Granicus tenants, the largest pool. Until the map is filled, a bare hub, pasted in or swept, still finds no meeting unless its feed is at ids 1-6.
+- **Next action**: run `scripts/probe_granicus_view_ids.py` from the Mac (the cloud gets a 403 from granicus.com): first a dry run on the 274 no-feed hosts from the 2026-10-07 check, then again with `--write`, and commit the new rows.
+- **Constraint**: ids 1-6 are not enough (11 of 25 feeds only at 44-50; Alexandria at 29 and 57), so the script probes 1-60. `ViewPublisher.php` without a view_id is gated on purpose. A row proves the host serves the feed, not who owns the host: confirm an owner by hand before pinning or subscribing.
+- **History**: WO-1965 (stored map, loader, probe script); `meeting_finder/listing.py` WO-1030 comment; `~/Documents/rtr-findmeeting/data/granicus_norss_rss_check_2026-10-07/`; findmeeting PR 73.
 
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
@@ -2094,13 +2094,13 @@ actionability sections above.
 - **Constraint**: transcripts made before WO-1968 have no numbers and are not backfilled; they must show no shade, not a guessed one. The numbers score a whole Whisper segment, so every piece of a gap-split segment carries the same values. Ryan's own framing (CLAUDE_BACKLOG, 2026-08-18): flag the stretch, not the page. Hold the separate "reads well but false" AI check (cost undesigned, prompt-injection review first).
 - **History**: `BACKLOG_DONE.md` WO-1968.
 
-### No endpoint can correct a wrong word or name in a stored transcript
+### Known wrong names in Whisper transcripts are not fixed yet (correct-text route waits on a deploy)
 
-- **Issue**: the Archive can promote a version, drop segments, and fix a version's language or warning labels. It cannot edit a segment's text. Ryan wants wrong names fixed in the shown Whisper transcript rather than swapping in station captions (Standing decisions).
+- **Issue**: WO-1964 added `POST /internal/transcript-version/correct-text`, which fixes one word or name in one segment. No real page has been corrected with it yet, and it is not live until the Archive is deployed.
 - **Impact**: known wrong names stay on the page. Example: `/m/city-ma-city-council-5-6-2025` (Whisper version 1762) reads "Grotten Hill Music Center"; it is Groton Hill.
-- **Next action**: add an admin-token `POST /internal/transcript-version/correct-text` (page, version id, segment index or time, old text, new text; refuse if the old text is not there). Then take the correct spelling from the meeting's own agenda: it names the members, staff, speakers and places in writing, so it is the source for each fix. Use the government's member list where the agenda does not name someone. Never fix a name from the captions alone.
-- **Constraint**: a caption/Whisper disagreement is a lead, not proof. A word-by-word comparison on the 3 WO-1160 pages (2026-09-29) found dozens of name differences per page; captions were right on some (Groton Hill, Framingham, HVAC), and on many (councilor names) neither text could be confirmed without the agenda. Needs an Archive deploy.
-- **History**: `BACKLOG_DONE.md` WO-1160, WO-1164.
+- **Next action**: after the deploy, fix the Groton Hill example first. For every other fix, take the spelling from the meeting's own agenda: it names the members, staff, speakers and places in writing. Use the government's member list where the agenda does not name someone. Never fix a name from the captions alone.
+- **Constraint**: a caption/Whisper disagreement is a lead, not proof. A word-by-word comparison on the 3 WO-1160 pages (2026-09-29) found dozens of name differences per page; captions were right on some (Groton Hill, Framingham, HVAC), and on many (councilor names) neither text could be confirmed without the agenda.
+- **History**: `BACKLOG_DONE.md` WO-1964, WO-1160, WO-1164.
 
 ### Pinned hosts: machine-made pins with no Archive pages yet are unchecked `[NEEDS-AUDIT]`
 
