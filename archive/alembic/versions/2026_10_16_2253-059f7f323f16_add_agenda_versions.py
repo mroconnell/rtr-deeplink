@@ -1,7 +1,7 @@
 """add agenda_versions
 
 Revision ID: 059f7f323f16
-Revises: 1816f75c1098
+Revises: c3d1e9a7b5f2
 Create Date: 2026-10-16 22:53:32.042198
 
 WO-1966: one row per distinct agenda or packet text per meeting page,
@@ -19,7 +19,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = "059f7f323f16"
-down_revision: Union[str, Sequence[str], None] = "1816f75c1098"
+down_revision: Union[str, Sequence[str], None] = "c3d1e9a7b5f2"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
