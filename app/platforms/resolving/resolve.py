@@ -141,6 +141,24 @@ LOCAL_ONLY_CAPTIONS_NOTE = (
 )
 
 
+# Ryan, 2026-10-16: a ChampDS VOD2-only recording is a tier-3 find. Said
+# in the note so nobody reads `video_url` as something a reader can play.
+STREAM_ONLY_NOTE = (
+    "stream-only recording (VOD2): our transcription can read it, but our "
+    "page has no player and links back to the source"
+)
+
+
+def _media_url(result: ResolvedMeeting) -> Optional[str]:
+    """The playable `video_url`, else the server-only stream (ChampDS's
+    VOD2, `server_media_url`) that a tier-3 transcription reads."""
+    return result.video_url or getattr(result, "server_media_url", None)
+
+
+def _stream_only_note(result: ResolvedMeeting) -> str:
+    return "" if result.video_url or not _media_url(result) else STREAM_ONLY_NOTE
+
+
 def captions_local_only(platform: Optional[str], video_url: Optional[str]) -> bool:
     """True when a find's captions can only be read locally -- the video
     is on a LOCAL_ONLY_CAPTION_HOSTS host, whatever platform delegated to
@@ -644,11 +662,17 @@ async def _resolve_candidates_with_meeting(
         # find, just labelled. Fall through to the normal tier-1/tier-3
         # checks below instead of discarding the candidate.
         audio_only = False
-        if result.video_url:
+        # Ryan, 2026-10-16: a recording only our server can read (ChampDS's
+        # VOD2 stream, `server_media_url`, WO-1045) counts as video. It is a
+        # tier-3 find: we transcribe it, and the page has no player but
+        # links back to the source ("View original source"), so a reader
+        # can find the moment in the transcript and watch it there.
+        media_url = _media_url(result)
+        if media_url:
             gov = _government_for_input(finder_input)
             gate = assess_video_candidate(
                 title=result.title,
-                video_url=result.video_url,
+                video_url=media_url,
                 platform=result.platform,
                 structured=True,
                 gov_name=gov.gov_name if gov else None,
@@ -668,7 +692,7 @@ async def _resolve_candidates_with_meeting(
                         rule,
                     )
                 continue
-            if not await _confirm_not_audio_only(result.video_url):
+            if not await _confirm_not_audio_only(media_url):
                 audio_only = True
         elif _is_embed_restricted(result):
             # WO-1046: no `video_url` at all -- Vimeo's own oEmbed refused
@@ -733,10 +757,10 @@ async def _resolve_candidates_with_meeting(
                 result,
             )
 
-        if result.video_url:
+        if media_url:
             probe = await queue_probe.probe_queue_entry(
                 cand.url,
-                video_url=result.video_url,
+                video_url=media_url,
                 source_page_url=result.source_url or cand.url,
                 platform=result.platform,
                 video_format=result.video_format,
@@ -818,13 +842,6 @@ async def _resolve_candidates_with_meeting(
                         )
             continue
 
-        if getattr(result, "server_media_url", None) and not result.video_url:
-            # ChampDS's VOD2: a recording our transcription can read but a
-            # reader's player can't (WO-1045). Not counted as video here;
-            # said out loud so the row doesn't read like "no recording".
-            reasons.append(
-                f"{cand.url}: stream-only recording (VOD2), no playable video"
-            )
         # 2026-10-02 (ChampDS listing): a row a LISTER already marked
         # `has_video_hint=False` is a confirmed real meeting even with no
         # agenda attached -- the same trust the `ResolveError` branch above
@@ -854,12 +871,13 @@ async def _resolve_candidates_with_meeting(
                     )
                     if audio_only:
                         note = "; ".join(p for p in (note, "audio only") if p)
+                    note = "; ".join(p for p in (note, _stream_only_note(result)) if p)
                     return (
                         ResolveResult(
                             candidate=cand,
                             tier=3,
                             platform=result.platform,
-                            video_url=result.video_url,
+                            video_url=_media_url(result),
                             has_segments=False,
                             duration_seconds=probe.duration_seconds,
                             outcome=None,
@@ -883,11 +901,20 @@ async def _resolve_candidates_with_meeting(
                 candidate=cand,
                 tier=3,
                 platform=result.platform,
-                video_url=result.video_url,
+                video_url=_media_url(result),
                 has_segments=False,
                 duration_seconds=None,
                 outcome=None,
-                note=_note("audio only" if audio_only else ""),
+                note=_note(
+                    "; ".join(
+                        p
+                        for p in (
+                            "audio only" if audio_only else "",
+                            _stream_only_note(result),
+                        )
+                        if p
+                    )
+                ),
                 audio_only=audio_only,
             ),
             result,
@@ -932,7 +959,7 @@ async def _resolve_candidates_with_meeting(
                     candidate=cand,
                     tier=None if embed_restricted else 3,
                     platform=result.platform,
-                    video_url=result.video_url,
+                    video_url=_media_url(result),
                     has_segments=False,
                     duration_seconds=duration,
                     outcome=(
