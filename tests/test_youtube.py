@@ -257,6 +257,19 @@ async def test_resolve_video_id_parses_bare_numeric_title_date(monkeypatch):
         ("Special Meeting", None),
         # A year below the sanity floor isn't misread as a real date.
         ("Founded 1987 3 4 Historical Marker Dedication", None),
+        # 2-digit year, read as 20YY. Real titles from WO-226's spot-check:
+        # Harvey IL and Dallas OR (backlog triage 2026-10-16).
+        ("Finance committee meeting 8-24-26", "2026-08-24"),
+        ("8/17/26 City Council Meeting", "2026-08-17"),
+        # Synthetic negatives: ids, times and longer numbers must not parse.
+        ("Case 108-24-26 Public Hearing", None),
+        ("Case 8-24-261 Public Hearing", None),
+        ("Meeting 7:00-8:15-26", None),
+        ("Video x8-24-26y", None),
+        ("Item 8-24-2 and 26", None),
+        ("Mixed 8/24-26 separators", None),
+        ("Resolution 12-12-99", None),
+        ("Docket 13-24-26", None),
     ],
 )
 def test_parse_meeting_date_from_title(title, expected):
