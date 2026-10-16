@@ -44,6 +44,7 @@ from .db import crud
 from .context.routes import build_router as build_context_candidate_router
 from .db.engine import init_models
 from .topics import TOPICS
+from .utils import agenda_ingest
 from .utils import email as email_utils
 from .utils import social
 from .utils.cache_static import RevalidatingStaticFiles
@@ -1871,6 +1872,20 @@ async def internal_ingest(
         video_format=payload.get("video_format"),
         source_url=payload.get("source_url") or req.input_url_normalized,
     )
+    # WO-1966: read the agenda and packet text once, after the response, so
+    # a slow government server or a large packet never delays the push.
+    # Only CivicPlus and CivicClerk links today; read_and_store() never
+    # raises, so a failure here cannot touch the ingest.
+    if result.get("page_id") and agenda_ingest.wanted(
+        payload.get("agenda_link"), payload.get("packet_link")
+    ):
+        background_tasks.add_task(
+            agenda_ingest.read_and_store,
+            result["page_id"],
+            payload.get("agenda_link"),
+            payload.get("packet_link"),
+            payload.get("date"),
+        )
     return result
 
 

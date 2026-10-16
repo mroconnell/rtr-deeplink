@@ -444,6 +444,62 @@ class TranscriptVersion(Base):
     )
 
 
+class AgendaVersion(Base):
+    """One distinct text of one meeting document -- the agenda or the packet
+    -- for a MeetingPage (WO-1966). Shaped like TranscriptVersion, with the
+    one real difference that motivated it: agendas get amended before a
+    meeting, transcripts do not. So a page keeps every distinct text it has
+    seen, deduplicated by content hash: an unchanged re-read stores nothing
+    (it only moves `last_checked_at`), and a changed one is a new row.
+
+    Written by archive/utils/agenda_ingest.py at ingest time, CivicPlus and
+    CivicClerk only. Nothing displays or searches it yet. Packet text can
+    run to 1.8M characters, so this table must never be read by a query
+    that spans every page (search corpus, listings); load it per page only.
+    """
+
+    __tablename__ = "agenda_versions"
+    __table_args__ = (
+        UniqueConstraint(
+            "meeting_page_id",
+            "doc_role",
+            "content_hash",
+            name="uq_agenda_version_page_role_hash",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    meeting_page_id: Mapped[int] = mapped_column(
+        ForeignKey("meeting_pages.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # "agenda" or "packet" (the agenda plus every staff report). Kept apart
+    # because they are different documents about the same meeting: a later
+    # amendment check must compare an agenda with an agenda.
+    doc_role: Mapped[str] = mapped_column(String(20), nullable=False)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    # sha256 of `text`.
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    # "pdf", "html", "text (civicclerk)", ... -- what the bytes really were.
+    format: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
+    # The address we requested, and where it really landed after redirects
+    # (signed query strings stripped).
+    source_url: Mapped[str] = mapped_column(Text, nullable=False)
+    resolved_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # app/agenda_text.py's EXTRACTOR_NAME / EXTRACTOR_VERSION, so a later
+    # re-read that differs only because we extract better can be told
+    # apart from a real amendment.
+    extractor: Mapped[str] = mapped_column(String(40), nullable=False)
+    extractor_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    char_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    fetched_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    # Last time a read of this document returned this exact text.
+    last_checked_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class SocialPost(Base):
     """One row per (meeting page, network) social-media announcement --
     the dedup ledger for archive/utils/social.py's auto-posting. A row is

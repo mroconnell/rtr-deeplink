@@ -35,3 +35,11 @@ sentry-sdk>=2.71.0
 # archive service validates/repairs measurably less than the resolver
 # does on identical input. Pure-Python, no transitive deps.
 wordninja>=2.0
+# Agenda text (WO-1966, 2026-10-16): app/agenda_text.py reads agenda and
+# packet PDFs at ingest. pypdf first; pdfplumber only as a fallback when
+# pypdf's text looks mangled (ligature/space loss). The same two libraries
+# rtr-upcoming uses, where both were measured on real agendas. The parse
+# runs in a separate process under a memory ceiling
+# (app/agenda_extract_worker.py).
+pypdf>=6.19.0
+pdfplumber>=0.11.10

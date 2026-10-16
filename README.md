@@ -575,6 +575,29 @@ re-pushing an unchanged meeting doesn't pile up duplicate versions). Both
 calls above — a down/misconfigured Archive degrades silently, never breaks
 `/api/resolve`.
 
+**Agenda and packet text, read once at ingest (WO-1966, 2026-10-16)**:
+when an ingest carries a CivicPlus (`/AgendaCenter/ViewFile/Agenda/...`)
+or CivicClerk (`*.api.civicclerk.com/v1/Meetings/GetMeetingFile(...)`)
+`agenda_link` or `packet_link`, `/internal/ingest` queues
+`archive/utils/agenda_ingest.read_and_store()` as a BackgroundTask. It
+reads each document's text with `app/agenda_text.py` (ported from
+`rtr-upcoming`) and stores it in `agenda_versions`: one row per distinct
+text per page and role (`agenda` or `packet`), deduplicated by a sha256
+content hash. An unchanged re-read stores nothing; an amended agenda is a
+new row. A page is re-read on a later ingest, but not within 24 hours of
+the last read. There is no schedule and no sweep. CivicClerk is read
+through its own plain-text route first, then the file itself. CivicPlus
+is read as the PDF first, then its HTML copy. PDFs are parsed in a
+separate process (`app/agenda_extract_worker.py`) under a memory ceiling
+(`AGENDA_EXTRACT_MEMORY_MB`, default 1,000) and a time limit
+(`AGENDA_EXTRACT_TIMEOUT_S`, default 300), one at a time per instance; a
+body over 100 MB is refused, never truncated. Every failure is logged and
+never touches the ingest. Every other platform's `agenda_link` is ignored
+for now. **Nothing displays or searches this text yet**, and it must
+never be loaded into `search_corpus` or any query that spans every page
+(packet text runs to 1.8 million characters). See BACKLOG.md's "Agenda
+text as a first-class, **versioned** asset" entry for what comes next.
+
 **YouTube transcripts — fetched locally, not server-side**: YouTube
 blocks caption requests from cloud-provider IPs (confirmed live
 2026-08-10: yt-dlp, plain timedtext requests, and `youtube-transcript-api`
@@ -3128,6 +3151,11 @@ app/
                            (cookie-forwarding for auth-aware pages) +
                            the /internal/account/* wrappers +
                            the /internal/context/* wrappers
+  agenda_text.py           agenda/packet text: which links to read
+                           (CivicPlus, CivicClerk), fetch, extract,
+                           guards (WO-1966; used by the Archive's ingest)
+  agenda_extract_worker.py one PDF parse in a child process under a
+                           memory ceiling
   db/
     engine.py              DATABASE_URL (falls back to local SQLite) +
                            async engine/session
@@ -3246,7 +3274,9 @@ archive/
                            "Accounts (Clerk)" above),
                            MeetingPageThumbnail (extracted video frames,
                            see "Meeting card images" above), ContextEntry
-                           (see "Full Context feed" above)
+                           (see "Full Context feed" above),
+                           AgendaVersion (agenda/packet text, WO-1966)
+    agenda_versions.py       store/list AgendaVersion rows, per page only
     crud.py                  identity matching/dedup, slug generation,
                            content-hash version dedup, list_pages()
                            (paginated + filtered, backs /meetings),
@@ -3282,6 +3312,8 @@ archive/
                            see archive/utils/hub_aliases.py for why this
                            is a committed file and not a table
   utils/
+    agenda_ingest.py         the ingest-time agenda/packet read (WO-1966),
+                           see "Agenda and packet text" above
     gov_groups.py            gov_type -> the /state/* heading it lands
                            under. Replaced gov_classify.py (WO-99), a
                            regex over the display name that filed

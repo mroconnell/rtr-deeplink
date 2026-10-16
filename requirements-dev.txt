@@ -55,7 +55,10 @@ cffi==2.1.1
     #   -r requirements.txt
     #   cryptography
 charset-normalizer==3.5.1
-    # via requests
+    # via
+    #   -r requirements.txt
+    #   pdfminer-six
+    #   requests
 clerk-backend-api==7.0.0
     # via -r requirements.txt
 click==8.4.2
@@ -67,6 +70,7 @@ cryptography==50.0.0
     # via
     #   -r requirements.txt
     #   clerk-backend-api
+    #   pdfminer-six
 cyclonedx-python-lib==11.12.0
     # via pip-audit
 defusedxml==0.7.1
@@ -159,6 +163,16 @@ packaging==26.3
     #   pip-requirements-parser
     #   pytest
     #   wheel
+pdfminer-six==20260107
+    # via
+    #   -r requirements.txt
+    #   pdfplumber
+pdfplumber==0.11.10
+    # via -r requirements.txt
+pillow==12.3.0
+    # via
+    #   -r requirements.txt
+    #   pdfplumber
 pip-api==0.0.34
     # via pip-audit
 pip-audit==2.10.1
@@ -208,6 +222,12 @@ pyjwt==2.13.0
     #   clerk-backend-api
 pyparsing==3.3.2
     # via pip-requirements-parser
+pypdf==6.19.0
+    # via -r requirements.txt
+pypdfium2==5.13.0
+    # via
+    #   -r requirements.txt
+    #   pdfplumber
 pyproject-hooks==1.2.0
     # via
     #   build

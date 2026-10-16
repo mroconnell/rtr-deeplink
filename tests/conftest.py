@@ -157,6 +157,22 @@ def _no_real_card_extraction(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _no_real_agenda_read(monkeypatch):
+    """Keeps WO-1966's ingest-time agenda read from making real network
+    calls. `POST /internal/ingest` queues it as a BackgroundTask for any
+    CivicPlus/CivicClerk agenda link, and the TestClient runs background
+    tasks synchronously -- the same reason as the card fixture above.
+    tests/test_agenda_text.py tests the real function by the name it
+    imported before this patch."""
+    from archive.utils import agenda_ingest
+
+    async def _skip(*_args, **_kwargs):
+        return []
+
+    monkeypatch.setattr(agenda_ingest, "read_and_store", _skip)
+
+
+@pytest.fixture(autouse=True)
 def _no_real_audio_rendition_lookup(monkeypatch):
     """Keeps WO-1062's separate-audio-file lookup from making real network
     calls. `extract_chunk_audio()` runs it whenever an HLS chunk's first
