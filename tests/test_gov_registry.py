@@ -4449,3 +4449,22 @@ def test_county_followed_by_a_full_state_name_reads_the_state():
     assert resolver.resolve_government("Washington County New York").gov_id == (
         "us:county:36115"
     )
+
+
+@pytest.mark.parametrize(
+    "raw, gov_id",
+    [
+        ("City of La Canada Flintridge, CA", "us:place:0639003"),
+        ("La Cañada Flintridge, CA", "us:place:0639003"),
+        ("Dona Ana County, NM", "us:county:35013"),
+    ],
+)
+def test_accent_free_spelling_matches_the_accented_census_name(raw, gov_id):
+    """Backlog triage 2026-10-16. La Cañada Flintridge's own Granicus page
+    writes "La Canada Flintridge"; finalize_jurisdiction() called that
+    unverified and the resolver minted. Accented table keys are now also
+    indexed with the accents folded."""
+    from app.utils.jurisdiction_enrich import finalize_jurisdiction
+
+    assert finalize_jurisdiction(raw).confidence == "validated"
+    assert resolver.resolve_government(raw).gov_id == gov_id

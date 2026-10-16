@@ -54,8 +54,9 @@ to close.
 """
 
 import csv
-from html import unescape as _html_unescape
 import re
+import unicodedata
+from html import unescape as _html_unescape
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -267,6 +268,20 @@ _PAREN_ALT_RE = re.compile(
 _PAREN_JUNK_RE = re.compile(r"\b(?:part|balance|half)\b|\d", re.IGNORECASE)
 
 
+def _fold_accents(text: str) -> str:
+    """ "la cañada flintridge" -> "la canada flintridge".
+
+    Real page text almost always drops the accent the Census/StatCan name
+    carries (La Cañada Flintridge's own Granicus page writes "La Canada
+    Flintridge"), so every accented table key is also indexed folded.
+    Checked 2026-10-16 across every name table: no folded key collides
+    with a different same-state name.
+    """
+    return "".join(
+        c for c in unicodedata.normalize("NFKD", text) if not unicodedata.combining(c)
+    )
+
+
 def _load_name_state_table(filename: str) -> Dict[str, List[str]]:
     table: Dict[str, List[str]] = {}
     path = _DATA_DIR / filename
@@ -274,8 +289,9 @@ def _load_name_state_table(filename: str) -> Dict[str, List[str]]:
         return table
 
     def _add(key: str, state: str) -> None:
-        if key and state not in table.setdefault(key, []):
-            table[key].append(state)
+        for k in {key, _fold_accents(key)}:
+            if k and state not in table.setdefault(k, []):
+                table[k].append(state)
 
     with open(path, encoding="utf-8") as f:
         for row in csv.DictReader(f):

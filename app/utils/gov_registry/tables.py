@@ -31,6 +31,7 @@ from ..jurisdiction_enrich import (
     _QUERY_GOVERNMENT_TYPE_RE,
     _contract_saints,
     _expand_abbreviations,
+    _fold_accents,
     _normalize_candidates,
     _normalize_name,
     _normalize_slash_spacing,
@@ -183,6 +184,10 @@ class NameStateTable:
                 # bare name too, or "West Springfield, MA" minted and
                 # "Franklin, MA" fell through to Franklin County.
                 keys.append(key[: -len(" town")])
+            folded = _fold_accents(key)
+            if folded != key:
+                # "La Canada Flintridge" for "La Cañada Flintridge city".
+                keys.append(folded)
             for k in keys:
                 self._by_key[k][row.state.upper()].append(row)
                 self._by_squashed[squash(k)][row.state.upper()].append(row)
