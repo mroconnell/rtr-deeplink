@@ -15,7 +15,7 @@ from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from markupsafe import Markup
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_serializer
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 load_dotenv()
@@ -822,6 +822,38 @@ async def internal_transcript_wanted(
             platform=platform or "youtube"
         )
     }
+
+
+class YoutubeAudioRequestIn(BaseModel):
+    url_normalized: str
+    video_id: Optional[str] = None
+
+
+@app.post("/internal/youtube-audio-requests")
+async def internal_record_youtube_audio_request(
+    req: YoutubeAudioRequestIn, authorization: Optional[str] = Header(None)
+):
+    """WO-1969: the resolver records a reader's "Request Transcript from
+    Audio" press on a YouTube-hosted meeting. Nothing here talks to
+    YouTube. See crud.record_youtube_audio_request()."""
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    return await crud.record_youtube_audio_request(
+        url_normalized=req.url_normalized, video_id=req.video_id
+    )
+
+
+@app.get("/internal/youtube-audio-requests")
+async def internal_list_youtube_audio_requests(
+    limit: int = 50, authorization: Optional[str] = Header(None)
+):
+    """WO-1969: open reader requests, oldest first, read by the drip Mac's
+    audio lane (scripts/youtube_drip.py), which takes at most one a day.
+    See crud.list_open_youtube_audio_requests()."""
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    limit = max(1, min(limit, 200))
+    return {"pages": await crud.list_open_youtube_audio_requests(limit=limit)}
 
 
 @app.get("/internal/transcription-backlog")
@@ -1701,6 +1733,27 @@ class TranscriptSegmentIn(BaseModel):
     # Stored inside the segments JSON, so it needed no migration. The
     # meeting page and the .txt export show it where it changes.
     speaker: Optional[str] = None
+    # Whisper's own per-segment confidence numbers (WO-1968). Sent only by
+    # the local transcription script's ingest; the cloud worker writes
+    # partial_segments straight to the DB and never passes through here.
+    # Declared for the same reason as `speaker`: Pydantic would otherwise
+    # drop them at this boundary. Names must match worker/segment_utils.py's
+    # WHISPER_CONFIDENCE_FIELDS (tests/test_whisper_confidence.py checks).
+    # Nothing displays them yet.
+    avg_logprob: Optional[float] = None
+    no_speech_prob: Optional[float] = None
+    compression_ratio: Optional[float] = None
+
+    @model_serializer(mode="wrap")
+    def _omit_absent_confidence(self, handler):
+        # A scraped-caption segment has none of these. Leaving them out when
+        # unset keeps every such segment's stored JSON exactly as before,
+        # instead of adding three nulls to every caption cue in the Archive.
+        data = handler(self)
+        for key in ("avg_logprob", "no_speech_prob", "compression_ratio"):
+            if data.get(key) is None:
+                data.pop(key, None)
+        return data
 
 
 class AlternateTranscriptIn(BaseModel):

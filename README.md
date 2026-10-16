@@ -1472,6 +1472,13 @@ number of concurrent worker processes.
    meeting) or implausibly long (over 14 hours). This is also what makes
    the button itself real friction against abuse: nothing past this point
    happens for a meeting with no usable source.
+   **A YouTube-hosted meeting stops here (WO-1969).** The server never
+   resolves or probes it (that would be a YouTube request from Render).
+   It records the press in the Archive (`POST /internal/youtube-audio-requests`,
+   one row per video, repeats counted) and tells the reader it is noted,
+   with no date. The drip Mac's audio lane (`scripts/youtube_drip.py`)
+   reads the open requests and takes one a day ahead of its backlog; see
+   `docs/YOUTUBE_DRIP_RUNBOOK.md`.
 2. **Submit** (`POST /api/transcription/submit`) — re-runs the entire
    feasibility check server-side (never trusts a client-supplied "it
    passed" flag) and asks the Archive to create a job

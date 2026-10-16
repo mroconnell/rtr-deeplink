@@ -19,7 +19,11 @@ the daily launchd burst was blocked within 9-38 pages every morning):
             audio download + local Whisper via
             scripts/transcribe_backlog_locally.process_one(), capped per day
             because YouTube blocked this office's address after three
-            downloads in a row on 2026-09-09.
+            downloads in a row on 2026-09-09. WO-1969: readers' "Request
+            Transcript from Audio" presses on YouTube meetings
+            (GET /internal/youtube-audio-requests) go first, but take at
+            most AUDIO_REQUEST_SLOTS_PER_DAY (1) of the daily downloads;
+            see pick_audio_page().
 
 A block signal (429, IpBlocked, "Sign in to confirm you're not a bot")
 pauses every lane and sleeps 15 min, then 30, 1 h, 2 h, 4 h (cap); a
@@ -201,6 +205,13 @@ STRIKE_RETRY_MAX_SECONDS = 48 * 3600.0
 # A 3-hour meeting takes about 1-2 hours on this Mac, so 4 hours is slack.
 AUDIO_JOB_TIMEOUT_SECONDS = 4 * 3600.0
 AUDIO_DOWNLOADS_PER_DAY = 3
+# WO-1969 (Ryan, 2026-10-16): at most this many of the daily audio downloads
+# go to readers' "Request Transcript from Audio" presses
+# (GET /internal/youtube-audio-requests), taken ahead of the backlog. The
+# total stays AUDIO_DOWNLOADS_PER_DAY; this is a share of it, not extra.
+AUDIO_REQUEST_SLOTS_PER_DAY = 1
+# How long the audio lane trusts its last read of the request list.
+AUDIO_REQUESTS_CACHE_SECONDS = 900.0
 # WO-1168: how long the direct lane trusts its own cached backlog count
 # before re-checking GET /internal/transcription-backlog (a full Archive
 # scan -- not something to run every tick) -- decremented locally by one
@@ -441,6 +452,43 @@ def audio_page_from_export_row(row: dict) -> Optional[dict]:
         "video_url": row.get("video_url"),
         "video_format": "youtube",
     }
+
+
+def pick_audio_page(
+    requests: List[dict],
+    queue: List[dict],
+    *,
+    today: dict,
+    audio_per_day: int,
+    request_slots: int,
+    audio_done: dict,
+    is_deferred: Callable[[str], bool],
+) -> Tuple[Optional[dict], Optional[str]]:
+    """WO-1969: which page the audio lane downloads next, and from where.
+
+    Returns (page, "request") for a reader's request, (page, "backlog") for
+    the captions-disabled backlog, or (None, None) for nothing today.
+
+    Rules, in order:
+      1. Never more than `audio_per_day` downloads a day, in total.
+      2. A reader request goes first, while fewer than `request_slots` have
+         been taken today (`today["audio_request_downloads"]`).
+      3. Otherwise the backlog, as before. When there are no requests, the
+         backlog may use every slot.
+    A page already tried (in `audio_done`) or pushed back (`is_deferred`)
+    is skipped in both lists.
+    """
+    if today.get("audio_downloads", 0) >= audio_per_day:
+        return None, None
+    if today.get("audio_request_downloads", 0) < request_slots:
+        for p in requests:
+            slug = p.get("slug")
+            if slug and slug not in audio_done and not is_deferred(f"audio|{slug}"):
+                return p, "request"
+    for p in queue:
+        if not is_deferred(f"audio|{p['slug']}"):
+            return p, "backlog"
+    return None, None
 
 
 # --- identity worklist (docs/YOUTUBE_DRIP_IDENTITY_REVIEW.md) ---------------
@@ -786,6 +834,8 @@ class Drip:
         self.alerts_path: Optional[Path] = None
         self.current_item: Optional[str] = None
         self.audio_job_timeout = AUDIO_JOB_TIMEOUT_SECONDS
+        self.audio_request_slots = AUDIO_REQUEST_SLOTS_PER_DAY
+        self._audio_requests_cache: Optional[Tuple[float, List[dict]]] = None
 
     # -- block bookkeeping
     def _block(
@@ -1254,25 +1304,30 @@ class Drip:
         from scripts import transcribe_backlog_locally as tbl
 
         d = self.state.data
-        if (
-            not d["audio_queue"]
-            or d["today"].get("audio_downloads", 0) >= self.audio_per_day
-        ):
+        if d["today"].get("audio_downloads", 0) >= self.audio_per_day:
             return False, None
         if d["audio_blocked_until"] > time.time():
             return False, None
-        page = next(
-            (
-                p
-                for p in d["audio_queue"]
-                if not self.state.is_deferred(f"audio|{p['slug']}")
-            ),
-            None,
+        requests: List[dict] = []
+        if d["today"].get("audio_request_downloads", 0) < self.audio_request_slots:
+            requests = await self._audio_requests(session)
+        page, source = pick_audio_page(
+            requests,
+            d["audio_queue"],
+            today=d["today"],
+            audio_per_day=self.audio_per_day,
+            request_slots=self.audio_request_slots,
+            audio_done=d["audio_done"],
+            is_deferred=self.state.is_deferred,
         )
         if page is None:
             return False, None
         self.current_item = f"audio|{page['slug']}"
         self.state.bump("audio_downloads")
+        if source == "request":
+            self.state.bump("audio_request_downloads")
+            # Read the list fresh next time: this one is being worked now.
+            self._audio_requests_cache = None
         try:
             result = await asyncio.wait_for(
                 tbl.process_one(
@@ -1303,14 +1358,45 @@ class Drip:
             return True, self._block(
                 "audio_blocked_until", "audio_block_level", f"{page['slug']}: {detail}"
             )
-        d["audio_queue"].remove(page)
+        # A reader request may also sit in the backlog queue; drop it there
+        # too so it is not downloaded twice.
+        d["audio_queue"] = [p for p in d["audio_queue"] if p["slug"] != page["slug"]]
         d["audio_done"][page["slug"]] = status
         d["audio_block_level"] = 0
         self.state.bump("audio_done" if status == "ingested" else "audio_failed")
         logger.info(
-            "audio    %-8s %s -- %s", status.upper(), page["slug"], detail[:140]
+            "audio%s %-8s %s -- %s",
+            "-req" if source == "request" else "   ",
+            status.upper(),
+            page["slug"],
+            detail[:140],
         )
         return True, None
+
+    async def _audio_requests(self, session: aiohttp.ClientSession) -> List[dict]:
+        """WO-1969: readers' open requests (GET /internal/youtube-audio-
+        requests), cached AUDIO_REQUESTS_CACHE_SECONDS. Any failure (the
+        Archive not yet deployed with the route, a timeout) is logged and
+        read as "no requests", so the backlog lane carries on as before."""
+        now = time.time()
+        cached = self._audio_requests_cache
+        if cached is not None and now - cached[0] < AUDIO_REQUESTS_CACHE_SECONDS:
+            return cached[1]
+        pages: List[dict] = []
+        try:
+            from scripts import fetch_youtube_transcripts as fetch
+
+            async with session.get(
+                f"{fetch._base_url()}/internal/youtube-audio-requests",
+                headers=fetch._headers(),
+                timeout=aiohttp.ClientTimeout(total=60),
+            ) as r:
+                r.raise_for_status()
+                pages = (await r.json()).get("pages") or []
+        except Exception as e:
+            logger.warning("audio requests: could not read the list: %s", e)
+        self._audio_requests_cache = (now, pages)
+        return pages
 
     async def lane_leads(
         self, session: aiohttp.ClientSession

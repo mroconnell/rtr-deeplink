@@ -21,6 +21,28 @@
 **Tested on.** No real agenda file could be saved: the cloud session's network proxy refused every government host tried (nc-durham.civicplus.com, clovisca.api.civicclerk.com, a city site, and web.archive.org). Tests use the real Durham CivicPlus page and the real Emporia KS CivicClerk event for the links, and the one real CivicPlus-served PDF already in the repo (Richmond Hill GA's city charter, 81,801 characters, 0 mangled words) for extraction, in-process and through the child process. Agenda text in the guard tests is synthetic and says so.
 
 **Caution.** Steps 1 and 2 are built but not yet checked on a real agenda. That check is the first item of the open BACKLOG.md entry.
+## [Done 2026-10-16] [PARK] `[BIG]` "Request Transcript from Audio" doesn't work for YouTube-hosted meetings. (WO-1969)
+
+**What was asked.** Ryan said yes on 2026-10-16 ("A8 sure"): a reader's request on a YouTube meeting goes to the drip Mac, and takes at most 1 of its 3 daily audio downloads, ahead of the backlog. The page promises no date.
+
+**Before.** The button answered every YouTube meeting with "hosted on YouTube, we can't pull audio". To get there, the server resolved the video with yt-dlp and ran `ffprobe` on the YouTube embed page. Both are YouTube requests from Render.
+
+**After.**
+
+- `POST /api/transcription/check-feasibility` (`app/main.py`) first asks the Archive to record the press (`POST /internal/youtube-audio-requests`). If the Archive's page for that URL is on YouTube, the press is recorded and the reader sees: "Your request is noted. ... our office computer will transcribe it from the audio when it gets to it. We can't promise a date." No resolve, no probe.
+- A direct YouTube URL is never resolved by the server, even when the Archive is down. A wrapper page (PrimeGov, LIMS) the Archive has no page for yet is resolved as before, but its YouTube embed is no longer probed; the request is recorded and linked to the page later.
+- `POST /api/transcription/submit` refuses a YouTube URL without resolving it.
+- The Archive keeps one row per video in the new `youtube_audio_requests` table (migration `c3d1e9a7b5f2`). A repeat press bumps a count. No IP or email is stored. A request is open until the page's default transcript is our own audio transcript (source `transcribed`), which is also when the button disappears.
+- The drip reads the open list from `GET /internal/youtube-audio-requests` (token-gated, like `/internal/transcript-wanted`). `pick_audio_page()` in `scripts/youtube_drip.py` takes one request a day (`AUDIO_REQUEST_SLOTS_PER_DAY = 1`) ahead of the backlog, inside the same `AUDIO_DOWNLOADS_PER_DAY = 3`. If the list cannot be read, the lane carries on with the backlog.
+- The per-IP limit on the button (5 an hour, signed-in readers exempt) is unchanged.
+
+**Tested on.** Synthetic data only. No YouTube request was made and the drip was not run. Server: 14 tests in `tests/test_youtube_audio_requests.py` (record, dedupe, link a request made before its page existed, drop-off once transcribed, token gate, no resolve for YouTube, rate limit still 429 on the sixth press). Drip: 7 tests in `tests/test_youtube_drip.py`, with fake pages.
+
+**Cautions.**
+
+- Nothing reaches the drip until the Archive and resolver are deployed and the drip Mac's worktree (`~/rtr-deeplink-drip-worktree`) is brought to this `main`.
+- `daily_status.csv` has no new column. Request downloads count in `state.json`'s `today.audio_request_downloads`, and `drip.log` shows them as `audio-req`.
+- The resolver's own page for a fresh YouTube URL still resolves it with yt-dlp when a reader first pastes it. That is the core resolve, not this button, and it is unchanged.
 ## [Done 2026-10-16] Keep the speaker labels station captions carry (WO-1967, from WO-1960) `[IMPROVEMENT-ROUND]`
 
 Ryan approved 2026-10-16 ("A5 is a great thing to do now"). Branch `claude/wo1967-speaker-labels`.
@@ -71703,3 +71725,24 @@ Ryan said yes on 2026-10-16 to subscribing the feeds from his two `granicus-meet
 **New pins.** `gretnala.granicus.com` to Gretna city, LA (`us:place:2231915`): the agenda is headed "THE CITY OF GRETNA", 740 Second Street, Gretna, LA. `huroncounty.ca.granicus.com` to the County of Huron, ON (`ca:cd:3540`, the same id as the existing `huron.granicus.com` pin): the agenda is headed "County of Huron", with a 519 phone number. Test: `tests/test_granicus_lead_sheet_pins.py`.
 
 **Subscriptions (rtr-findmeeting).** 30 of the feeds were already subscribed on 2026-10-07. One new: Huron County view 1, as secondary (no meeting word in "Huron County ON"). findmeeting's feed-address check accepted only one-label hosts, so a `.ca` label is now allowed. Gretna view 1 is held back by the internal/test title rule ("New View"); it is in the open `BACKLOG.md` entry for Ryan, with the Scranton authority views.
+
+## [Done 2026-10-16] WO-1968: keep Whisper's per-segment confidence numbers
+
+Ryan said yes on 2026-10-16 ("A6 Sure") to item 2 of the transcript-quality review: store Whisper's own confidence numbers first, so a later change can shade shaky stretches. No display in this change.
+
+**What was checked first.** No code in `app/`, `worker/` or `archive/` read `avg_logprob` or `no_speech_prob` (grep, 2026-10-16). faster-whisper's `Segment` dataclass carries `avg_logprob`, `compression_ratio` and `no_speech_prob` (read in `faster_whisper/transcribe.py` of the 1.2.1 wheel). Both transcription paths already share `FasterWhisperEngine` and `worker/segment_utils.shift_segments()`, so one change covers both.
+
+**What changed.**
+
+- `worker/segment_utils.py`: `WHISPER_CONFIDENCE_FIELDS` and `whisper_confidence_fields()`. Each value is rounded to 3 decimals. A missing or non-finite value is left out, because Postgres JSON rejects NaN and a blank is honest.
+- `worker/transcription_engine.py`: every segment from `_split_segment_on_word_gaps()` carries the three numbers. The numbers score a whole Whisper segment, so each piece of a gap split gets its parent's values.
+- `shift_segments()` used to rebuild each segment with only start, end, text and speaker. It now carries the three numbers through. The seam merge (`merge_chunk_segments()`, and the Archive's own trim in `report_chunk_result()`) keeps whole dicts, so they survive it.
+- `archive/main.py` `TranscriptSegmentIn`: three optional fields. Without them, Pydantic dropped the numbers from the local script's `/internal/ingest` push. They are left out of the dump when unset, so a scraped caption cue is stored exactly as before, with no null keys.
+
+**Readers.** Nothing they see changes. The meeting page shows only start and text, the page script reads the page, the `.txt`/`.srt` downloads read start, end and text, and search excerpts read text. The only output that carries the numbers is the admin-token `/internal/export/pages?include_segments=true`.
+
+**Cautions.** Transcripts made before this change have no numbers and are not backfilled. Gemini transcripts have none either. Not live until the worker and the Archive are deployed; the local script picks it up on its next `git pull`.
+
+**Tests.** `tests/test_whisper_confidence.py`, 13 tests. They fake faster-whisper's segments (synthetic, field names checked against 1.2.1). They cover rounding, the gap split, `_transcribe_sync()`, chunk offsetting, the seam merge, the `/internal/ingest` route, the cloud worker's `report_chunk_result()` path, and the reader page and downloads. No real model was run.
+
+The display is the open `BACKLOG.md` entry "Shade the stretches of a Whisper transcript where Whisper itself was unsure".

@@ -74,6 +74,7 @@ from .platforms.media_probe import (
 )
 from .platforms.models import ResolvedMeeting
 from .platforms.youtube import YouTubeAssetFinder
+from .platforms.youtube_ids import extract_video_id as extract_youtube_video_id
 from .utils.cache_static import RevalidatingStaticFiles
 from .utils.clerk_auth import clerk_frontend_api_url, get_clerk_user_id
 from .utils.jurisdiction_enrich import finalize_jurisdiction
@@ -1601,6 +1602,39 @@ async def _probe_meeting_duration(
     )
 
 
+# WO-1969 (Ryan approved 2026-10-16): a YouTube meeting's request is
+# recorded for the drip Mac, which transcribes at most one reader request a
+# day. No date is promised on purpose.
+_YOUTUBE_AUDIO_REQUEST_NOTED_MESSAGE = (
+    "Your request is noted. This meeting's video is on YouTube, so our office "
+    "computer will transcribe it from the audio when it gets to it. We can't "
+    "promise a date. Until then, you can turn on captions in the video player above."
+)
+_YOUTUBE_ALREADY_TRANSCRIBED_MESSAGE = (
+    "This meeting already has a transcript from its audio. Reload the page to see it."
+)
+_YOUTUBE_AUDIO_REQUEST_FAILED_MESSAGE = (
+    "We couldn't record your request just now. Please try again later."
+)
+
+
+def _youtube_audio_request_response(recorded: Optional[dict]) -> Optional[dict]:
+    """The check-feasibility answer for an Archive reply to
+    record_youtube_audio_request(), or None when the meeting is not on
+    YouTube (or the Archive could not say)."""
+    if not recorded or not recorded.get("youtube"):
+        return None
+    if recorded.get("reason") == "already_transcribed":
+        return {"ok": False, "message": _YOUTUBE_ALREADY_TRANSCRIBED_MESSAGE}
+    if not recorded.get("recorded"):
+        return {"ok": False, "message": _YOUTUBE_AUDIO_REQUEST_FAILED_MESSAGE}
+    return {
+        "ok": False,
+        "queued": True,
+        "message": _YOUTUBE_AUDIO_REQUEST_NOTED_MESSAGE,
+    }
+
+
 @app.post("/api/transcription/check-feasibility")
 @limiter.limit("5/hour", exempt_when=lambda request: bool(get_clerk_user_id(request)))
 async def transcription_check_feasibility(
@@ -1608,12 +1642,36 @@ async def transcription_check_feasibility(
 ):
     """Live-resolves the meeting fresh (never the cache -- a stale/expired
     media URL would fail every chunk hours into a real job) and probes its
-    real duration. Read-only: never touches the Archive, never spends a
-    transcription request -- this is the client-side toggle-reveal step
-    (see app/static/player.js), safe to run on every "Transcribe this
-    meeting" click.
+    real duration. Never spends a transcription request -- this is the
+    client-side toggle-reveal step (see app/static/player.js), safe to run
+    on every "Transcribe this meeting" click.
+
+    WO-1969: a YouTube-hosted meeting is the one exception to "read-only".
+    This server cannot download YouTube audio, and must make no YouTube
+    request at all (CLAUDE.md). So for one, the press is recorded in the
+    Archive for the drip Mac (scripts/youtube_drip.py's audio lane) and
+    the reader is told it is noted, with no date. That check runs first,
+    against the Archive's own page, so a meeting the Archive already knows
+    is on YouTube is never resolved or probed here. A direct YouTube URL is
+    never resolved here even if the Archive is down.
     """
     platform = detect_platform(req.url)
+    normalized = normalize_url(req.url)
+    direct_video_id = (
+        extract_youtube_video_id(req.url) if platform == "youtube" else None
+    )
+    answer = _youtube_audio_request_response(
+        await archive_client.record_youtube_audio_request(
+            normalized, video_id=direct_video_id
+        )
+    )
+    if answer is not None:
+        return answer
+    if platform == "youtube":
+        # The Archive is down, or the URL has no video id. Either way,
+        # resolving would mean a YouTube request from this server.
+        return {"ok": False, "message": _YOUTUBE_AUDIO_REQUEST_FAILED_MESSAGE}
+
     try:
         finder = get_finder(platform)
     except UnsupportedPlatformError:
@@ -1626,6 +1684,21 @@ async def transcription_check_feasibility(
         result = await finder.resolve(req.url)
     except Exception as e:
         return {"ok": False, "message": f"Couldn't resolve this meeting: {e}"}
+
+    if result.video_format == "youtube":
+        # A wrapper page (PrimeGov, LIMS) the Archive has no page for yet.
+        # Its video_url is a youtube.com embed page: probing it would be a
+        # YouTube request, and could never succeed anyway. Record the
+        # request instead; the drip links it to the page once one exists.
+        answer = _youtube_audio_request_response(
+            await archive_client.record_youtube_audio_request(
+                normalized,
+                video_id=extract_youtube_video_id(result.video_url or ""),
+            )
+        )
+        if answer is not None:
+            return answer
+        return {"ok": False, "message": _unreadable_media_message(result, platform)}
 
     if not transcription_media_url(result):
         return {
@@ -1676,6 +1749,18 @@ async def transcription_submit(request: Request, req: TranscriptionSubmitRequest
         )
 
     platform = detect_platform(req.url)
+    if platform == "youtube":
+        # WO-1969: never resolve a YouTube URL here (that is a YouTube
+        # request from this server). check-feasibility records these for
+        # the drip Mac instead, so only a hand-made request gets this far.
+        return JSONResponse(
+            {
+                "error": "infeasible",
+                "message": "For a YouTube meeting, use the Request Transcript "
+                "from Audio button on the meeting's page.",
+            },
+            status_code=400,
+        )
     try:
         finder = get_finder(platform)
     except UnsupportedPlatformError:

@@ -288,6 +288,38 @@ async def request_transcription_job(
         return None
 
 
+async def record_youtube_audio_request(
+    url_normalized: str, video_id: Optional[str] = None
+) -> Optional[dict]:
+    """WO-1969: record a reader's "Request Transcript from Audio" press on
+    a YouTube-hosted meeting, for the drip Mac to pick up. Returns the
+    Archive's {"youtube", "recorded", "new", "reason"?} answer, or None if
+    the Archive is unreachable/unconfigured -- the caller then falls back
+    to its old "hosted on YouTube" message."""
+    base = _base_url()
+    if not base:
+        return None
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{base}/internal/youtube-audio-requests",
+                json={"url_normalized": url_normalized, "video_id": video_id},
+                headers=_headers(),
+                timeout=LOOKUP_TIMEOUT,
+            ) as response:
+                if response.status == 200:
+                    return await response.json()
+                logger.error(
+                    "Archive youtube-audio-request failed (%s): %s",
+                    response.status,
+                    await response.text(),
+                )
+                return None
+    except Exception:
+        logger.exception("Archive youtube-audio-request call failed.")
+        return None
+
+
 async def confirm_transcription_job(token: str) -> Optional[dict]:
     base = _base_url()
     if not base:

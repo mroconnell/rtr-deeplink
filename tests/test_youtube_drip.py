@@ -1157,3 +1157,98 @@ def test_feed_takes_vimeo_when_vimeo_lane_on(tmp_path, monkeypatch):
     drip = _drip(tmp_path, lanes=("captions", "feed", "vimeo"))
     seen = _feed_pushed_urls(drip, monkeypatch, tmp_path)
     assert seen and "vimeo" in seen[0]
+
+
+# --- WO-1969: readers' audio requests take at most 1 of the 3 daily slots ---
+# SYNTHETIC: every page below is a hand-made fake ({"slug": ...}); no real
+# meeting, no Archive, no YouTube. They test only the selection rule.
+
+
+def _pick(requests, queue, today=None, done=None, deferred=()):
+    return yd.pick_audio_page(
+        requests,
+        queue,
+        today=today or {},
+        audio_per_day=3,
+        request_slots=1,
+        audio_done=done or {},
+        is_deferred=lambda key: key in deferred,
+    )
+
+
+def test_pick_audio_page_takes_a_request_ahead_of_the_backlog():
+    page, source = _pick([{"slug": "req"}], [{"slug": "back"}])
+    assert (page["slug"], source) == ("req", "request")
+
+
+def test_pick_audio_page_takes_only_one_request_a_day():
+    page, source = _pick(
+        [{"slug": "req2"}],
+        [{"slug": "back"}],
+        today={"audio_downloads": 1, "audio_request_downloads": 1},
+    )
+    assert (page["slug"], source) == ("back", "backlog")
+
+
+def test_pick_audio_page_never_exceeds_the_daily_total():
+    assert _pick(
+        [{"slug": "req"}], [{"slug": "back"}], today={"audio_downloads": 3}
+    ) == (None, None)
+
+
+def test_pick_audio_page_backlog_keeps_all_slots_without_requests():
+    page, source = _pick([], [{"slug": "back"}], today={"audio_downloads": 2})
+    assert (page["slug"], source) == ("back", "backlog")
+
+
+def test_pick_audio_page_skips_tried_and_deferred_requests():
+    page, source = _pick(
+        [{"slug": "tried"}, {"slug": "later"}, {"slug": "fresh"}],
+        [],
+        done={"tried": "failed"},
+        deferred={"audio|later"},
+    )
+    assert (page["slug"], source) == ("fresh", "request")
+
+
+def test_lane_audio_works_a_request_then_returns_to_the_backlog(tmp_path, monkeypatch):
+    from scripts import transcribe_backlog_locally as tbl
+
+    drip = _drip(tmp_path, lanes=("audio",))
+    drip.state.data["audio_queue"] = [{"slug": "back"}, {"slug": "req"}]
+    monkeypatch.setattr(drip, "_get_engine", lambda: None)
+    reads = []
+
+    async def fake_requests(session):
+        reads.append(1)
+        return [{"slug": "req", "video_format": "youtube"}]
+
+    done = []
+
+    async def fake_process_one(session, engine, page, **kw):
+        done.append(page["slug"])
+        return {"slug": page["slug"], "status": "ingested", "detail": ""}
+
+    monkeypatch.setattr(drip, "_audio_requests", fake_requests)
+    monkeypatch.setattr(tbl, "process_one", fake_process_one)
+
+    assert asyncio.run(drip.lane_audio(None)) == (True, None)
+    assert asyncio.run(drip.lane_audio(None)) == (True, None)
+    assert asyncio.run(drip.lane_audio(None)) == (False, None)
+    # The request first; the same page is dropped from the backlog queue,
+    # so the second slot goes to the backlog and the third finds nothing.
+    assert done == ["req", "back"]
+    assert drip.state.data["today"]["audio_request_downloads"] == 1
+    assert drip.state.data["today"]["audio_downloads"] == 2
+    # Once the day's request slot is used, the list is not read again.
+    assert len(reads) == 1
+
+
+def test_audio_requests_read_failure_means_no_requests(tmp_path):
+    drip = _drip(tmp_path, lanes=("audio",))
+
+    class BrokenSession:
+        def get(self, *a, **k):
+            raise RuntimeError("archive route not deployed yet")
+
+    assert asyncio.run(drip._audio_requests(BrokenSession())) == []
