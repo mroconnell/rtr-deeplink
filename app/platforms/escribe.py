@@ -4,7 +4,7 @@ import re
 import time
 from datetime import date, datetime, timedelta
 from typing import Dict, List, Optional, Tuple
-from urllib.parse import quote, urlparse
+from urllib.parse import parse_qsl, quote, urlparse
 
 import aiohttp
 from bs4 import BeautifulSoup
@@ -311,6 +311,7 @@ class EscribeAssetFinder(AssetFinder):
         return ResolvedMeeting(
             platform=self.platform_name,
             source_url=url,
+            external_id=self._meeting_external_id(url),
             title=title,
             date=date,
             jurisdiction=jurisdiction,
@@ -326,6 +327,30 @@ class EscribeAssetFinder(AssetFinder):
             best_effort=best_effort,
             video_duration_seconds=video_duration_seconds,
         )
+
+    @staticmethod
+    def _meeting_external_id(url: str) -> Optional[str]:
+        """`escribe:{host}:{Id}` for a `Meeting.aspx?Id=...` URL, else None.
+
+        The `Id=` GUID alone names the meeting; `Agenda=` (Agenda,
+        PostAgenda, Merged, PostMinutes, Addendum) only picks which
+        document view eScribe renders. Without this key each `Agenda=`
+        value archived as its own page (7 real pairs on 6 hosts, e.g.
+        pub-abbotsford's `Id=c157e0a4-...` as pages 812 and 2225).
+        Host-namespaced like civicclerk.py's, since the archive trusts
+        external_id as globally unique. Only Meeting.aspx: the
+        standalone player page shares the Id but carries no agenda, so
+        it is left to match by URL as before."""
+        parsed = urlparse(url)
+        if not parsed.path.lower().endswith("/meeting.aspx"):
+            return None
+        meeting_id = next(
+            (v for k, v in parse_qsl(parsed.query) if k.lower() == "id" and v),
+            None,
+        )
+        if not meeting_id:
+            return None
+        return f"escribe:{parsed.netloc.lower()}:{meeting_id.strip().lower()}"
 
     @staticmethod
     def _is_bare_tenant_root(url: str) -> bool:
