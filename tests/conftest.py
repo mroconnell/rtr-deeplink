@@ -1,5 +1,6 @@
 import atexit
 import os
+import sys
 import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -61,6 +62,46 @@ os.environ.setdefault("CLERK_PUBLISHABLE_KEY", "pk_test_fake_for_tests")
 os.environ.setdefault("RTR_PARTIAL_TRANSCRIPT_CHECK", "0")
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
+
+# Backlog triage 2026-10-16 ("collecting the suite imports rtr-discovery"):
+# several sweep scripts put `~/Documents/rtr-discovery` first on sys.path
+# when imported (`scripts/wo145_api_first_sweep.py` and others). A test
+# module that imports one at collection time used to leave that entry in
+# place for the whole run, but only on a machine with the sibling checkout
+# (Ryan's Mac). After collection, and after each test, drop any sys.path
+# entry added since this file loaded that points outside this repo. Entries
+# inside the repo (pytest's own tests/ insert, `scripts/`) are kept.
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+_SYS_PATH_AT_START = frozenset(sys.path)
+
+
+def drop_foreign_sys_path_entries() -> list:
+    """Removes sys.path entries added since conftest loaded that point
+    outside this repo. Returns the removed entries."""
+    removed = []
+    for entry in list(sys.path):
+        if entry in _SYS_PATH_AT_START:
+            continue
+        try:
+            resolved = Path(entry or ".").resolve()
+        except (OSError, RuntimeError, ValueError):
+            continue
+        if resolved == _REPO_ROOT or _REPO_ROOT in resolved.parents:
+            continue
+        while entry in sys.path:
+            sys.path.remove(entry)
+        removed.append(entry)
+    return removed
+
+
+def pytest_collection_finish(session):
+    drop_foreign_sys_path_entries()
+
+
+@pytest.fixture(autouse=True)
+def _no_foreign_sys_path_entries():
+    yield
+    drop_foreign_sys_path_entries()
 
 
 @pytest.fixture(scope="session", autouse=True)

@@ -474,3 +474,15 @@ def test_a_known_blocked_platform_that_passes_is_flagged(monkeypatch):
 
     assert "1/1 platforms OK" in report
     assert "UNBLOCKED walled" in report
+
+
+def test_youtube_is_excluded_and_no_canary_url_is_a_youtube_link():
+    # Backlog triage 2026-10-16: the youtube sample passed even when YouTube
+    # refused the runner, and YouTube is fetched only from the drip Mac.
+    from scripts.youtube_fetch_guard import is_youtube_host
+    from urllib.parse import urlparse
+
+    assert "youtube" in CANARY_EXCLUSIONS
+    for platform, urls in CANARY_URLS.items():
+        for url in urls:
+            assert not is_youtube_host(urlparse(url).hostname), (platform, url)

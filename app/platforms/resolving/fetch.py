@@ -555,8 +555,11 @@ class Fetcher:
         (status, final_url, text_or_None, error_kind), where error_kind
         is None, 'dns', 'timeout' or 'dropped'."""
         host = urlparse(url).hostname or ""
-        await self._wait_for_host(host)
+        # Budget first, then the politeness wait (same order as
+        # `_headless`): a fetch the budget refuses must not sleep out the
+        # per-host delay first.
         self._take_budget()
+        await self._wait_for_host(host)
         session = await self._session_for()
         try:
             async with session.get(

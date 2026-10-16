@@ -26,6 +26,15 @@ A refusal surfaces as an ordinary fetch error in whatever called it, so a row
 fails or is skipped rather than the run crashing; `REFUSED` records each
 refused host so a caller can tell which rows needed YouTube.
 
+Behind an HTTPS proxy (`HTTPS_PROXY`, as in every cloud session) a client
+asks the proxy to connect and never looks the host up itself, so neither
+hook above would see it. `install()` therefore also adds YouTube's domains
+to `NO_PROXY`/`no_proxy`: yt-dlp, urllib, requests, httpx and aiohttp
+(`trust_env=True`) then connect to them directly, which goes through the
+lookup the guard refuses (found 2026-09-26, WO-1082/WO-1090). A caller that
+passes an explicit proxy option (yt-dlp's `proxy`, aiohttp's `proxy=`)
+bypasses the environment and is not covered.
+
 It does not (and cannot) guard a separate browser process such as Playwright's
 Chromium; a script that drives one must refuse YouTube URLs itself, as
 `wo912_headless_second_opinion.py` does.
@@ -37,6 +46,7 @@ Usage:
 
 from __future__ import annotations
 
+import os
 import socket
 from typing import List
 
@@ -56,6 +66,18 @@ YOUTUBE_HOST_MARKERS = (
 REFUSED: List[str] = []
 
 _installed = False
+
+# NO_PROXY entries for the hosts above. NO_PROXY matches a domain and its
+# subdomains, not a substring, so the markers are spelled out as domains.
+YOUTUBE_NO_PROXY_DOMAINS = (
+    "youtube.com",
+    "youtu.be",
+    "youtube-nocookie.com",
+    "youtubei.googleapis.com",
+    "googlevideo.com",
+    "ytimg.com",
+    "ggpht.com",
+)
 
 
 class YouTubeFetchRefused(OSError):
@@ -79,6 +101,22 @@ def _refuse(host: object) -> None:
     )
 
 
+def _bypass_proxy_for_youtube() -> None:
+    """Adds YouTube's domains to NO_PROXY and no_proxy (both spellings:
+    Python reads the lowercase one first), so a proxied client connects to
+    them directly and its own lookup reaches the guarded resolver."""
+    current = os.environ.get("no_proxy") or os.environ.get("NO_PROXY") or ""
+    entries = [e.strip() for e in current.split(",") if e.strip()]
+    if "*" in entries:
+        return
+    for domain in YOUTUBE_NO_PROXY_DOMAINS:
+        if domain not in entries:
+            entries.append(domain)
+    merged = ",".join(entries)
+    os.environ["no_proxy"] = merged
+    os.environ["NO_PROXY"] = merged
+
+
 def install() -> None:
     """Idempotent. Safe to call before or after aiohttp is imported."""
     global _installed
@@ -94,6 +132,8 @@ def install() -> None:
         return real_getaddrinfo(host, *args, **kwargs)
 
     socket.getaddrinfo = guarded_getaddrinfo
+
+    _bypass_proxy_for_youtube()
 
     try:
         from aiohttp import connector

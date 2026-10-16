@@ -219,14 +219,8 @@ def test_wo279_abbreviation_and_colon_shapes_already_pass(title):
     assert assess_video_candidate(title=title, platform="youtube").passed
 
 
-def test_wo279_french_title_is_still_a_miss_with_only_one_real_example():
-    # The fourth shape (Val-d'Or QC, one real example) is still a miss. The
-    # entry's own constraint is "confirm a second real example first", so the
-    # allowlist is NOT widened here.
-    verdict = assess_video_candidate(
-        title="569e séance ordinaire du 1 juin 2026", platform="youtube"
-    )
-    assert verdict.verdict == CANNOT_TELL
+# The fourth WO-279 shape (French, Val-d'Or QC) now passes: see the French
+# section at the end of this file.
 
 
 # --- Test uploads, placeholder titles ----------------------------------------
@@ -314,6 +308,20 @@ def test_the_muscache_widget_animation_is_rejected_by_host():
     assert decorative_url_reason("https://a0.muscache.com/pictures/x/other.mp4")
     verdict = assess_video_candidate(video_url=url, platform="direct_file")
     assert verdict.verdict == REJECT
+
+
+def test_the_hellonation_stock_header_clip_is_rejected_by_exact_path():
+    # Real (WO-349): La Vergne TN, Lawrenceburg TN and Hamburg village NY all
+    # resolved their newest "meeting video" to this same title-less file.
+    url = "https://www.hellonation.com/media/hn_hdr26.mp4"
+    assert (
+        decorative_url_reason(url)
+        == "decorative_asset_file:hellonation.com/media/hn_hdr26.mp4"
+    )
+    verdict = assess_video_candidate(video_url=url, platform="direct_file")
+    assert verdict.verdict == REJECT
+    # Only that one file: another file on the same host is not refused here.
+    assert decorative_url_reason("https://www.hellonation.com/media/other.mp4") is None
 
 
 @pytest.mark.parametrize(
@@ -1082,3 +1090,64 @@ async def test_ranking_fix_does_not_prefer_an_unverified_extra_video(fake_regist
         "platform": "vimeo",
         "reason": "no_meeting_word_in_title",
     }
+
+
+# --- French meeting titles (backlog triage 2026-10-16) ----------------------
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        # Real: Val-d'Or QC (WO-279), cannot_tell before this.
+        "569e séance ordinaire du 1 juin 2026",
+        # Real shapes from the Quebec run behind #1486.
+        "Séance ordinaire du conseil municipal",
+        "Assemblée du conseil",
+    ],
+)
+def test_a_french_meeting_title_names_a_governing_body(title):
+    verdict = assess_video_candidate(title=title, platform="youtube")
+    assert verdict.verdict == PASS, verdict
+
+
+def test_a_french_promo_title_is_still_rejected():
+    verdict = assess_video_candidate(
+        title="Promo : séance d'information du conseil", platform="youtube"
+    )
+    assert verdict.verdict == REJECT and verdict.reason == "promo_title"
+
+
+# --- WO-235 / WO-247 hand-caught non-meetings (backlog triage 2026-10-16) ---
+
+
+@pytest.mark.parametrize(
+    "title, word",
+    [
+        # Titles as the WO-235/WO-247 hand reviews recorded them.
+        ("Pullman City Council Recap", "recap"),
+        ("Worthington City Council Resumen", "resumen"),  # shape of the real clips
+        ("UPAR Information Session", "information session"),
+        ("Lone Tree Planning Commission is Seeking New Members", "seeking new members"),
+        ("Board's Personal Meeting Room", "personal meeting room"),
+        ("FDA Food Code Training Virtual Session", "training virtual session"),
+        ("Mayor Neil Perry Agenda Review Podcast", "podcast"),
+        ("Mayor's Minute", "mayor's minute"),
+        ("Special Episode City Council Update", "special episode"),
+    ],
+)
+def test_hand_caught_non_meeting_titles_are_rejected(title, word):
+    verdict = assess_video_candidate(title=title, platform="youtube")
+    assert verdict.verdict == REJECT and verdict.reason == "promo_title"
+    assert vhc.blocklisted_word(title) == word
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "City Council Regular Session - September 8, 2026",
+        "Board of Supervisors Work Session",
+        "Planning Commission Special Meeting",
+    ],
+)
+def test_real_meeting_titles_still_pass_the_wider_blocklist(title):
+    assert assess_video_candidate(title=title, platform="youtube").passed

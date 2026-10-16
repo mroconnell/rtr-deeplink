@@ -15,7 +15,11 @@ miss, and this repo's aiohttp uses c-ares (`aiodns`), so patching
 `socket.getaddrinfo` alone would not have caught it.
 """
 
+import os
 import socket
+import subprocess
+import sys
+from pathlib import Path
 
 import aiohttp
 import pytest
@@ -44,6 +48,12 @@ def armed_guard(monkeypatch):
     monkeypatch.setattr(connector.TCPConnector, "_resolve_host", tripwire_resolve_host)
     monkeypatch.setattr(guard, "_installed", False)
     monkeypatch.setattr(guard, "REFUSED", [])
+    # install() edits NO_PROXY/no_proxy; register both so they are restored.
+    for name in ("NO_PROXY", "no_proxy"):
+        if name in os.environ:
+            monkeypatch.setenv(name, os.environ[name])
+        else:
+            monkeypatch.delenv(name, raising=False)
     guard.install()
     return guard
 
@@ -155,3 +165,49 @@ def test_install_is_idempotent(armed_guard):
     before = socket.getaddrinfo
     armed_guard.install()
     assert socket.getaddrinfo is before
+
+
+def test_a_proxied_yt_dlp_request_is_refused_by_the_guard():
+    """Backlog triage 2026-10-16: behind HTTPS_PROXY, yt-dlp asked the proxy
+    to connect and never looked YouTube up, so the guard saw nothing (3 real
+    YouTube requests in a cloud container, 2026-09-26). Run in a fresh
+    interpreter with a dead local proxy and the real yt-dlp request
+    machinery (no `"proxy": ""` here): the request must be refused by the
+    guard, not sent to the proxy. A tripwire under the guard fails the run
+    if a real YouTube lookup is ever attempted."""
+    script = """
+import socket
+real = socket.getaddrinfo
+def tripwire(host, *a, **k):
+    import scripts.youtube_fetch_guard as g
+    assert not g.is_youtube_host(host), "REAL lookup reached: %s" % host
+    return real(host, *a, **k)
+socket.getaddrinfo = tripwire
+
+import scripts.youtube_fetch_guard as guard
+guard.install()
+
+import yt_dlp
+from yt_dlp.networking import Request
+ydl = yt_dlp.YoutubeDL({"quiet": True, "socket_timeout": 2})
+try:
+    ydl.urlopen(Request("https://www.youtube.com/"))
+except Exception as e:
+    print("ERR", type(e).__name__, e)
+print("REFUSED", guard.REFUSED)
+"""
+    env = dict(os.environ)
+    for name in ("NO_PROXY", "no_proxy"):
+        env.pop(name, None)
+    env["HTTPS_PROXY"] = env["https_proxy"] = "http://127.0.0.1:9"
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True,
+        text=True,
+        cwd=Path(__file__).resolve().parent.parent,
+        env=env,
+        timeout=60,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "YouTube host" in result.stdout, result.stdout
+    assert "REFUSED ['www.youtube.com'" in result.stdout, result.stdout
