@@ -12062,3 +12062,9 @@ https://archive.org/details/AH-hbhd_7-11-19,archiveorg,head+ffprobe,5976.98,2019
 https://archive.org/download/G-DUX-BOS-100526/G-DUX-BOS-100526.mp4,direct_file,head+ffprobe,8145.62,2026-10-10,799683159,1,accept,,1.08,2026-10-16T00:23:54+00:00,,0
 https://archive.org/download/ED-PEM-PSC_061626LIVE/ED-PEM-PSC_061626LIVE.mp4,direct_file,head+ffprobe,3803.67,2026-07-20,366002156,1,accept,,0.97,2026-10-16T00:23:56+00:00,,0
 https://archive.org/download/WSCS_SASD_Board_Meeting_2026-09-23/SASD_Board_Meeting_2026-09-23.mp4,direct_file,head+ffprobe,4072.90,2026-10-05,444534084,1,accept,,1.73,2026-10-16T00:23:58+00:00,,0
+https://floodauthorityeast.new.swagit.com/videos/401340,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.66,2026-10-16T00:51:41+00:00
+https://planetariumauthority.org/video/2026PlanetariumAuthorityAnnualMeeting.mp4,direct_file,head+ffprobe,1890.67,2026-09-29,199455066,1,accept,,1.37,2026-10-16T00:51:46+00:00
+https://www.nychdc.com/sites/default/files/2026-06/NYCHDC%20Audit%20Committee%20Meeting-20260327%201500-1.mp3,direct_file,head+ffprobe,1117.20,2026-06-10,9674538,1,accept,,0.65,2026-10-16T00:51:49+00:00
+https://wanorthshoreny.gov/wp-content/uploads/2026/01/a25cae61149023feb7eca4a2bb4825bdbcf0b8fa.mp4,direct_file,head+ffprobe,922.58,2026-01-24,234430162,1,accept,,1.82,2026-10-16T01:01:54+00:00
+https://www.essexcountyida.com/wp-content/uploads/2026/09/GMT20260918-130720_Recording_640x360.mp4,direct_file,head+ffprobe,3405.74,2026-09-21,112568931,1,accept,,1.31,2026-10-16T00:52:35+00:00
+https://www.albanycountylandbank.org/s/GMT20200421-143328ACLB-April-202.mp3,direct_file,head+ffprobe,2113.92,,8456183,1,accept,,1.33,2026-10-16T00:52:09+00:00
