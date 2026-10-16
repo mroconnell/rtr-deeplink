@@ -1,5 +1,27 @@
 # Backlog — done
 
+## [Done 2026-10-16] [PARK] `[BIG]` "Request Transcript from Audio" doesn't work for YouTube-hosted meetings. (WO-1969)
+
+**What was asked.** Ryan said yes on 2026-10-16 ("A8 sure"): a reader's request on a YouTube meeting goes to the drip Mac, and takes at most 1 of its 3 daily audio downloads, ahead of the backlog. The page promises no date.
+
+**Before.** The button answered every YouTube meeting with "hosted on YouTube, we can't pull audio". To get there, the server resolved the video with yt-dlp and ran `ffprobe` on the YouTube embed page. Both are YouTube requests from Render.
+
+**After.**
+
+- `POST /api/transcription/check-feasibility` (`app/main.py`) first asks the Archive to record the press (`POST /internal/youtube-audio-requests`). If the Archive's page for that URL is on YouTube, the press is recorded and the reader sees: "Your request is noted. ... our office computer will transcribe it from the audio when it gets to it. We can't promise a date." No resolve, no probe.
+- A direct YouTube URL is never resolved by the server, even when the Archive is down. A wrapper page (PrimeGov, LIMS) the Archive has no page for yet is resolved as before, but its YouTube embed is no longer probed; the request is recorded and linked to the page later.
+- `POST /api/transcription/submit` refuses a YouTube URL without resolving it.
+- The Archive keeps one row per video in the new `youtube_audio_requests` table (migration `c3d1e9a7b5f2`). A repeat press bumps a count. No IP or email is stored. A request is open until the page's default transcript is our own audio transcript (source `transcribed`), which is also when the button disappears.
+- The drip reads the open list from `GET /internal/youtube-audio-requests` (token-gated, like `/internal/transcript-wanted`). `pick_audio_page()` in `scripts/youtube_drip.py` takes one request a day (`AUDIO_REQUEST_SLOTS_PER_DAY = 1`) ahead of the backlog, inside the same `AUDIO_DOWNLOADS_PER_DAY = 3`. If the list cannot be read, the lane carries on with the backlog.
+- The per-IP limit on the button (5 an hour, signed-in readers exempt) is unchanged.
+
+**Tested on.** Synthetic data only. No YouTube request was made and the drip was not run. Server: 14 tests in `tests/test_youtube_audio_requests.py` (record, dedupe, link a request made before its page existed, drop-off once transcribed, token gate, no resolve for YouTube, rate limit still 429 on the sixth press). Drip: 7 tests in `tests/test_youtube_drip.py`, with fake pages.
+
+**Cautions.**
+
+- Nothing reaches the drip until the Archive and resolver are deployed and the drip Mac's worktree (`~/rtr-deeplink-drip-worktree`) is brought to this `main`.
+- `daily_status.csv` has no new column. Request downloads count in `state.json`'s `today.audio_request_downloads`, and `drip.log` shows them as `audio-req`.
+- The resolver's own page for a fresh YouTube URL still resolves it with yt-dlp when a reader first pastes it. That is the core resolve, not this button, and it is unchanged.
 ## [Done 2026-10-16] Keep the speaker labels station captions carry (WO-1967, from WO-1960) `[IMPROVEMENT-ROUND]`
 
 Ryan approved 2026-10-16 ("A5 is a great thing to do now"). Branch `claude/wo1967-speaker-labels`.

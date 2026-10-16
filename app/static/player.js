@@ -511,6 +511,11 @@ function wireTranscribeForm() {
           checkStatusEl.textContent = 'We found a workable audio file — share your email so we can notify you when the transcript is complete.';
           emailStep.hidden = false;
         }
+      } else if (data.queued) {
+        // WO-1969: a YouTube meeting. The request was recorded for the
+        // office computer (the drip Mac); no email step, no date promised.
+        checkStatusEl.textContent = data.message;
+        checkStatusEl.className = 'transcribe-status success';
       } else {
         checkStatusEl.innerHTML = linkifyWarning(data.message || "We couldn't find a usable audio or video source for this meeting.");
         checkStatusEl.className = 'transcribe-status error';

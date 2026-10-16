@@ -1214,3 +1214,41 @@ class HubSlug(Base):
     frozen_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+
+
+class YoutubeAudioRequest(Base):
+    """A reader pressed "Request Transcript from Audio" on a YouTube-hosted
+    meeting (WO-1969, Ryan approved 2026-10-16).
+
+    The server cannot download YouTube audio: YouTube blocks Render, and
+    CLAUDE.md allows YouTube requests only from the drip Mac. So the
+    resolver only records the request here, and the drip Mac's audio lane
+    reads the open ones (GET /internal/youtube-audio-requests) and takes at
+    most one a day, ahead of its own backlog (scripts/youtube_drip.py).
+
+    One row per YouTube video id. A repeat request for the same video bumps
+    `request_count` instead of adding a row. No reader data is stored: no
+    IP address, no email.
+
+    `meeting_page_id` is NULL when the request came in before the Archive
+    had a page for the meeting. The read side links it later, by
+    `url_normalized` or by the page's YouTube video id.
+    """
+
+    __tablename__ = "youtube_audio_requests"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    video_id: Mapped[str] = mapped_column(
+        String(16), unique=True, nullable=False, index=True
+    )
+    meeting_page_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("meeting_pages.id"), nullable=True, index=True
+    )
+    url_normalized: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
+    request_count: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    first_requested_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    last_requested_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

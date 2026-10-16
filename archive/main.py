@@ -823,6 +823,38 @@ async def internal_transcript_wanted(
     }
 
 
+class YoutubeAudioRequestIn(BaseModel):
+    url_normalized: str
+    video_id: Optional[str] = None
+
+
+@app.post("/internal/youtube-audio-requests")
+async def internal_record_youtube_audio_request(
+    req: YoutubeAudioRequestIn, authorization: Optional[str] = Header(None)
+):
+    """WO-1969: the resolver records a reader's "Request Transcript from
+    Audio" press on a YouTube-hosted meeting. Nothing here talks to
+    YouTube. See crud.record_youtube_audio_request()."""
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    return await crud.record_youtube_audio_request(
+        url_normalized=req.url_normalized, video_id=req.video_id
+    )
+
+
+@app.get("/internal/youtube-audio-requests")
+async def internal_list_youtube_audio_requests(
+    limit: int = 50, authorization: Optional[str] = Header(None)
+):
+    """WO-1969: open reader requests, oldest first, read by the drip Mac's
+    audio lane (scripts/youtube_drip.py), which takes at most one a day.
+    See crud.list_open_youtube_audio_requests()."""
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    limit = max(1, min(limit, 200))
+    return {"pages": await crud.list_open_youtube_audio_requests(limit=limit)}
+
+
 @app.get("/internal/transcription-backlog")
 async def internal_transcription_backlog(
     limit: Optional[int] = None, authorization: Optional[str] = Header(None)
