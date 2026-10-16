@@ -1,6 +1,6 @@
 """Coverage for `packet_link` end to end (2026-08-31): ingest -> stored on
 MeetingPage -> rendered on /m/{slug} as a plain outbound link, separate
-from `agenda_link`'s inline iframe. See archive/db/models.py's
+from `agenda_link`'s click-to-show inline viewer. See archive/db/models.py's
 MeetingPage.packet_link comment for why it's never folded into
 agenda_link (a packet can run to tens of megabytes)."""
 
@@ -48,10 +48,14 @@ async def test_packet_link_renders_as_a_plain_outbound_link():
     assert response.status_code == 200
     assert "Full agenda packet" in response.text
     assert "https://example.com/packetlink/packet.pdf" in response.text
-    # A plain <a> link, not a second iframe -- packets can run to tens of
+    # A plain <a> link, not a second viewer -- packets can run to tens of
     # megabytes, so it must never get the inline-viewer treatment
     # agenda_link gets.
-    assert response.text.count("agenda-inline-frame") == 1
+    assert response.text.count('class="agenda-viewer"') == 1
+    # Neither document loads with the page (Ryan, 2026-10-16): a framed
+    # agenda link sometimes made the browser download the file on page
+    # load. The viewer is a button that builds the frame on click.
+    assert "<iframe" not in response.text.split('id="transcriptColumn"')[1]
 
 
 async def test_no_packet_link_renders_nothing_extra():

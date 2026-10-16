@@ -6,6 +6,7 @@
      one shared module, so its styles are too. See
      shared_static/playback_speed.js. -#}
   <link rel="stylesheet" href="/shared-static/playback_speed.css">
+  <link rel="stylesheet" href="/shared-static/meeting_tools.css">
 {% endblock %}
 {% block body_attrs %} data-source-url="{{ source_url }}" data-jurisdiction-hint="{{ jurisdiction_hint }}" data-title-hint="{{ title_hint }}" data-date-hint="{{ date_hint }}"{% endblock %}
 {% block content %}
@@ -44,7 +45,9 @@
         </div>
         <div id="videoError" class="error" hidden></div>
         <div class="video-subtoolbar">
-          <button id="toggleAutoScrollBtn" class="btn btn-outline-secondary" title="Toggle auto-scroll">Auto-scroll: <span id="autoScrollState">On</span></button>
+          <button id="toggleAutoScrollBtn" class="btn btn-outline-secondary" title="Toggle auto-scroll">Auto-scroll: <span id="autoScrollState">Off</span></button>
+          {#- Desktop only (hidden under 900px by meeting_tools.css). #}
+          <button id="theaterModeBtn" type="button" class="btn btn-outline-secondary theater-mode-btn" aria-pressed="false" title="Show the video full width, with the transcript below it">Theater mode</button>
           <form id="seekForm" class="seek-form">
             <input id="seekInput" type="text" inputmode="numeric" placeholder="1:23:45" aria-label="Jump to timestamp">
             <button type="submit" class="btn btn-outline-secondary">Go to time</button>
@@ -96,6 +99,17 @@
     </div>
 
     <div id="transcriptColumn">
+      {#- Find bar over the agenda and transcript (Ryan, 2026-10-16):
+         phones have no easy Ctrl+F, so it sticks to the top of the screen
+         on narrow screens. Shown by player.js once there is something to
+         search; wired by shared_static/meeting_tools.js's initFindBar(),
+         the same code the Archive's page uses. #}
+      <div id="transcriptSearch" class="transcript-search find-bar" role="search" hidden>
+        <input id="transcriptSearchInput" type="search" placeholder="Find in agenda and transcript&hellip;" aria-label="Find in agenda and transcript" enterkeyhint="search">
+        <span id="transcriptSearchCount" class="transcript-search-count" aria-live="polite"></span>
+        <button id="transcriptSearchPrev" type="button" class="btn btn-sm btn-outline-secondary" title="Previous match" aria-label="Previous match">&#9650;</button>
+        <button id="transcriptSearchNext" type="button" class="btn btn-sm btn-outline-secondary" title="Next match" aria-label="Next match">&#9660;</button>
+      </div>
       <div id="agendaSection" class="agenda-section" hidden>
         <h2>Agenda</h2>
         <div id="agendaWarnings" class="warnings" hidden></div>
@@ -117,12 +131,6 @@
           </span>
         </div>
         <div id="transcriptWarnings" class="warnings"></div>
-        <div id="transcriptSearch" class="transcript-search">
-          <input id="transcriptSearchInput" type="text" placeholder="Search transcript&hellip;" aria-label="Search transcript">
-          <span id="transcriptSearchCount" class="transcript-search-count"></span>
-          <button id="transcriptSearchPrev" type="button" class="btn btn-sm btn-outline-secondary" title="Previous match" aria-label="Previous match">&#9650;</button>
-          <button id="transcriptSearchNext" type="button" class="btn btn-sm btn-outline-secondary" title="Next match" aria-label="Next match">&#9660;</button>
-        </div>
         <div id="transcriptList" class="transcript-list"></div>
       </div>
       <div id="transcriptMissing" class="transcript-section" hidden>
@@ -155,5 +163,6 @@
   {#- Before player.js: it reads PLAYBACK_RATE_LADDER when building an
      adapter and calls initPlaybackSpeed() from wireSharedControls. -#}
   <script src="/shared-static/playback_speed.js"></script>
+  <script src="/shared-static/meeting_tools.js"></script>
   <script src="/static/player.js"></script>
 {% endblock %}

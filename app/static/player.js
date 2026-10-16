@@ -127,9 +127,10 @@ function setupTranscriptLanguagePicker(primaryLanguage, primarySegments, alterna
     // Old matches belong to the DOM this just replaced; let the user
     // re-search rather than showing a stale count against the new track.
     const searchInput = document.getElementById('transcriptSearchInput');
-    const searchCount = document.getElementById('transcriptSearchCount');
-    if (searchInput) searchInput.value = '';
-    if (searchCount) searchCount.textContent = '';
+    if (searchInput && searchInput.value) {
+      searchInput.value = '';
+      searchInput.dispatchEvent(new Event('input'));
+    }
   };
 }
 
@@ -255,80 +256,6 @@ function renderAgenda(items) {
       }
     });
   });
-}
-
-let searchMatches = [];
-let searchMatchIndex = -1;
-let transcriptSearchWired = false;
-
-// Mirrors browser Ctrl+F: highlights every match, cycles through them with
-// Enter/Shift+Enter or the prev/next buttons, shows a "N/M" count.
-function setupTranscriptSearch() {
-  const input = document.getElementById('transcriptSearchInput');
-  const countEl = document.getElementById('transcriptSearchCount');
-  const prevBtn = document.getElementById('transcriptSearchPrev');
-  const nextBtn = document.getElementById('transcriptSearchNext');
-  if (!input || transcriptSearchWired) return;
-  transcriptSearchWired = true;
-
-  function updateCount() {
-    if (!input.value.trim()) { countEl.textContent = ''; return; }
-    countEl.textContent = searchMatches.length ? `${searchMatchIndex + 1}/${searchMatches.length}` : '0 matches';
-  }
-
-  function goToMatch(idx) {
-    if (!searchMatches.length) return;
-    document.querySelectorAll('.search-match.current').forEach((el) => el.classList.remove('current'));
-    searchMatchIndex = ((idx % searchMatches.length) + searchMatches.length) % searchMatches.length;
-    const el = document.getElementById(searchMatches[searchMatchIndex]);
-    if (el) {
-      el.classList.add('current');
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-    updateCount();
-  }
-
-  function runSearch() {
-    const query = input.value.trim();
-    searchMatches = [];
-    searchMatchIndex = -1;
-
-    segments.forEach((seg, index) => {
-      const el = document.querySelector(`#seg-${index} .segment-text`);
-      if (!el) return;
-      const text = seg.text || '';
-      if (!query) {
-        el.textContent = text;
-        return;
-      }
-      const lower = text.toLowerCase();
-      const q = query.toLowerCase();
-      let html = '';
-      let pos = 0;
-      let idx;
-      while ((idx = lower.indexOf(q, pos)) !== -1) {
-        html += escapeHtml(text.slice(pos, idx));
-        const matchId = `search-match-${searchMatches.length}`;
-        html += `<mark id="${matchId}" class="search-match">${escapeHtml(text.slice(idx, idx + q.length))}</mark>`;
-        searchMatches.push(matchId);
-        pos = idx + q.length;
-      }
-      html += escapeHtml(text.slice(pos));
-      el.innerHTML = html;
-    });
-
-    updateCount();
-    if (searchMatches.length) goToMatch(0);
-  }
-
-  input.addEventListener('input', runSearch);
-  input.addEventListener('keydown', (e) => {
-    if (e.key !== 'Enter') return;
-    e.preventDefault();
-    if (searchMatches.length) goToMatch(searchMatchIndex + (e.shiftKey ? -1 : 1));
-  });
-  prevBtn.addEventListener('click', () => goToMatch(searchMatchIndex - 1));
-  nextBtn.addEventListener('click', () => goToMatch(searchMatchIndex + 1));
 }
 
 // Mirrors archive/utils/transcript_export.py's to_srt()/to_txt() -- this
@@ -1383,6 +1310,8 @@ async function init() {
   wireReportProblemForm();
   wireTranscribeForm();
   wireNoTranscriptManualLink();
+  // shared_static/meeting_tools.js: find bar, theater mode, player resize.
+  initMeetingTools();
 
   statusEl.innerHTML = '<span class="status-loading">' +
     `<span class="cassette-reel spinning">${CASSETTE_REEL_SVG}</span>` +
@@ -1515,12 +1444,16 @@ async function init() {
 
   const transcriptWarnings = data.transcript_warnings || [];
   segments = data.segments || [];
+  // shared_static/meeting_tools.js: one find bar over the agenda and the
+  // transcript, shown once either has lines to search.
+  if (segments.length || agendaItems.length) {
+    document.getElementById('transcriptSearch').hidden = false;
+  }
   if (segments.length) {
     document.getElementById('transcriptSection').hidden = false;
     renderWarnings(document.getElementById('transcriptWarnings'), transcriptWarnings);
     setupTranscriptLanguagePicker(data.transcript_language, segments, data.alternate_transcripts || []);
     renderTranscript(segments);
-    setupTranscriptSearch();
   } else if (transcriptWarnings.length || data.video_url) {
     // WO-1110: a playable video with no transcript AND no warning used to
     // leave this whole column empty (Pierre SD's TelVue meetings,

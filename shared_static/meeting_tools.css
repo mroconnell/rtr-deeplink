@@ -1,0 +1,104 @@
+/* Styles for shared_static/meeting_tools.js, used by both meeting pages
+   (the resolver's /meeting and the Archive's /m/{slug}). Loaded after
+   each page's own style.css, so these rules win on equal specificity. */
+
+/* ---- Find bar --------------------------------------------------------
+   Phones have no easy Ctrl+F (Ryan, 2026-10-16). Below the two-column
+   breakpoint the bar sticks to the top of the screen while the reader
+   scrolls through the agenda and transcript. */
+.find-bar input[type="search"] { min-width: 0; }
+@media (max-width: 899.98px) {
+  .find-bar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    margin: 0 -0.25rem 0.75rem;
+    padding: 0.5rem 0.25rem;
+    background: var(--page-bg, #f8f9fa);
+    border-bottom: 1px solid var(--border, #dee2e6);
+  }
+  /* 16px stops iOS Safari zooming the page when the input gets focus. */
+  .find-bar input[type="search"] { font-size: 16px; }
+}
+
+/* ---- Agenda viewer, loaded on request ------------------------------- */
+.agenda-viewer { margin-top: 0.25rem; }
+/* On a touch screen a framed PDF usually downloads instead of showing,
+   so the button is hidden there; the agenda link above opens the file
+   in a new tab instead. */
+@media (pointer: coarse) {
+  .agenda-frame-toggle { display: none; }
+}
+
+/* ---- Player size and theater mode (desktop only) -------------------- */
+.theater-mode-btn { width: 100%; }
+.player-resize-handle { display: none; }
+
+@media (max-width: 899.98px) {
+  .theater-mode-btn { display: none; }
+}
+
+@media (min-width: 900px) {
+  /* --video-col-width is set by the drag handle. The page widens with the
+     player so the transcript keeps its room; with no saved width this is
+     the same 300px + 560px = 860px layout as before. */
+  main.meeting-page {
+    max-width: calc(var(--video-col-width, 300px) + 560px);
+    grid-template-columns: var(--video-col-width, minmax(220px, 300px)) minmax(0, 1fr);
+  }
+
+  .player-resize-handle {
+    display: block;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: calc(-0.875rem - 5px);
+    width: 10px;
+    cursor: col-resize;
+    touch-action: none;
+    border-radius: 5px;
+  }
+  .player-resize-handle::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 3px;
+    width: 4px;
+    height: 48px;
+    margin-top: -24px;
+    border-radius: 2px;
+    background: var(--border, #dee2e6);
+  }
+  .player-resize-handle:hover::after,
+  .player-resize-handle:focus-visible::after,
+  body.player-resizing .player-resize-handle::after {
+    background: var(--muted, #666);
+  }
+
+  /* Iframe players swallow pointer events mid-drag; see meeting_tools.js. */
+  body.player-resizing { cursor: col-resize; user-select: none; }
+  body.player-resizing iframe { pointer-events: none; }
+
+  /* Theater mode: the video takes the full page width, the agenda and
+     transcript move below it. The video stays 16:9 and no taller than
+     75% of the window. */
+  body.theater-mode main.meeting-page {
+    max-width: min(1400px, 100%);
+    grid-template-columns: minmax(0, 1fr);
+  }
+  body.theater-mode #videoColumn {
+    grid-column: 1 / -1;
+    position: static;
+  }
+  body.theater-mode #transcriptColumn { grid-column: 1 / -1; }
+  body.theater-mode .video-wrapper {
+    max-width: calc(75vh * 16 / 9);
+    margin-left: auto;
+    margin-right: auto;
+  }
+  body.theater-mode .player-resize-handle { display: none; }
+  /* Full-width buttons look wrong under a full-width video: one row. */
+  body.theater-mode .video-subtoolbar { flex-direction: row; flex-wrap: wrap; }
+  body.theater-mode #toggleAutoScrollBtn,
+  body.theater-mode .theater-mode-btn { width: auto; }
+}
