@@ -57,6 +57,7 @@ After a round of pins, restricted to just the hosts those pins settled
 import argparse
 import asyncio
 import csv
+import io
 import sys
 from collections import Counter
 from pathlib import Path
@@ -65,6 +66,38 @@ from urllib.parse import urlparse
 from dotenv import load_dotenv
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+
+def alias_rows_diff(before: list, after: list) -> list:
+    """Rows of hub_slug_aliases.csv that `write_retirements()` added or
+    changed (`action=set`) or dropped (`action=remove`), keyed by
+    old_slug."""
+    from archive.utils.hub_aliases import HEADER
+
+    def key(r):
+        return r["old_slug"].strip().lower()
+
+    before_by = {key(r): r for r in before}
+    after_by = {key(r): r for r in after}
+    diff = []
+    for slug, row in after_by.items():
+        old = before_by.get(slug)
+        if old is None or any((old.get(k) or "") != (row.get(k) or "") for k in HEADER):
+            diff.append({"action": "set", **{k: row.get(k) or "" for k in HEADER}})
+    for slug, row in before_by.items():
+        if slug not in after_by:
+            diff.append({"action": "remove", **{k: row.get(k) or "" for k in HEADER}})
+    return diff
+
+
+def alias_diff_csv(diff: list) -> str:
+    from archive.utils.hub_aliases import HEADER
+
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=["action", *HEADER], lineterminator="\n")
+    writer.writeheader()
+    writer.writerows(diff)
+    return buf.getvalue()
 
 
 async def main() -> None:
@@ -637,12 +670,36 @@ def _report(
                     f"moved to {new_hub}" + (f" ({gov_id})" if gov_id else ""),
                 )
             )
-        written = hub_aliases.write_retirements(entries)
+        before_rows = hub_aliases.read_rows()
+        # Every destination hub here is live (pages just moved onto it),
+        # so an older alias row FROM one of them is stale -- drop it
+        # rather than let it loop with a row written now (WO-1060's
+        # baltimore-md <-> baltimore-city-md).
+        written = hub_aliases.write_retirements(
+            entries, live_slugs={new_hub for _old, new_hub in hub_moves}
+        )
         print("")
         print(
-            f"  hub_slug_aliases.csv rows added/updated: {written} "
+            f"  hub_slug_aliases.csv rows added/updated/dropped: {written} "
             f"(of {len(entries)} retired slugs with a known destination)"
         )
+        # The file written above lives on the instance this ran on: the
+        # live site never reads it and the next deploy replaces it. Print
+        # the changes so they can be committed to the repo's copy.
+        diff = alias_rows_diff(before_rows, hub_aliases.read_rows())
+        print("")
+        print(
+            "  hub_slug_aliases.csv changes (this instance's copy is NOT "
+            "served -- commit these to archive/data/hub_slug_aliases.csv):"
+        )
+        sys.stdout.write(alias_diff_csv(diff))
+        if args.report:
+            alias_report = args.report.with_name(
+                f"{args.report.stem}_hub_slug_aliases.csv"
+            )
+            alias_report.parent.mkdir(parents=True, exist_ok=True)
+            alias_report.write_text(alias_diff_csv(diff), encoding="utf-8")
+            print(f"  hub_slug_aliases.csv changes written to {alias_report}")
         if len(entries) < len(retired):
             print(
                 f"  {len(retired) - len(entries)} retired slug(s) had no "

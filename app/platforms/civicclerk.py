@@ -548,6 +548,11 @@ class CivicClerkAssetFinder(AssetFinder):
             alternate_transcripts=alternate_transcripts,
             video_warnings=video_warnings,
             transcript_warnings=transcript_warnings,
+            # The partial-transcript check (WO-923) needs the video's
+            # length; only the YouTube delegate carries one.
+            video_duration_seconds=(
+                youtube_delegated.video_duration_seconds if youtube_delegated else None
+            ),
         )
 
     @staticmethod

@@ -77,6 +77,12 @@ async def test_resolve_real_bakersfield_meeting():
     first = result.agenda_items[0]
     assert first.start == 1753.667
     assert first.end == 2136.595
+    # The meeting's own Id GUID, host-namespaced -- the same key whatever
+    # Agenda= view was pasted (see the dedupe test below).
+    assert result.external_id == (
+        "escribe:pub-bakersfield.escribemeetings.com:"
+        "981f78d7-8211-4b4b-b066-5f93b4fd5e74"
+    )
 
 
 async def test_jurisdiction_from_subdomain_used_only_as_fallback():
@@ -255,6 +261,7 @@ async def test_backstop_finds_youtube_embed_when_no_isi_player(monkeypatch):
             "title": "City of Example — YouTube channel upload",
             "uploader": "cityofexample",
             "upload_date": "20260102",
+            "duration": 5400,
             "_chosen_track": (
                 ("WEBVTT\n\n00:00:01.000 --> 00:00:03.000\nCall to order.\n").encode(
                     "utf-8"
@@ -292,6 +299,9 @@ async def test_backstop_finds_youtube_embed_when_no_isi_player(monkeypatch):
     # eScribe's own metadata is preferred over YouTube's channel-upload title.
     assert result.title == "Council Meeting"
     assert result.date == "2026-01-01"
+    # YouTube's video length is copied through for the partial-transcript
+    # check (WO-923).
+    assert result.video_duration_seconds == 5400.0
 
 
 async def test_backstop_youtube_falls_back_to_page_metadata_when_missing(monkeypatch):
@@ -829,3 +839,67 @@ def test_county_of_tenant_name_leaves_other_tenants_alone():
         )
         == "County of McHenry"
     )
+
+
+def test_external_id_ignores_the_agenda_view_parameter():
+    """Real shape (pub-abbotsford, 2026-09-04): one meeting `Id=` archived
+    twice, as `?Agenda=Merged&Id=...` and `?Agenda=Agenda&Id=...`. Both
+    URLs must give the same external_id so the archive dedupes them."""
+    guid = "c157e0a4-351f-49f2-bd63-bc0747196fed"
+    host = "https://pub-abbotsford.escribemeetings.com"
+    ids = {
+        EscribeAssetFinder._meeting_external_id(f"{host}/Meeting.aspx?{q}")
+        for q in (
+            f"Agenda=Merged&Id={guid}",
+            f"Agenda=Agenda&Id={guid}",
+            f"Id={guid.upper()}&Agenda=PostMinutes&lang=English",
+            f"id={guid}",
+        )
+    }
+    assert ids == {f"escribe:pub-abbotsford.escribemeetings.com:{guid}"}
+    # Same Id on another tenant is a different meeting.
+    assert (
+        EscribeAssetFinder._meeting_external_id(
+            f"https://pub-oshawa.escribemeetings.com/Meeting.aspx?Id={guid}"
+        )
+        == f"escribe:pub-oshawa.escribemeetings.com:{guid}"
+    )
+    # No Id, or the standalone player page: no key (matched by URL).
+    assert (
+        EscribeAssetFinder._meeting_external_id(f"{host}/Meeting.aspx?Agenda=Agenda")
+        is None
+    )
+    assert (
+        EscribeAssetFinder._meeting_external_id(
+            f"{host}/Players/ISIStandAlonePlayer.aspx?Id={guid}"
+        )
+        is None
+    )
+
+
+async def test_two_agenda_views_of_one_meeting_archive_as_one_page():
+    """End to end through the archive's ingest: the second Agenda= view
+    lands on the first view's page instead of a new one."""
+    from archive.db import crud
+
+    guid = "c157e0a4-351f-49f2-bd63-bc0747196fed"
+    host = "https://pub-wo3580-dedupe.escribemeetings.com"
+    slugs = []
+    for view in ("Merged", "Agenda"):
+        url = f"{host}/Meeting.aspx?Agenda={view}&Id={guid}"
+        payload = {
+            "platform": "escribe",
+            "source_url": url,
+            "external_id": EscribeAssetFinder._meeting_external_id(url),
+            "title": "Regular Council Meeting",
+            "date": "2026-06-23",
+            "jurisdiction": "Abbotsford, BC",
+            "video_url": None,
+            "video_format": None,
+            "segments": [],
+            "agenda_items": [],
+            "transcript_language": None,
+            "transcript_warnings": [],
+        }
+        slugs.append((await crud.ingest_resolution(payload, url))["slug"])
+    assert slugs[0] == slugs[1]

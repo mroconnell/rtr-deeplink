@@ -690,6 +690,20 @@ async def _best_effort_available(session) -> bool:
     )
 
 
+def _changed_since_review(
+    reviewed_at: Optional[datetime], updated_at: Optional[datetime]
+) -> bool:
+    """True when a reviewed page changed after its review stamp. SQLite
+    (tests) hands back naive datetimes; both sides are UTC."""
+    if reviewed_at is None or updated_at is None:
+        return False
+    if reviewed_at.tzinfo is None:
+        reviewed_at = reviewed_at.replace(tzinfo=timezone.utc)
+    if updated_at.tzinfo is None:
+        updated_at = updated_at.replace(tzinfo=timezone.utc)
+    return updated_at > reviewed_at
+
+
 async def _reviewed_at_available(session) -> bool:
     """True when meeting_pages.reviewed_at really exists (2026-08-21,
     WO-38). Same gate, one migration later: list_low_trust_pages()'s read
@@ -3616,7 +3630,9 @@ async def list_low_trust_pages(
     an unfiltered call returns exactly what it always did:
 
     * `unreviewed=True` -- only rows nobody has marked reviewed
-      (`reviewed_at IS NULL`, see mark_low_trust_pages_reviewed()). This
+      (`reviewed_at IS NULL`, see mark_low_trust_pages_reviewed()), or
+      whose content changed after the review (`updated_at >
+      reviewed_at`; each row reports `changed_since_review`). This
       is what turns a 474-row dump into a workable queue: without it,
       re-reading the endpoint means re-triaging everything from scratch
       every time.
@@ -3655,7 +3671,16 @@ async def list_low_trust_pages(
         # no column, no row can carry the flag.
         where = or_(*conditions) if conditions else false()
         if unreviewed and reviewed_at_available:
-            where = and_(where, MeetingPage.reviewed_at.is_(None))
+            # A page changed after its review (e.g. re-ingested with new
+            # content) counts as unreviewed again. Marking reviewed keeps
+            # updated_at as it was, so the stamp itself never trips this.
+            where = and_(
+                where,
+                or_(
+                    MeetingPage.reviewed_at.is_(None),
+                    MeetingPage.updated_at > MeetingPage.reviewed_at,
+                ),
+            )
         # When the column doesn't exist yet, `unreviewed=True` is a
         # deliberate no-op rather than an error, and that's not a
         # fail-open: nothing can have been marked reviewed without a
@@ -3679,6 +3704,7 @@ async def list_low_trust_pages(
             MeetingPage.source_url_normalized,
             MeetingPage.video_url,
             MeetingPage.created_at,
+            MeetingPage.updated_at,
         ]
         if best_effort_available:
             columns.append(MeetingPage.best_effort)
@@ -3718,6 +3744,9 @@ async def list_low_trust_pages(
             if confidence in _LOW_TRUST_CONFIDENCES:
                 reasons.append("unverified_jurisdiction")
             created_at = values[MeetingPage.created_at]
+            changed_since_review = _changed_since_review(
+                reviewed_at, values[MeetingPage.updated_at]
+            )
             pages.append(
                 {
                     "meeting_page_id": values[MeetingPage.id],
@@ -3732,6 +3761,7 @@ async def list_low_trust_pages(
                     "created_at": created_at.isoformat() if created_at else None,
                     "reasons": reasons,
                     "reviewed_at": (reviewed_at.isoformat() if reviewed_at else None),
+                    "changed_since_review": changed_since_review,
                 }
             )
 
@@ -3866,7 +3896,9 @@ async def mark_low_trust_pages_reviewed(
 
     **Idempotent by construction.** An id that is already stamped is
     reported as `already_reviewed` and its existing timestamp is left
-    alone -- re-running the same call is a no-op, never a re-dating. An
+    alone -- re-running the same call is a no-op, never a re-dating --
+    unless the page changed after that stamp, in which case the review is
+    stale and marking re-stamps it. An
     id matching no row is reported in `missing_ids` rather than failing
     the batch, so one stale id out of fifty doesn't block the other
     forty-nine.
@@ -3915,6 +3947,7 @@ async def mark_low_trust_pages_reviewed(
                     MeetingPage.id,
                     MeetingPage.slug,
                     MeetingPage.reviewed_at,
+                    MeetingPage.updated_at,
                 ).where(MeetingPage.id.in_(ids))
             )
         ).all()
@@ -3922,7 +3955,7 @@ async def mark_low_trust_pages_reviewed(
         found = {row[0] for row in rows}
         changed = []
         already = []
-        for page_id, slug, reviewed_at in rows:
+        for page_id, slug, reviewed_at, updated_at in rows:
             entry = {
                 "meeting_page_id": page_id,
                 "slug": slug,
@@ -3931,8 +3964,16 @@ async def mark_low_trust_pages_reviewed(
                 ),
             }
             # "Already in the requested state" -- stamped when marking,
-            # clear when unmarking. Either way, nothing to write.
-            if (reviewed_at is None) == unreview:
+            # clear when unmarking. Either way, nothing to write. A stamp
+            # older than the page's last change is stale: marking
+            # re-stamps it.
+            if unreview:
+                in_state = reviewed_at is None
+            else:
+                in_state = reviewed_at is not None and not _changed_since_review(
+                    reviewed_at, updated_at
+                )
+            if in_state:
                 already.append(entry)
             else:
                 changed.append(entry)
@@ -3945,7 +3986,9 @@ async def mark_low_trust_pages_reviewed(
             await session.execute(
                 update(MeetingPage)
                 .where(MeetingPage.id.in_([e["meeting_page_id"] for e in changed]))
-                .values(reviewed_at=stamp)
+                # Reviewing is not a content change: keep updated_at as it
+                # was (its onupdate would otherwise bump it past the stamp).
+                .values(reviewed_at=stamp, updated_at=MeetingPage.updated_at)
             )
             await session.commit()
 
@@ -4923,6 +4966,11 @@ async def get_page_by_slug(slug: str) -> Optional[dict]:
                     "language": v.language,
                     "source": v.source,
                     "is_default": v.is_default,
+                    # The version picker adds this date when two versions
+                    # share a language and source label.
+                    "created_date": (
+                        v.created_at.date().isoformat() if v.created_at else None
+                    ),
                     "segments": v.segments,
                     "transcript_warnings": v.transcript_warnings or [],
                 }
@@ -9042,6 +9090,7 @@ async def get_jurisdiction_hub_data(
                 MeetingPage.gov_id,
                 TranscriptVersion.id,
                 TranscriptVersion.transcript_warnings,
+                MeetingPage.video_url,
             )
             .outerjoin(
                 TranscriptVersion,
@@ -9076,10 +9125,26 @@ async def get_jurisdiction_hub_data(
                 "has_transcript": version_id is not None
                 and _has_real_warning_free_transcript(warnings),
             }
-            for page_id, page_slug, title, date, jurisdiction, meeting_body, gov_id, version_id, warnings in rows
+            for page_id, page_slug, title, date, jurisdiction, meeting_body, gov_id, version_id, warnings, _video_url in rows
         ]
         if not pages:
             return None
+        # og:image fallback when no featured meeting has a card: the
+        # newest of this hub's own meetings whose card.jpg would serve
+        # now (a stored frame, or a YouTube thumbnail redirect), so a
+        # shared hub link never previews another government's meeting
+        # (the site-wide generic card). Never a URL that would 404.
+        page_ids_with_frames = await pages_with_thumbnails(
+            session, [p["id"] for p in pages]
+        )
+        hub_card_url = next(
+            (
+                f"/m/{row[1]}/card.jpg"
+                for row in rows
+                if row[0] in page_ids_with_frames or youtube_thumbnail_url(row[9])
+            ),
+            None,
+        )
         # `pages` is already newest-first from the query's ORDER BY, so
         # the transcribed subset is too. A hub is one government -- San
         # Diego's 44 meetings is the current maximum -- so the whole
@@ -9178,6 +9243,7 @@ async def get_jurisdiction_hub_data(
         "state_name": US_STATE_ABBR_TO_NAME.get(abbr) if abbr else None,
         "state_slug": state_slug_from_abbr(abbr) if abbr else None,
         "featured": featured,
+        "hub_card_url": hub_card_url,
         "topic_chips": own_chips or inherited_chips,
         # Drives the honest label and link target in the template: these
         # are the state's topics, not this government's.

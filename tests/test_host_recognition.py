@@ -246,8 +246,7 @@ def test_platform_for_path_explicit_signatures():
     # wo282_recon.py's old _PATH_SHAPE_PLATFORMS (WO-1021).
     assert platform_for_path("/Citizens/SplitView.aspx?Mode=Video") == "iqm2"
     assert (
-        platform_for_path("/Portal/MeetingInformation.aspx?Org=Cal&Id=1")
-        == "civicclerk"
+        platform_for_path("/Portal/MeetingInformation.aspx?Org=Cal&Id=1") == "civicweb"
     )
     assert platform_for_path("/Archive.aspx?AMID=12345") == "legistar"
     assert platform_for_path("/ViewPublisher.php?view_id=2") == "granicus"

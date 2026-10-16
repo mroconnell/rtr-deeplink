@@ -238,7 +238,11 @@ VENDOR_WEB_HOST_HINTS: Tuple[Tuple[str, str], ...] = (
 # same source that fed wo282_classify.py's `vendor_platform_for_url()`.
 _PATH_ONLY_PLATFORMS: Tuple[Tuple["re.Pattern[str]", str], ...] = (
     (re.compile(r"/citizens/", re.I), "iqm2"),
-    (re.compile(r"/portal/meetinginformation\.aspx", re.I), "civicclerk"),
+    # CivicWeb (incl. Diligent's rebrand), not CivicClerk: civicweb.py
+    # resolves this path, base.py routes the Diligent host to "civicweb",
+    # and Find Meeting's fingerprint table (2026-10-06) found it on 198
+    # CivicWeb and 141 Diligent sites and no CivicClerk site.
+    (re.compile(r"/portal/meetinginformation\.aspx", re.I), "civicweb"),
     (re.compile(r"/archive\.aspx\?amid=", re.I), "legistar"),
     (re.compile(r"/viewpublisher\.php", re.I), "granicus"),
     (re.compile(r"/mediaplayer\.php", re.I), "granicus"),

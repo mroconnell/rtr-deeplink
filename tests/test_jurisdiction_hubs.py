@@ -452,3 +452,76 @@ async def test_entry_on_another_government_does_not_make_this_hub_indexable():
     assert "loomis-ca" not in entries
     r = client.get("/j/loomis-ca")
     assert '<meta name="robots" content="noindex">' in r.text
+
+
+async def test_hub_og_image_uses_its_own_newest_meeting_card_not_the_generic(
+    monkeypatch,
+):
+    """A hub with no featured card falls back to its own newest meeting
+    whose card.jpg serves now (here a YouTube video -> thumbnail redirect),
+    not the site-wide generic card (another government's meeting). A newer
+    meeting with no stored frame is skipped: never advertise a URL that
+    would 404."""
+    monkeypatch.setitem(
+        archive.main.templates.env.globals, "public_base_url", "https://example.org"
+    )
+    newer = _payload(
+        "paulding-og-newer",
+        "https://example.com/hub-seed/paulding-og-newer",
+        jurisdiction="Paulding County, GA",
+        title="Board of Commissioners",
+        date="2026-09-02",
+        segments=[],
+    )
+    await crud.ingest_resolution(newer, newer["source_url"])
+    older = _payload(
+        "paulding-og-older",
+        "https://example.com/hub-seed/paulding-og-older",
+        jurisdiction="Paulding County, GA",
+        title="Planning Commission",
+        date="2026-08-05",
+        segments=[],
+    )
+    older["platform"] = "youtube"
+    older["video_url"] = "https://www.youtube.com/embed/dQw4w9WgXcQ"
+    older["video_format"] = "youtube"
+    older_slug = (await crud.ingest_resolution(older, older["source_url"]))["slug"]
+
+    hub = jurisdiction_hub_slug("Paulding County, GA")
+    data = await crud.get_jurisdiction_hub_data(hub)
+    assert data["hub_card_url"] == f"/m/{older_slug}/card.jpg"
+
+    html = client.get(f"/j/{hub}").text
+    assert (
+        f'<meta property="og:image" content="https://example.org/m/{older_slug}/card.jpg">'
+        in html
+    )
+    assert archive.main._GENERIC_CARD_SLUG not in html
+    assert "A photo of a public meeting in " in html
+
+
+async def test_hub_with_no_servable_card_keeps_the_generic_image(monkeypatch):
+    monkeypatch.setitem(
+        archive.main.templates.env.globals, "public_base_url", "https://example.org"
+    )
+    monkeypatch.setitem(
+        archive.main.templates.env.globals,
+        "generic_card_image_url",
+        "https://example.org/m/generic-slug/card.jpg",
+    )
+    only = _payload(
+        "dallas-ga-og-only",
+        "https://example.com/hub-seed/dallas-ga-og-only",
+        jurisdiction="Dallas, GA",
+        title="City Council",
+        date="2026-09-01",
+        segments=[],
+    )
+    await crud.ingest_resolution(only, only["source_url"])
+    hub = jurisdiction_hub_slug("Dallas, GA")
+    assert (await crud.get_jurisdiction_hub_data(hub))["hub_card_url"] is None
+    html = client.get(f"/j/{hub}").text
+    assert (
+        '<meta property="og:image" content="https://example.org/m/generic-slug/card.jpg">'
+        in html
+    )

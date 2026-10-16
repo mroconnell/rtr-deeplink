@@ -278,3 +278,22 @@ def test_captions_vtt_fixture_is_real_and_non_empty():
     raw = load_fixture_bytes("suiteone", "pacificgrove_captions.vtt")
     assert raw.startswith(b"WEBVTT")
     assert len(raw) > 1000
+
+
+def test_extract_title_reads_ev_header_from_real_fixtures():
+    # _extract_title parses only <h1> elements (SoupStrainer); the real
+    # event pages still give their ev-header title.
+    from pathlib import Path
+
+    from app.platforms.suiteone import SuiteOneAssetFinder
+
+    fixtures = Path(__file__).parent / "fixtures" / "suiteone"
+    expected = {
+        "stmarysga_event.html": "Orange Hall Management Committee",
+        "lorainoh_event.html": "Planning Commission",
+        "pacificgrove_event.html": "Traffic Safety Commission",
+    }
+    for name, title in expected.items():
+        html = (fixtures / name).read_text()
+        assert SuiteOneAssetFinder._extract_title(html) == title
+    assert SuiteOneAssetFinder._extract_title("<html><h2>x</h2></html>") is None

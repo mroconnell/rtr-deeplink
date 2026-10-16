@@ -129,3 +129,53 @@ async def test_any_non_ai_source_counts_as_an_instant_source_transcript(source):
     row = next((r for r in rows if r["jurisdiction"] == jurisdiction), None)
     assert row is not None, f"{slug} produced no coverage row"
     assert row["instant_transcript"] is True, source
+
+
+async def test_picker_adds_the_date_only_when_two_labels_match():
+    """Two versions sharing a language and source render the same
+    "English (sourced)" label; each then also shows its date. A version
+    whose label is unique keeps the plain label."""
+    from datetime import datetime, timezone
+
+    from sqlalchemy import select
+
+    from archive.db.engine import async_session
+    from archive.db.models import MeetingPage, TranscriptVersion
+
+    slug = await _make_page("picker-date", "sourced")
+    async with async_session() as session:
+        page_id = (
+            await session.execute(
+                select(MeetingPage.id).where(MeetingPage.slug == slug)
+            )
+        ).scalar_one()
+        first = (
+            await session.execute(
+                select(TranscriptVersion).where(
+                    TranscriptVersion.meeting_page_id == page_id
+                )
+            )
+        ).scalar_one()
+        first.created_at = datetime(2026, 8, 1, tzinfo=timezone.utc)
+        for source, created in (
+            ("sourced", datetime(2026, 9, 15, tzinfo=timezone.utc)),
+            ("transcribed", datetime(2026, 9, 20, tzinfo=timezone.utc)),
+        ):
+            session.add(
+                TranscriptVersion(
+                    meeting_page_id=page_id,
+                    language="en",
+                    source=source,
+                    is_default=False,
+                    segments=_SEGMENTS,
+                    transcript_warnings=[],
+                    content_hash=f"picker-date-{source}",
+                    created_at=created,
+                )
+            )
+        await session.commit()
+
+    html = archive_client.get(f"/m/{slug}").text
+    assert "English (sourced), 2026-08-01</option>" in html
+    assert "English (sourced), 2026-09-15</option>" in html
+    assert "English (transcribed)</option>" in html

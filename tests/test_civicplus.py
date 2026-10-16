@@ -217,6 +217,56 @@ def test_category_panel_heading_becomes_meeting_body():
     assert all(c["meeting_body"] for c in candidates)
 
 
+def test_candidate_rows_sorted_newest_first_across_category_panels():
+    # Each AgendaCenter category panel is newest-first only within itself;
+    # panels are concatenated in category order (confirmed live on
+    # lowellma.gov, WO-137). Here the first panel holds 15 stale rows and
+    # the second a newer row with video: the newer row must come first so
+    # resolve()'s `_RETRY_LIMIT` walk reaches it. A row whose date doesn't
+    # parse keeps its raw text and goes last.
+    row = """
+      <tr class="catAgendaRow">
+        <td><h3><strong>{date}</strong></h3><p><a>{title}</a></p></td>
+        <td class="media">{media}</td>
+      </tr>
+    """
+    video = '<a href="https://durham.granicus.com/player/clip/3313">Video</a>'
+    stale = "".join(
+        row.format(date=f"Mar {15 - i:02d}, 2025", title=f"Board {i}", media="")
+        for i in range(15)
+    )
+    html = (
+        '<h2 aria-controls="category-panel-1">Board</h2>'
+        f'<div id="category-panel-1"><table>{stale}'
+        + row.format(date="Sometime", title="Undated", media="")
+        + "</table></div>"
+        '<h2 aria-controls="category-panel-2">License Commission</h2>'
+        '<div id="category-panel-2"><table>'
+        + row.format(date="Sep 10, 2026", title="License", media=video)
+        + "</table></div>"
+    )
+    candidates = CivicPlusAssetFinder()._find_candidate_rows(
+        BeautifulSoup(html, "html.parser"),
+        "https://example.civicplus.com/AgendaCenter",
+    )
+    assert candidates[0]["title"] == "License"
+    assert candidates[0]["url"]
+    assert [c["date"] for c in candidates[1:16]] == [
+        f"2025-03-{15 - i:02d}" for i in range(15)
+    ]
+    assert candidates[-1]["title"] == "Undated"
+
+
+def test_real_desoto_candidates_are_globally_date_sorted():
+    html = load_fixture("civicplus", "ks_desoto_agendacenter.html")
+    candidates = CivicPlusAssetFinder()._find_candidate_rows(
+        BeautifulSoup(html, "html.parser"),
+        "https://ks-desoto.civicplus.com/AgendaCenter",
+    )
+    dates = [c["date"] for c in candidates]
+    assert dates == sorted(dates, reverse=True)
+
+
 async def test_youtube_channel_link_excluded_from_video_row_candidates():
     # Synthetic, per this repo's convention: the payload shape (a
     # tr.catAgendaRow/td.media row) is copied from the real, confirmed
