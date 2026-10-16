@@ -58,6 +58,7 @@ import re
 import unicodedata
 from html import unescape as _html_unescape
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from urllib.parse import urlparse
@@ -320,7 +321,9 @@ def _load_zcta_table(
     return table
 
 
-_COUNTY_STATES = _load_name_state_table("counties.csv")
+@lru_cache(maxsize=1)
+def _county_states():
+    return _load_name_state_table("counties.csv")
 
 
 def _load_county_type_words(filename: str) -> Dict[Tuple[str, str], str]:
@@ -351,7 +354,9 @@ def _load_county_type_words(filename: str) -> Dict[Tuple[str, str], str]:
     return table
 
 
-_COUNTY_TYPE_WORDS = _load_county_type_words("counties.csv")
+@lru_cache(maxsize=1)
+def _county_type_words():
+    return _load_county_type_words("counties.csv")
 
 
 def _county_type_suffix(hint: str, state_code: str) -> str:
@@ -363,7 +368,7 @@ def _county_type_suffix(hint: str, state_code: str) -> str:
     `_load_county_type_words()` for why this can't just assume "County".
     Callers splice it in unconditionally: f"{hint}{_county_type_suffix(...)}{suffix}".
     """
-    word = _COUNTY_TYPE_WORDS.get((hint.strip().lower(), state_code.strip().upper()))
+    word = _county_type_words().get((hint.strip().lower(), state_code.strip().upper()))
     return f" {word}" if word else ""
 
 
@@ -389,7 +394,9 @@ def _load_county_display_names(filename: str) -> Dict[Tuple[str, str], Optional[
     return table
 
 
-_COUNTY_DISPLAY_NAMES = _load_county_display_names("counties.csv")
+@lru_cache(maxsize=1)
+def _county_display_names():
+    return _load_county_display_names("counties.csv")
 
 
 def county_display_in_state(name: str, state_code: str) -> Optional[str]:
@@ -406,19 +413,33 @@ def county_display_in_state(name: str, state_code: str) -> Optional[str]:
     key = re.sub(r"[^a-z]", "", (name or "").lower())
     if not key or not state_code:
         return None
-    return _COUNTY_DISPLAY_NAMES.get((key, state_code.strip().upper()))
+    return _county_display_names().get((key, state_code.strip().upper()))
 
 
-_PLACE_STATES = _load_name_state_table("places.csv")
+@lru_cache(maxsize=1)
+def _place_states():
+    return _load_name_state_table("places.csv")
+
+
 # WO-16 (BACKLOG.md, 2026-08-16): townships/county subdivisions (Upper
 # Providence PA, Greenburgh NY, Upper Dublin PA -- all confirmed real,
 # live-flagged as lookup misses) are a separate Census gazetteer (COUSUB),
 # not a subset of counties.csv/places.csv -- see
 # scripts/build_jurisdiction_data.py's build_county_subdivisions() for the
 # source/filter detail.
-_SUBDIVISION_STATES = _load_name_state_table("county_subdivisions.csv")
-_ZCTA_COUNTY = _load_zcta_table("zcta_county.csv", "county_name")
-_ZCTA_PLACE = _load_zcta_table("zcta_place.csv", "place_name")
+@lru_cache(maxsize=1)
+def _subdivision_states():
+    return _load_name_state_table("county_subdivisions.csv")
+
+
+@lru_cache(maxsize=1)
+def _zcta_county():
+    return _load_zcta_table("zcta_county.csv", "county_name")
+
+
+@lru_cache(maxsize=1)
+def _zcta_place():
+    return _load_zcta_table("zcta_place.csv", "place_name")
 
 
 def lookup_county_state(name: str) -> Optional[str]:
@@ -430,7 +451,7 @@ def lookup_county_state(name: str) -> Optional[str]:
     function's own docstring for why falling through past a real,
     if ambiguous, match to a less-specific candidate would be wrong."""
     for candidate in _normalize_candidates(name):
-        states = _COUNTY_STATES.get(candidate)
+        states = _county_states().get(candidate)
         if states:
             return states[0] if len(set(states)) == 1 else None
     return None
@@ -444,9 +465,9 @@ def lookup_city_state(name: str) -> Optional[str]:
     None here even though this app already resolves specific, confirmed
     instances of some via `lookup_by_domain()` below.
 
-    Falls back to `_SUBDIVISION_STATES` (townships/towns -- WO-16's
+    Falls back to `_subdivision_states()` (townships/towns -- WO-16's
     separate COUSUB gazetteer, see that table's own load-site comment)
-    ONLY when no `_PLACE_STATES` candidate matched at all -- a town
+    ONLY when no `_place_states()` candidate matched at all -- a town
     government is the same "not a county" category this function's
     callers already bucket bare names into (see `resolve_state()`'s
     city/county type split), and a place-table hit, ambiguous or not,
@@ -462,11 +483,11 @@ def lookup_city_state(name: str) -> Optional[str]:
     genuine subdivision-table collision (e.g. "Peters Township" is real
     in both KS and PA)."""
     for candidate in _normalize_candidates(name):
-        states = _PLACE_STATES.get(candidate)
+        states = _place_states().get(candidate)
         if states:
             return states[0] if len(set(states)) == 1 else None
     for candidate in _normalize_candidates(name):
-        states = _SUBDIVISION_STATES.get(candidate)
+        states = _subdivision_states().get(candidate)
         if states:
             return states[0] if len(set(states)) == 1 else None
     return None
@@ -504,7 +525,7 @@ def is_literal_known_place(name: str) -> bool:
     bug). This function lets a caller check the un-stripped form on its
     own merits first, before ever falling back to the stripped one."""
     key = name.strip().lower()
-    return key in _PLACE_STATES or key in _COUNTY_STATES
+    return key in _place_states() or key in _county_states()
 
 
 # Trailing "City"/"Town" as vendor branding rather than part of the real
@@ -537,7 +558,7 @@ def lookup_county_by_zip(zip_code: str) -> Optional[Tuple[str, str]]:
     with this ZIP -- picked via AREALAND_PART, since ~30% of real ZCTAs
     genuinely span more than one county. None if the ZIP isn't a real
     ZCTA at all."""
-    candidates = _ZCTA_COUNTY.get(zip_code)
+    candidates = _zcta_county().get(zip_code)
     if not candidates:
         return None
     name, state, _area = max(candidates, key=lambda c: c[2])
@@ -546,7 +567,7 @@ def lookup_county_by_zip(zip_code: str) -> Optional[Tuple[str, str]]:
 
 def lookup_place_by_zip(zip_code: str) -> Optional[Tuple[str, str]]:
     """Same as `lookup_county_by_zip()`, against real incorporated places."""
-    candidates = _ZCTA_PLACE.get(zip_code)
+    candidates = _zcta_place().get(zip_code)
     if not candidates:
         return None
     name, state, _area = max(candidates, key=lambda c: c[2])
@@ -1476,13 +1497,13 @@ def _name_validates_in_state(name: str, jurisdiction_type: str, state: str) -> b
     anywhere on the page is only evidence for a STATE this specific name
     can plausibly belong to. Falls back to the subdivision table for a
     non-county type, same as `lookup_city_state()` itself."""
-    table = _COUNTY_STATES if jurisdiction_type == "county" else _PLACE_STATES
+    table = _county_states() if jurisdiction_type == "county" else _place_states()
     for candidate in _normalize_candidates(name):
         if state in table.get(candidate, []):
             return True
     if jurisdiction_type != "county":
         for candidate in _normalize_candidates(name):
-            if state in _SUBDIVISION_STATES.get(candidate, []):
+            if state in _subdivision_states().get(candidate, []):
                 return True
     return False
 
@@ -1522,10 +1543,10 @@ def resolve_state(
     # 2026-08-30): a bare "Colorado" (this app's own stored jurisdiction
     # for coloradoga.granicus.com, the real Colorado General Assembly --
     # its own page header literally reads "Colorado General Assembly")
-    # has no entry in `_PLACE_STATES` but DOES coincidentally match
-    # `_COUNTY_STATES` ("Colorado County, TX") and, via `lookup_city_
+    # has no entry in `_place_states()` but DOES coincidentally match
+    # `_county_states()` ("Colorado County, TX") and, via `lookup_city_
     # state()`'s own WO-16 subdivision fallback (see that function's
-    # docstring), `_SUBDIVISION_STATES` ("Colorado township, KS" -- real,
+    # docstring), `_subdivision_states()` ("Colorado township, KS" -- real,
     # but a tiny, obscure Kansas township, not remotely what a page about
     # the state legislature means). Without this guard, `name_lookup()`
     # below picks the Kansas township and silently attaches ", KS" --
@@ -1827,10 +1848,10 @@ def _table_lookup_strength(name: str) -> Optional[Tuple[str, List[str], bool]]:
     # the same state), and no confirmed real case needs it to outrank
     # either.
     tables = (
-        [("county", _COUNTY_STATES), ("place", _PLACE_STATES)]
+        [("county", _county_states()), ("place", _place_states())]
         if county_first
-        else [("place", _PLACE_STATES), ("county", _COUNTY_STATES)]
-    ) + [("subdivision", _SUBDIVISION_STATES)]
+        else [("place", _place_states()), ("county", _county_states())]
+    ) + [("subdivision", _subdivision_states())]
     base_candidates = _normalize_candidates(name)
     # Only the FIRST base candidate is the literal/deterministic form --
     # `_normalize_candidates()` puts the as-is (or leading-type-stripped)
@@ -3296,7 +3317,7 @@ def resolve_claimed_state(name: str, claimed_state: str) -> Optional[str]:
     """A state/province code, only when `claimed_state` (as typed -- a
     two-letter USPS/Canada Post code OR a full spelled-out name, e.g.
     "Minnesota" or "MN") is genuinely a MEMBER of `name`'s real state
-    list -- checked against the same `_PLACE_STATES`/`_COUNTY_STATES`
+    list -- checked against the same `_place_states()`/`_county_states()`
     tables `lookup_city_state()`/`lookup_county_state()` already use.
 
     Built for BACKLOG.md's "[NEEDS-AUDIT] A name that's already
@@ -3348,7 +3369,7 @@ def resolve_claimed_state(name: str, claimed_state: str) -> Optional[str]:
             return None
         abbr = abbr_lower.upper()
     jurisdiction_type = "county" if _TYPE_HINT_RE.search(name) else "city"
-    table = _COUNTY_STATES if jurisdiction_type == "county" else _PLACE_STATES
+    table = _county_states() if jurisdiction_type == "county" else _place_states()
     for candidate in _normalize_candidates(name):
         states = table.get(candidate)
         if states and abbr in states:
@@ -3513,7 +3534,7 @@ def _twp_glued_extract(label: str) -> Optional[Tuple[str, str]]:
     """(name, state) for a `_TWP_GLUED_RE` match, or None -- see that
     regex's own comment for the shape this handles.
 
-    Matched against `_SUBDIVISION_STATES` by PREFIX rather than an exact
+    Matched against `_subdivision_states()` by PREFIX rather than an exact
     key, filtered to the extracted state first -- the one deliberate
     looseness in this whole function, and needed because the real
     Census/StatsCan row for South Orange is "South Orange Village
@@ -3540,7 +3561,7 @@ def _twp_glued_extract(label: str) -> Optional[Tuple[str, str]]:
     glued_name = m.group("name")
     matches = {
         key
-        for key, states in _SUBDIVISION_STATES.items()
+        for key, states in _subdivision_states().items()
         if state in states and key.replace(" ", "").startswith(glued_name)
     }
     if len(matches) != 1:
@@ -3655,7 +3676,7 @@ def _validated_label_extract_with_state(
        dictionary word) or whose bare name is ALSO a real place elsewhere
        (e.g. "chestercopa", Chester County PA: "Chester" is also a real
        place in several states, which is exactly why this tier checks
-       `_COUNTY_STATES` directly rather than the type-agnostic
+       `_county_states()` directly rather than the type-agnostic
        `_table_lookup()` -- see the code's own comment, WO-76, for the
        real case and the precedence fix that goes with it). Also only
        tried at the outermost call, and -- as of WO-76 -- BEFORE tiers 5
@@ -3770,7 +3791,7 @@ def _validated_label_extract_with_state(
     # isn't an English dictionary word, so wordninja never recovers it even
     # after tier 5's own trailing-state strip (confirmed live:
     # `wordninja.split("lenaweeco") == ['lena','we','eco']`, garbage).
-    # Trying the bare remainder directly against `_COUNTY_STATES` sidesteps
+    # Trying the bare remainder directly against `_county_states()` sidesteps
     # wordninja entirely, and -- as of the WO-76 fix -- is checked and
     # cross-validated against the SAME table `resolve_claimed_state()`
     # already trusts for this exact "does this specific state belong to
@@ -3787,7 +3808,7 @@ def _validated_label_extract_with_state(
     # the old `hit[0] == "county"` gate declined every time -- it can only
     # ever fire when the bare name has NO place-table entry at all
     # anywhere, exactly like "Lenawee" but unlike "Chester". Checking
-    # `_COUNTY_STATES` directly and requiring only that the SPECIFIC
+    # `_county_states()` directly and requiring only that the SPECIFIC
     # extracted state (here "PA") be one of the name's real county states
     # sidesteps the place-vs-county precedence entirely -- correct even
     # when, as here, the bare name is nationally ambiguous as a place too.
@@ -3814,7 +3835,7 @@ def _validated_label_extract_with_state(
             remainder = lower_label[:-2]
             if remainder.endswith("co") and len(remainder) - 2 >= 3:
                 bare = remainder[:-2]
-                county_states = _COUNTY_STATES.get(bare)
+                county_states = _county_states().get(bare)
                 if county_states and tail.upper() in county_states:
                     return f"{bare.title()} County", tail.upper()
 
@@ -4041,7 +4062,7 @@ def _county_retype_from_page_text(candidate: str, page_text: str) -> str:
         return candidate
     retyped = f"{candidate} County"
     for norm in _normalize_candidates(retyped):
-        if _COUNTY_STATES.get(norm):
+        if _county_states().get(norm):
             return retyped
     return candidate
 
