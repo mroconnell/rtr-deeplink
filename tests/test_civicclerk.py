@@ -995,3 +995,50 @@ async def test_resolve_does_not_pass_a_bare_youtube_channel_url_as_video():
     assert result.video_url is None
     assert result.video_format is None
     assert any(channel in w for w in result.video_warnings)
+
+
+@pytest.mark.parametrize(
+    "join_url",
+    [
+        # Real shapes: Bemidji MN event 1314, Jo Daviess County IL event 2478.
+        "https://bemidji.my.webex.com/bemidji.my/j.php?MTID=m0123456789abcdef",
+        "https://us06web.zoom.us/j/81234567890?pwd=abc",
+        "https://brooklinema.zoomgov.com/j/1601234567",
+        "https://teams.microsoft.com/l/meetup-join/19%3ameeting_abc/0",
+        "https://meet.google.com/abc-defg-hij",
+    ],
+)
+async def test_resolve_does_not_pass_a_live_meeting_join_link_as_video(join_url):
+    url = "https://jodaviesscountyil.portal.civicclerk.com/event/2478/media"
+    event_json = (
+        '{"id": 2478, "eventName": "County Board Meeting", '
+        '"eventDate": "2026-09-08T23:00:00Z", '
+        '"eventLocation": {"city": "Galena", "state": "Illinois", '
+        '"zipCode": "61036"}}'
+    )
+    media_json = json.dumps(
+        {"id": 2478, "externalVideoUrl": join_url, "eventBookmarks": []}
+    )
+    routes = {
+        "https://jodaviesscountyil.api.civicclerk.com/v1/Events/2478": FakeResponse(
+            status=200, text=event_json
+        ),
+        "https://jodaviesscountyil.api.civicclerk.com/v1/EventsMedia/2478": FakeResponse(
+            status=200, text=media_json
+        ),
+    }
+
+    with mock_session(routes):
+        result = await CivicClerkAssetFinder().resolve(url)
+
+    assert result.video_url is None
+    assert any("join page" in w for w in result.video_warnings)
+
+
+def test_zoom_recording_share_link_is_not_a_join_link():
+    from app.platforms.civicclerk import _is_live_meeting_join_link
+
+    assert not _is_live_meeting_join_link(
+        "https://brooklinema.zoomgov.com/rec/share/abcDEF123"
+    )
+    assert not _is_live_meeting_join_link("https://zoom.us/")
