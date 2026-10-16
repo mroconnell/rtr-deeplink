@@ -9087,6 +9087,7 @@ async def get_jurisdiction_hub_data(
                 MeetingPage.gov_id,
                 TranscriptVersion.id,
                 TranscriptVersion.transcript_warnings,
+                MeetingPage.video_url,
             )
             .outerjoin(
                 TranscriptVersion,
@@ -9121,10 +9122,26 @@ async def get_jurisdiction_hub_data(
                 "has_transcript": version_id is not None
                 and _has_real_warning_free_transcript(warnings),
             }
-            for page_id, page_slug, title, date, jurisdiction, meeting_body, gov_id, version_id, warnings in rows
+            for page_id, page_slug, title, date, jurisdiction, meeting_body, gov_id, version_id, warnings, _video_url in rows
         ]
         if not pages:
             return None
+        # og:image fallback when no featured meeting has a card: the
+        # newest of this hub's own meetings whose card.jpg would serve
+        # now (a stored frame, or a YouTube thumbnail redirect), so a
+        # shared hub link never previews another government's meeting
+        # (the site-wide generic card). Never a URL that would 404.
+        page_ids_with_frames = await pages_with_thumbnails(
+            session, [p["id"] for p in pages]
+        )
+        hub_card_url = next(
+            (
+                f"/m/{row[1]}/card.jpg"
+                for row in rows
+                if row[0] in page_ids_with_frames or youtube_thumbnail_url(row[9])
+            ),
+            None,
+        )
         # `pages` is already newest-first from the query's ORDER BY, so
         # the transcribed subset is too. A hub is one government -- San
         # Diego's 44 meetings is the current maximum -- so the whole
@@ -9223,6 +9240,7 @@ async def get_jurisdiction_hub_data(
         "state_name": US_STATE_ABBR_TO_NAME.get(abbr) if abbr else None,
         "state_slug": state_slug_from_abbr(abbr) if abbr else None,
         "featured": featured,
+        "hub_card_url": hub_card_url,
         "topic_chips": own_chips or inherited_chips,
         # Drives the honest label and link target in the template: these
         # are the state's topics, not this government's.
