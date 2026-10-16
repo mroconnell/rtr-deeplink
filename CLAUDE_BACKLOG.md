@@ -360,31 +360,16 @@ request, deliberately not built as part of it — see `BACKLOG_DONE.md`'s
   phrase match against agenda text would miss most real discussion,
   which paraphrases rather than reads the agenda aloud) and whether this
   needs an LLM pass over the transcript or something simpler.
-- **Reader-facing low-confidence/quality flag on Whisper-generated
-  transcripts -- raised by the user 2026-08-18, alongside a real bug this
-  same conversation found and moved to `BACKLOG.md` (the
-  `detect_language_from_texts()` first-2000-characters mislabeling
-  entry).** Today `detect_hallucination_warnings()`'s output
-  (`transcript_warnings`, `_GARBLED_MARKER`) only feeds
-  `app/db/outcomes.py`'s internal admin-reporting classification -- not
-  shown to readers at all. The user's framing: something like Wikipedia's
-  confidence banners ("this section needs more detail" / "needs human
-  verification") -- surface *and* explicitly acknowledge that a given
-  transcript (or section of one) hasn't been human-verified, rather than
-  presenting AI-generated text with the same visual confidence as a real
-  scraped government caption. Root cause context from the user, worth
-  keeping when this gets designed: these sources often have short (2-3
-  min) genuinely-foreign-language stretches (proclamations, a single
-  speaker) or dead air/loud music (meeting open, or a recess in a 4+ hour
-  meeting) that Whisper isn't built to handle well, embedded in meetings
-  that are otherwise clearly one language throughout -- so a good flag
-  should probably be scoped to the *offending stretch*, not just a
-  whole-page badge. Not designed yet -- open questions: page-level banner
-  vs. inline per-segment/per-chunk marking (today's warnings are
-  chunk-scoped, not whole-page), and whether it should also fire on the
-  language-mislabeling failure mode even when
-  `detect_hallucination_warnings()` itself sees nothing wrong (a
-  confidently-wrong language label isn't currently a "warning" at all).
+- **Flag a confidently-wrong language label to readers -- the remainder
+  of the user's 2026-08-18 "reader-facing low-confidence flag" idea.** The
+  per-stretch shade for shaky Whisper text was accepted on 2026-10-16 and
+  moved to `BACKLOG.md` ("Shade the stretches of a Whisper transcript
+  where Whisper itself was unsure"; WO-1968 stores the numbers). Still
+  untriaged: whether a flag should also fire when the transcript's
+  language label is wrong even though `detect_hallucination_warnings()`
+  sees nothing wrong (a confidently-wrong language label is not a
+  "warning" today). Context: these meetings often hold a short (2-3 min)
+  foreign-language stretch inside an otherwise one-language meeting.
 - **Compare `large-v2`/`large-v3` faster-whisper output against the
   production `small`/`tiny` defaults on a real bad chunk -- raised by the
   user 2026-08-18, not yet run.** Proposed protocol (the user's own): once

@@ -266,7 +266,8 @@ Reliability, ops & cost  (6)
     [NEEDS-AUDIT] Search Console "Missing field" flags (Videos…
   `/coverage` as a QA surface
 
-Trust, safety & data quality  (11)
+Trust, safety & data quality  (12)
+  Shade the stretches of a Whisper transcript where Whisper itself was…
   Known wrong names in Whisper transcripts are not fixed yet…
   Pinned hosts: machine-made pins with no Archive pages yet are…
   2 already-pinned YouTube channels still disagree with the Archive's…
@@ -2084,6 +2085,14 @@ actionability sections above.
 ### `/coverage` as a QA surface
 
 ## Trust, safety & data quality
+
+### Shade the stretches of a Whisper transcript where Whisper itself was unsure
+
+- **Issue**: readers see one whole-page "AI transcript" note, but nothing marks the shaky stretch itself (a short foreign-language proclamation, dead air, music at a recess). Since WO-1968, new Whisper segments store `avg_logprob`, `no_speech_prob` and `compression_ratio`; nothing reads them yet.
+- **Impact**: a reader cannot tell a solid stretch from a guessed one inside the same AI transcript.
+- **Next action**: after the worker and Archive deploys, let new transcripts build up, then pull 20 or more through `/internal/export/pages?include_segments=true`. Read the numbers next to the text by hand and pick a threshold from what is actually wrong. Then build the shade in `archive/templates/meeting_page.html` (no shade on a segment with no numbers).
+- **Constraint**: transcripts made before WO-1968 have no numbers and are not backfilled; they must show no shade, not a guessed one. The numbers score a whole Whisper segment, so every piece of a gap-split segment carries the same values. Ryan's own framing (CLAUDE_BACKLOG, 2026-08-18): flag the stretch, not the page. Hold the separate "reads well but false" AI check (cost undesigned, prompt-injection review first).
+- **History**: `BACKLOG_DONE.md` WO-1968.
 
 ### Known wrong names in Whisper transcripts are not fixed yet (correct-text route waits on a deploy)
 

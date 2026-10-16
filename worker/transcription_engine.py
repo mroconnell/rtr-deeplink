@@ -17,6 +17,8 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from worker.segment_utils import whisper_confidence_fields
+
 # Whisper's initial_prompt biases decoding toward this vocabulary --
 # real motivation: a live job on a Cupertino meeting (2026-08-08)
 # transcribed "this meeting is adjourned" as "this meeting is a joke",
@@ -61,11 +63,23 @@ def _split_segment_on_word_gaps(seg: Any) -> List[Dict[str, Any]]:
     space from the tokenizer, hence "".join() below rather than " ".join()
     -- matches how faster-whisper reconstructs segment.text internally).
     """
+    # Whisper's confidence numbers (WO-1968) score the whole segment, not
+    # each word, so every piece a split produces carries its parent
+    # segment's numbers unchanged.
+    confidence = whisper_confidence_fields(seg)
     words = list(getattr(seg, "words", None) or [])
     if not words:
         text = seg.text.strip()
         return (
-            [{"start": seg.start, "end": seg.end, "text": text, "speaker": None}]
+            [
+                {
+                    "start": seg.start,
+                    "end": seg.end,
+                    "text": text,
+                    "speaker": None,
+                    **confidence,
+                }
+            ]
             if text
             else []
         )
@@ -86,6 +100,7 @@ def _split_segment_on_word_gaps(seg: Any) -> List[Dict[str, Any]]:
                     "end": run[-1].end,
                     "text": text,
                     "speaker": None,
+                    **confidence,
                 }
             )
     return result

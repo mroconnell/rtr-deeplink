@@ -71682,3 +71682,24 @@ Ryan said yes on 2026-10-16 to subscribing the feeds from his two `granicus-meet
 **New pins.** `gretnala.granicus.com` to Gretna city, LA (`us:place:2231915`): the agenda is headed "THE CITY OF GRETNA", 740 Second Street, Gretna, LA. `huroncounty.ca.granicus.com` to the County of Huron, ON (`ca:cd:3540`, the same id as the existing `huron.granicus.com` pin): the agenda is headed "County of Huron", with a 519 phone number. Test: `tests/test_granicus_lead_sheet_pins.py`.
 
 **Subscriptions (rtr-findmeeting).** 30 of the feeds were already subscribed on 2026-10-07. One new: Huron County view 1, as secondary (no meeting word in "Huron County ON"). findmeeting's feed-address check accepted only one-label hosts, so a `.ca` label is now allowed. Gretna view 1 is held back by the internal/test title rule ("New View"); it is in the open `BACKLOG.md` entry for Ryan, with the Scranton authority views.
+
+## [Done 2026-10-16] WO-1968: keep Whisper's per-segment confidence numbers
+
+Ryan said yes on 2026-10-16 ("A6 Sure") to item 2 of the transcript-quality review: store Whisper's own confidence numbers first, so a later change can shade shaky stretches. No display in this change.
+
+**What was checked first.** No code in `app/`, `worker/` or `archive/` read `avg_logprob` or `no_speech_prob` (grep, 2026-10-16). faster-whisper's `Segment` dataclass carries `avg_logprob`, `compression_ratio` and `no_speech_prob` (read in `faster_whisper/transcribe.py` of the 1.2.1 wheel). Both transcription paths already share `FasterWhisperEngine` and `worker/segment_utils.shift_segments()`, so one change covers both.
+
+**What changed.**
+
+- `worker/segment_utils.py`: `WHISPER_CONFIDENCE_FIELDS` and `whisper_confidence_fields()`. Each value is rounded to 3 decimals. A missing or non-finite value is left out, because Postgres JSON rejects NaN and a blank is honest.
+- `worker/transcription_engine.py`: every segment from `_split_segment_on_word_gaps()` carries the three numbers. The numbers score a whole Whisper segment, so each piece of a gap split gets its parent's values.
+- `shift_segments()` used to rebuild each segment with only start, end, text and speaker. It now carries the three numbers through. The seam merge (`merge_chunk_segments()`, and the Archive's own trim in `report_chunk_result()`) keeps whole dicts, so they survive it.
+- `archive/main.py` `TranscriptSegmentIn`: three optional fields. Without them, Pydantic dropped the numbers from the local script's `/internal/ingest` push. They are left out of the dump when unset, so a scraped caption cue is stored exactly as before, with no null keys.
+
+**Readers.** Nothing they see changes. The meeting page shows only start and text, the page script reads the page, the `.txt`/`.srt` downloads read start, end and text, and search excerpts read text. The only output that carries the numbers is the admin-token `/internal/export/pages?include_segments=true`.
+
+**Cautions.** Transcripts made before this change have no numbers and are not backfilled. Gemini transcripts have none either. Not live until the worker and the Archive are deployed; the local script picks it up on its next `git pull`.
+
+**Tests.** `tests/test_whisper_confidence.py`, 13 tests. They fake faster-whisper's segments (synthetic, field names checked against 1.2.1). They cover rounding, the gap split, `_transcribe_sync()`, chunk offsetting, the seam merge, the `/internal/ingest` route, the cloud worker's `report_chunk_result()` path, and the reader page and downloads. No real model was run.
+
+The display is the open `BACKLOG.md` entry "Shade the stretches of a Whisper transcript where Whisper itself was unsure".

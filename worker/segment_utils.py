@@ -9,10 +9,43 @@ never depend on worker/ (see media_probe.py's own docstring for the
 dependency-direction reasoning).
 """
 
+import math
 import re
 import unicodedata
 from difflib import SequenceMatcher
 from typing import Any, Dict, List, Optional, Tuple
+
+# Whisper's own per-segment confidence numbers (WO-1968, 2026-10-16). Kept
+# on each segment so a later change can shade shaky stretches for readers;
+# nothing displays them yet. faster-whisper's Segment carries all three:
+#   avg_logprob       -- mean log-probability of the decoded tokens. Closer
+#                        to 0 is more sure; Whisper's own decode fallback
+#                        treats below -1.0 as a failed decode.
+#   no_speech_prob    -- the model's estimate that the window held no speech.
+#   compression_ratio -- gzip ratio of the text. High (Whisper uses 2.4)
+#                        means repetitive text, a hallucination sign.
+# They live here, not in transcription_engine.py, because both
+# transcription paths (worker/main.py and scripts/transcribe_backlog_
+# locally.py) already import this module, and shift_segments() below must
+# carry them through chunk offsetting.
+WHISPER_CONFIDENCE_FIELDS = ("avg_logprob", "no_speech_prob", "compression_ratio")
+
+
+def whisper_confidence_fields(seg: Any) -> Dict[str, float]:
+    """The WHISPER_CONFIDENCE_FIELDS present on a faster-whisper Segment
+    object, rounded to 3 decimals to keep the stored JSON small. A missing,
+    non-numeric or non-finite value is left out rather than stored:
+    Postgres JSON rejects NaN/Infinity, and a blank is honest where a
+    made-up number is not."""
+    out: Dict[str, float] = {}
+    for name in WHISPER_CONFIDENCE_FIELDS:
+        value = getattr(seg, name, None)
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            continue
+        if not math.isfinite(value):
+            continue
+        out[name] = round(float(value), 3)
+    return out
 
 
 def shift_segments(
@@ -25,6 +58,10 @@ def shift_segments(
     use (see TranscriptSegment in app/platforms/models.py), so the
     frontend's existing seek-by-timestamp logic works unmodified on a
     transcribed transcript.
+
+    The optional WHISPER_CONFIDENCE_FIELDS (WO-1968) are carried through
+    untouched when present. They are not times, so the offset does not
+    apply to them. A segment without them gains no keys.
     """
     return [
         {
@@ -32,6 +69,7 @@ def shift_segments(
             "end": seg["end"] + offset_seconds,
             "text": seg["text"],
             "speaker": seg.get("speaker"),
+            **{k: seg[k] for k in WHISPER_CONFIDENCE_FIELDS if k in seg},
         }
         for seg in segments
     ]
