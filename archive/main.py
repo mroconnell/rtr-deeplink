@@ -3881,7 +3881,7 @@ _SITEMAP_STATIC_PATHS = ["/", "/about", "/coverage", "/meetings", "/state/all-50
 @app.get("/sitemap.xml")
 async def sitemap():
     base = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
-    entries = await crud.list_all_page_slugs()
+    entries = await crud.list_all_page_slugs(exclude_slugs=_SLUG_REDIRECTS.keys())
     states = await crud.get_state_coverage_index()
     hubs = await crud.list_indexable_hub_entries()
     static_paths = list(_SITEMAP_STATIC_PATHS)

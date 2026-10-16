@@ -147,7 +147,27 @@ class LegistarAssetFinder(AssetFinder):
 
     async def resolve(self, url: str) -> ResolvedMeeting:
         async with aiohttp.ClientSession(headers=self.headers) as session:
-            final_url, html = await self._fetch(session, url)
+            try:
+                final_url, html = await self._fetch(session, url)
+            except aiohttp.ClientResponseError as e:
+                if e.status not in (404, 410):
+                    raise
+                # Since late Aug 2026 Legistar answers 410 Gone to a bare
+                # MeetingDetail.aspx?ID=... link with no GUID (Phoenix,
+                # Charlotte, 2026-09-26) -- say so instead of a raw error.
+                if "guid=" in url.lower():
+                    warning = f"Legistar couldn't find this meeting (HTTP {e.status})."
+                else:
+                    warning = (
+                        "Legistar needs the full meeting link, including "
+                        "GUID=... -- copy the link again from Legistar's "
+                        "meeting page."
+                    )
+                return ResolvedMeeting(
+                    platform=self.platform_name,
+                    source_url=url,
+                    video_warnings=[warning],
+                )
 
             if not self._is_legistar_domain(final_url):
                 result = await resolve_via_platform(final_url)

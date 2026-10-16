@@ -1542,3 +1542,24 @@ async def test_extract_page_meeting_info_reads_real_yonkers_page_despite_no_vide
     # confirms _find_video_links() declining is correct behavior here, not
     # a separate bug alongside the fallback-registry one.
     assert LegistarAssetFinder()._find_video_links(soup, _YONKERS_URL) == []
+
+
+async def test_resolve_explains_a_410_for_a_link_without_guid():
+    # Since late Aug 2026 a bare MeetingDetail.aspx?ID=... (no GUID) answers
+    # 410 Gone on every tenant checked (Phoenix, Charlotte, 2026-09-26).
+    url = "https://phoenix.legistar.com/MeetingDetail.aspx?ID=1234567"
+    with mock_session({url: FakeResponse(status=410, text="Gone")}):
+        result = await LegistarAssetFinder().resolve(url)
+
+    assert result.platform == "legistar"
+    assert result.video_url is None
+    assert any("GUID=" in w for w in result.video_warnings)
+
+
+async def test_resolve_still_raises_a_server_error():
+    import aiohttp
+
+    url = "https://phoenix.legistar.com/MeetingDetail.aspx?ID=1&GUID=AB-CD"
+    with mock_session({url: FakeResponse(status=500, text="")}):
+        with pytest.raises(aiohttp.ClientResponseError):
+            await LegistarAssetFinder().resolve(url)

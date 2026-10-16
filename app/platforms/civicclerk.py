@@ -131,6 +131,42 @@ def _reconstruct_cdn_stream_url(path: str) -> Optional[str]:
     return f"https://cpmedia.azureedge.net/{tenant.lower()}/{rest}"
 
 
+_YOUTUBE_HOSTS = frozenset(
+    {
+        "youtube.com",
+        "www.youtube.com",
+        "m.youtube.com",
+        "youtu.be",
+        "youtube-nocookie.com",
+        "www.youtube-nocookie.com",
+    }
+)
+
+
+def _is_youtube_host(url: str) -> bool:
+    return (urlparse(url).hostname or "").lower() in _YOUTUBE_HOSTS
+
+
+def _is_live_meeting_join_link(url: str) -> bool:
+    """A Zoom/Zoom Gov, WebEx, Teams or Google Meet join link -- matched by
+    host plus each vendor's join path, so a Zoom `rec/share` recording
+    is not caught here."""
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").lower()
+    path = parsed.path.lower()
+
+    def on(domain: str) -> bool:
+        return host == domain or host.endswith("." + domain)
+
+    if on("zoom.us") or on("zoomgov.com"):
+        return path.startswith(("/j/", "/w/", "/wc/join/"))
+    if on("webex.com"):
+        return path.endswith("/j.php") or path.startswith(("/meet/", "/join/"))
+    if host in ("teams.microsoft.com", "teams.live.com"):
+        return "meetup-join" in path or path.startswith("/meet/")
+    return host == "meet.google.com"
+
+
 class CivicClerkAssetFinder(AssetFinder):
     """Resolves video + transcript/chapters for a CivicClerk meeting page.
 
@@ -374,6 +410,27 @@ class CivicClerkAssetFinder(AssetFinder):
                     video_url = cablecast_delegated.video_url
                     video_format = cablecast_delegated.video_format
                     video_warnings.extend(cablecast_delegated.video_warnings)
+                elif _is_youtube_host(video_url):
+                    # WO-350 (South Kingstown RI, event 2286): the field was
+                    # a bare youtube.com/channel/... link -- a YouTube host
+                    # with no video id. That's a lead, not this meeting's
+                    # video, so it never goes out as video_url.
+                    video_warnings.append(
+                        "This event links a YouTube channel or page, not one "
+                        f"meeting video: {video_url}"
+                    )
+                    video_url = None
+                    video_format = None
+                elif _is_live_meeting_join_link(video_url):
+                    # WO-325/338/342 (Jo Daviess County IL, Bemidji MN): a
+                    # Zoom/WebEx join link is a live meeting, not a
+                    # recording -- never a playable video_url.
+                    video_warnings.append(
+                        "This event links a live-meeting join page, not a "
+                        f"recording: {video_url}"
+                    )
+                    video_url = None
+                    video_format = None
 
             # Real order confirmed live (Emporia, KS, event 585):
             # closedCaptionUrl and closedCaptionTracks[0].file point at the

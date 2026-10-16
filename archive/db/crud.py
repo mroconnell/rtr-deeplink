@@ -8,7 +8,7 @@ import re
 import secrets
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Optional, Sequence, Set
+from typing import Any, Iterable, Optional, Sequence, Set
 from urllib.parse import urlparse
 
 from sqlalchemy import (
@@ -9279,7 +9279,7 @@ async def list_indexable_hub_entries() -> list[dict]:
     )
 
 
-async def list_all_page_slugs() -> list[dict]:
+async def list_all_page_slugs(exclude_slugs: Iterable[str] = ()) -> list[dict]:
     """Every indexable page's slug + updated_at, unpaginated -- for
     sitemap.xml. Excludes platform == "unknown" (generic_fallback) pages:
     meeting_page.html noindexes exactly those, so listing them in the
@@ -9292,15 +9292,19 @@ async def list_all_page_slugs() -> list[dict]:
     own since the predicate is evaluated live.
     Fine as a single query at hundreds/thousands of rows; revisit (batching,
     a sitemap index + sub-sitemaps) only once actually approaching the
-    ~50k-URL point where Google expects that split."""
+    ~50k-URL point where Google expects that split.
+    `exclude_slugs`: old slugs that 301 elsewhere (archive/main.py's
+    `_SLUG_REDIRECTS` keys) -- a redirecting URL in a sitemap is a Search
+    Console "Page with redirect" flag (2026-09-16)."""
+    conditions = [MeetingPage.platform != "unknown", ~_is_empty_page_condition()]
+    excluded = list(exclude_slugs)
+    if excluded:
+        conditions.append(MeetingPage.slug.notin_(excluded))
     async with async_session() as session:
         rows = (
             await session.execute(
                 select(MeetingPage.slug, MeetingPage.updated_at)
-                .where(
-                    MeetingPage.platform != "unknown",
-                    ~_is_empty_page_condition(),
-                )
+                .where(*conditions)
                 .order_by(MeetingPage.updated_at.desc())
             )
         ).all()
