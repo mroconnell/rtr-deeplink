@@ -82,15 +82,36 @@ DEFAULT_SOURCE = (
 # --- shared readers ---------------------------------------------------
 
 
+def _decode_census_bytes(raw: bytes) -> str:
+    """Census/StatCan source bytes -> text, one LINE at a time: UTF-8 when
+    the line is valid UTF-8, else latin-1.
+
+    A blanket latin-1 decode turned the rows whose real bytes are UTF-8
+    into mojibake ("La CaÃ±ada Flintridge city", Bayamón, Mayagüez, Doña
+    Ana: 23 rows, hand-fixed in PR #855). A blanket UTF-8 decode would
+    break the genuinely latin-1 rows instead. Per line, a real latin-1
+    accent (a lone high byte) is never valid UTF-8, so each line decodes
+    as what it really is. Pure-ASCII lines read the same either way.
+    """
+    out = []
+    for line in raw.splitlines(keepends=True):
+        try:
+            out.append(line.decode("utf-8"))
+        except UnicodeDecodeError:
+            out.append(line.decode("latin-1"))
+    text = "".join(out)
+    return text[1:] if text.startswith("\ufeff") else text
+
+
 def _read_gazetteer(source_dir: Path, txt_name: str) -> List[dict]:
-    """A Gazetteer .txt (tab-separated, latin-1, header columns padded
+    """A Gazetteer .txt (tab-separated, mostly latin-1, header columns padded
     with trailing spaces), from the extracted file or its .zip."""
     zip_path = source_dir / txt_name.replace(".txt", ".zip")
     if (source_dir / txt_name).exists():
-        text = (source_dir / txt_name).read_text(encoding="latin-1")
+        text = _decode_census_bytes((source_dir / txt_name).read_bytes())
     elif zip_path.exists():
         with zipfile.ZipFile(zip_path) as zf:
-            text = zf.read(txt_name).decode("latin-1")
+            text = _decode_census_bytes(zf.read(txt_name))
     else:
         raise SystemExit(f"missing source file: {source_dir / txt_name}")
     rows = []
@@ -499,7 +520,7 @@ def _sgc_structure_rows(source_dir: Path) -> List[dict]:
     path = source_dir / "sgc_2021" / "sgc-cgt-2021-structure-eng.csv"
     if not path.exists():
         raise SystemExit(f"missing source file: {path}")
-    return list(csv.DictReader(path.read_text(encoding="latin-1").splitlines()))
+    return list(csv.DictReader(_decode_census_bytes(path.read_bytes()).splitlines()))
 
 
 def build_ca_csd(source_dir: Path) -> None:
