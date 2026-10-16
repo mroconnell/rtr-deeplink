@@ -238,6 +238,11 @@ _URL_RE = re.compile(r"/vod/([^/?#]+)/(?:video|private)/([^/?#]+)")
 _PLAYLIST_URL_RE = re.compile(r"/vod/([^/?#]+)/playlist/([^/?#]+)")
 _HUB_URL_RE = re.compile(r"/vod/([^/?#]+)/?(?:[?#]|$)")
 _TITLE_DATE_RE = re.compile(r"^(.*?)\s*-\s*([A-Za-z]+ \d{1,2},? \d{4})$")
+# Numeric dates at either end of the title: Manchester, NH's
+# "08/25/26 Heritage Commission" (manchestertv, 2026-09-14) and Vero
+# Beach, FL's "City Council 08/25/2026". A two-digit year is 20xx.
+_LEADING_NUMERIC_DATE_RE = re.compile(r"^(\d{1,2})/(\d{1,2})/(\d{2}|\d{4})\s+(.+)$")
+_TRAILING_NUMERIC_DATE_RE = re.compile(r"^(.+?)\s+(\d{1,2})/(\d{1,2})/(\d{2}|\d{4})$")
 _DESTINYHOSTED_TENANT_ID_RE = re.compile(r"destinyhosted\.com/(\d+)/")
 
 VIDEO_INFO_URL = "https://imd0mxanj2.execute-api.us-west-2.amazonaws.com/upload/info"
@@ -607,7 +612,7 @@ class CastusAssetFinder(AssetFinder):
         raw_title = raw_title.strip()
         match = _TITLE_DATE_RE.match(raw_title)
         if not match:
-            return raw_title or None, None
+            return CastusAssetFinder._split_numeric_title_date(raw_title)
         title, date_text = match.groups()
         for fmt_text in (date_text, date_text.replace(",", "")):
             for fmt in ("%B %d %Y", "%b %d %Y"):
@@ -620,6 +625,27 @@ class CastusAssetFinder(AssetFinder):
                 except ValueError:
                     continue
         return title.strip() or None, None
+
+    @staticmethod
+    def _split_numeric_title_date(
+        raw_title: str,
+    ) -> Tuple[Optional[str], Optional[str]]:
+        from datetime import date as _date
+
+        leading = _LEADING_NUMERIC_DATE_RE.match(raw_title)
+        trailing = None if leading else _TRAILING_NUMERIC_DATE_RE.match(raw_title)
+        if leading:
+            month, day, year, title = leading.groups()
+        elif trailing:
+            title, month, day, year = trailing.groups()
+        else:
+            return raw_title or None, None
+        year_num = int(year) + 2000 if len(year) == 2 else int(year)
+        try:
+            parsed = _date(year_num, int(month), int(day))
+        except ValueError:
+            return raw_title or None, None
+        return title.strip() or None, parsed.isoformat()
 
     @staticmethod
     async def _agenda_and_jurisdiction(

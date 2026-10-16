@@ -434,3 +434,26 @@ async def test_resolve_accepts_private_path_segment():
 
     assert result.external_id == "castus:comm7tv:6a83b3f9d94c83000226f83d"
     assert result.video_url == HLS_URL
+
+
+def test_split_title_date_reads_a_numeric_date_at_either_end():
+    # Real title shapes: Manchester, NH (manchestertv, 2026-09-14) leads
+    # with "MM/DD/YY"; Vero Beach, FL ends with "MM/DD/YYYY".
+    assert CastusAssetFinder._split_title_date("08/25/26 Heritage Commission") == (
+        "Heritage Commission",
+        "2026-08-25",
+    )
+    assert CastusAssetFinder._split_title_date("City Council 08/25/2026") == (
+        "City Council",
+        "2026-08-25",
+    )
+    # No date in the title: title kept, no date guessed.
+    assert CastusAssetFinder._split_title_date("Heritage Commission") == (
+        "Heritage Commission",
+        None,
+    )
+    # Not a real calendar date: left alone.
+    assert CastusAssetFinder._split_title_date("13/45/26 Heritage Commission") == (
+        "13/45/26 Heritage Commission",
+        None,
+    )
