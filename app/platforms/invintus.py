@@ -218,10 +218,10 @@ CLIENT_PLACE_PREFIXES = {
     # Board of Health, Land Use Hearings, Veterans Advisory Board,
     # Commission on Aging) and every "Vancouver ..." one a City of
     # Vancouver body (City Council, Planning Commission, Land Use
-    # Hearings). "Port of Vancouver ..." does not start with "Vancouver"
-    # and stays blank, as do C-TRAN and the Regional Transportation
-    # Council: none has a registry id. "City Council Workshops" names no
-    # city, in its category or its description, so it stays blank too.
+    # Hearings). "Port of Vancouver ..." does not start with "Vancouver";
+    # it, C-TRAN and the Regional Transportation Council are their own
+    # governments (`CLIENT_BODY_GOVERNMENTS`). "City Council Workshops"
+    # names no city, in its category or its description, so it stays blank.
     "2917038973": ("Clark County", "Vancouver"),
 }
 
@@ -233,10 +233,21 @@ CLIENT_PLACE_PREFIXES = {
 CLIENT_BODY_GOVERNMENTS = {
     # CVTV (WO-1067, 2026-09-25): two separate governments in Clark
     # County, each with its own Census of Governments unit. The Regional
-    # Transportation Council has no registry id and stays blank.
+    # Transportation Council is the Southwest Washington RTC, the region's
+    # transportation planning body; not a Census unit, its registry id was
+    # minted 2026-10-16 on Ryan's yes.
     "2917038973": {
         "Port of Vancouver Board of Commissioners": "Port of Vancouver",
         "C-TRAN Board of Directors": "C-TRAN",
+        "Regional Transportation Council": (
+            "Southwest Washington Regional Transportation Council"
+        ),
+    },
+    # Pierce County channel (2026-10-16, Ryan's yes): the Tacoma-Pierce
+    # County Health Department's Board of Health, its own government, not
+    # Pierce County's or Tacoma's. Not a Census unit; id minted the same day.
+    "1872740071": {
+        "Tac-PC Board of Health": "Tacoma-Pierce County Health Department",
     },
 }
 
@@ -732,10 +743,9 @@ class InvintusAssetFinder(AssetFinder):
         authority, or a top entry listed in the channel's
         `body_governments` (from `CLIENT_BODY_GOVERNMENTS`: CVTV's "Port
         of Vancouver Board of Commissioners" -> "Port of Vancouver", its
-        own government). Anything else, like
-        "Tac-PC Board of Health", is returned as-is with no state,
-        because "Tac-PC Board of Health, WA" would mint a fake
-        government."""
+        own government). Anything else, like CVTV's "City Council
+        Workshops", is returned as-is with no state, because
+        "City Council Workshops, WA" would mint a fake government."""
         names = [c.strip() for c in (categories or []) if c and c.strip()]
         if not names:
             return None, None
