@@ -2355,6 +2355,44 @@ async def internal_correct_warnings(
     return result
 
 
+class CorrectTextRequest(BaseModel):
+    slug: str
+    # 0-based, the same numbering drop-segments uses.
+    segment_index: int
+    old_text: str
+    new_text: str
+    version_id: Optional[int] = None
+
+
+@app.post("/internal/transcript-version/correct-text")
+async def internal_correct_text(
+    req: CorrectTextRequest, authorization: Optional[str] = Header(None)
+):
+    """Fix a wrong word or name in one segment (WO-1964). Take the right
+    spelling from the meeting's own agenda, never from captions alone
+    (BACKLOG_DONE.md WO-1964). See crud.correct_transcript_segment_text()
+    for why it edits in place and where the change record lives."""
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    result = await crud.correct_transcript_segment_text(
+        slug=req.slug,
+        segment_index=req.segment_index,
+        old_text=req.old_text,
+        new_text=req.new_text,
+        version_id=req.version_id,
+    )
+    if result is None:
+        return JSONResponse(
+            {"error": "not_found", "message": "No matching meeting page/version."},
+            status_code=404,
+        )
+    if "error" in result:
+        status = 409 if result["error"].startswith("old_text_not") else 400
+        return JSONResponse(result, status_code=status)
+    return result
+
+
 class SaveMeetingRequest(BaseModel):
     clerk_user_id: str
     slug: str
