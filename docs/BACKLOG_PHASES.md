@@ -348,8 +348,7 @@ compares a finished transcript with the video's length:
   It runs when a transcription job is created, so it never sees a
   transcript that finishes later.
 
-**Rules for the own-Whisper marker (built 2026-10-16 on Ryan's yes, with the
-tail-silence check: `coverage_check.own_transcript_early_end_warning()`).**
+**Rules for the own-Whisper marker (for the held piece, when it is built).**
 
 1. **Reuse the existing marker.** `_EARLY_TRUNCATION_MARKER` ("may end before
    the meeting did") is already in `_TRUNCATION_MARKERS` and wired into the
@@ -365,10 +364,10 @@ tail-silence check: `coverage_check.own_transcript_early_end_warning()`).**
    length. Gaps inside the transcript are normal, because the voice filter
    legitimately skips silence, and WO-928 found no reliable marker of which
    pages that affects. Trailing silence is the false-positive risk, and
-   WO-935 found it is the usual cause of a short last cue. Changed with
-   Ryan's yes (2026-10-16): the check now samples 30 seconds of audio
-   halfway between the last cue and the end, and skips the warning if the
-   mean volume is under -60 dB. No reading of the tail means no warning.
+   WO-935 found it is the usual cause of a short last cue. The fix under
+   discussion samples 30 seconds of audio halfway between the last cue and
+   the end, and skips the warning if it is silent. That changes this rule,
+   so it needs Ryan's yes.
 4. **Use a real length, never a guess.** The cloud path has
    `probed_duration_seconds`. The local script needs its own probe. A page
    with no stored length is counted as unmeasurable, not flagged.
@@ -434,9 +433,9 @@ tail-silence check: `coverage_check.own_transcript_early_end_warning()`).**
   not related or under the wrong government, 6 unclear.)
 - A bad audio chunk fails instead of being transcribed short (WO-935 A and
   B: merged, live after the deploy).
-- The own-transcript early-end warning was held by Ryan's decision
-  (2026-09-21) and does not gate Phase 1. Built 2026-10-16 on his yes, as one
-  piece with the tail-silence check.
+- The own-transcript early-end warning is held by Ryan's decision (2026-09-21)
+  and does not gate Phase 1. It comes back as one piece with a tail-silence
+  check.
 
 **Decided by Ryan, 2026-09-21: no blocking Archive check (409).** WO-932
 counted it: 12 of 10,280 pages would be refused; 10 look like correct pages
@@ -637,7 +636,7 @@ These come from Needs a human. Each one blocks or feeds a deliverable.
 | "A video whose own title is a camera or file name" | Decided 2026-09-21: the fallback title is "<government name> archive video" on every platform, with the month and year (not the exact day) when a date is known, because upload and filming dates can differ | A small build |
 | "A bare YouTube channel-listing scan measurably ingests non-meeting" | Look at 4 titles that still pass and pick a design | Phase 1 follow-up |
 | "The Archive files a page under whatever `gov_id`" | Yes or no on refusing a state mismatch (12 of 10,280 pages; WO-932 advises not yet) | Phase 1 |
-| "Own transcription: a warning for a transcript that stops early" | Said yes 2026-10-16; built with the tail-silence check. Deploy, then run the count from the Archive's Render shell | Nothing |
+| "Own transcription: a warning for a transcript that stops early" | Held. Say when to build it with the tail-silence check | Later |
 | "Sequatchie County, TN's page (id 7377) is not a real" | Nothing: the page is already gone (checked 2026-09-21) | Nothing |
 | "3 live/pending Archive pages need `POST" | Nothing: all three are already keyed right | Nothing |
 | "One live page is keyed to the wrong government: a real" | Nothing: page 7328 already shows Chenango Town, NY | Nothing |
