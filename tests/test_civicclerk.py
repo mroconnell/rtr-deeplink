@@ -963,3 +963,35 @@ async def test_portal_listing_http_error_on_page_one_still_raises():
                 "https://pagedca.portal.civicclerk.com/"
             )
     assert not isinstance(exc_info.value, CalendarPageError)
+
+
+async def test_resolve_does_not_pass_a_bare_youtube_channel_url_as_video():
+    # WO-350 (2026-09-13): South Kingstown town RI's event 2286 had a bare
+    # `youtube.com/channel/...` link in externalVideoUrl. A YouTube host
+    # with no video id is a lead, not this meeting's video.
+    url = "https://southkingstownri.portal.civicclerk.com/event/2286/media"
+    event_json = (
+        '{"id": 2286, "eventName": "Town Council Meeting", '
+        '"eventDate": "2026-09-08T23:00:00Z", '
+        '"eventLocation": {"city": "Wakefield", "state": "Rhode Island", '
+        '"zipCode": "02879"}}'
+    )
+    channel = "https://www.youtube.com/channel/UCabcdefghijklmnopqrstuv"
+    media_json = json.dumps(
+        {"id": 2286, "externalVideoUrl": channel, "eventBookmarks": []}
+    )
+    routes = {
+        "https://southkingstownri.api.civicclerk.com/v1/Events/2286": FakeResponse(
+            status=200, text=event_json
+        ),
+        "https://southkingstownri.api.civicclerk.com/v1/EventsMedia/2286": FakeResponse(
+            status=200, text=media_json
+        ),
+    }
+
+    with mock_session(routes):
+        result = await CivicClerkAssetFinder().resolve(url)
+
+    assert result.video_url is None
+    assert result.video_format is None
+    assert any(channel in w for w in result.video_warnings)

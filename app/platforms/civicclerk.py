@@ -131,6 +131,22 @@ def _reconstruct_cdn_stream_url(path: str) -> Optional[str]:
     return f"https://cpmedia.azureedge.net/{tenant.lower()}/{rest}"
 
 
+_YOUTUBE_HOSTS = frozenset(
+    {
+        "youtube.com",
+        "www.youtube.com",
+        "m.youtube.com",
+        "youtu.be",
+        "youtube-nocookie.com",
+        "www.youtube-nocookie.com",
+    }
+)
+
+
+def _is_youtube_host(url: str) -> bool:
+    return (urlparse(url).hostname or "").lower() in _YOUTUBE_HOSTS
+
+
 class CivicClerkAssetFinder(AssetFinder):
     """Resolves video + transcript/chapters for a CivicClerk meeting page.
 
@@ -374,6 +390,17 @@ class CivicClerkAssetFinder(AssetFinder):
                     video_url = cablecast_delegated.video_url
                     video_format = cablecast_delegated.video_format
                     video_warnings.extend(cablecast_delegated.video_warnings)
+                elif _is_youtube_host(video_url):
+                    # WO-350 (South Kingstown RI, event 2286): the field was
+                    # a bare youtube.com/channel/... link -- a YouTube host
+                    # with no video id. That's a lead, not this meeting's
+                    # video, so it never goes out as video_url.
+                    video_warnings.append(
+                        "This event links a YouTube channel or page, not one "
+                        f"meeting video: {video_url}"
+                    )
+                    video_url = None
+                    video_format = None
 
             # Real order confirmed live (Emporia, KS, event 585):
             # closedCaptionUrl and closedCaptionTracks[0].file point at the
