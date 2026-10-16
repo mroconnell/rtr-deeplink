@@ -66,3 +66,14 @@ async def test_list_all_page_slugs_excludes_unknown_platform():
     slugs = {entry["slug"] for entry in await crud.list_all_page_slugs()}
     assert indexable_slug in slugs
     assert noindexed_slug not in slugs
+
+
+async def test_sitemap_excludes_old_slugs_that_301(monkeypatch):
+    # A reslugged page's old slug 301s through _SLUG_REDIRECTS; listing it
+    # drew Search Console's "Page with redirect" flag (2026-09-16).
+    old_slug = await _seed("granicus", "granicus:sitemap-redirected-old")
+    new_slug = await _seed("granicus", "granicus:sitemap-redirected-new")
+    monkeypatch.setitem(archive.main._SLUG_REDIRECTS, old_slug, new_slug)
+    response = client.get("/sitemap.xml")
+    assert f"/m/{old_slug}</loc>" not in response.text
+    assert f"/m/{new_slug}</loc>" in response.text
