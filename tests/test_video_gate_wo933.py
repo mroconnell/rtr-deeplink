@@ -1115,3 +1115,39 @@ def test_a_french_promo_title_is_still_rejected():
         title="Promo : séance d'information du conseil", platform="youtube"
     )
     assert verdict.verdict == REJECT and verdict.reason == "promo_title"
+
+
+# --- WO-235 / WO-247 hand-caught non-meetings (backlog triage 2026-10-16) ---
+
+
+@pytest.mark.parametrize(
+    "title, word",
+    [
+        # Titles as the WO-235/WO-247 hand reviews recorded them.
+        ("Pullman City Council Recap", "recap"),
+        ("Worthington City Council Resumen", "resumen"),  # shape of the real clips
+        ("UPAR Information Session", "information session"),
+        ("Lone Tree Planning Commission is Seeking New Members", "seeking new members"),
+        ("Board's Personal Meeting Room", "personal meeting room"),
+        ("FDA Food Code Training Virtual Session", "training virtual session"),
+        ("Mayor Neil Perry Agenda Review Podcast", "podcast"),
+        ("Mayor's Minute", "mayor's minute"),
+        ("Special Episode City Council Update", "special episode"),
+    ],
+)
+def test_hand_caught_non_meeting_titles_are_rejected(title, word):
+    verdict = assess_video_candidate(title=title, platform="youtube")
+    assert verdict.verdict == REJECT and verdict.reason == "promo_title"
+    assert vhc.blocklisted_word(title) == word
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "City Council Regular Session - September 8, 2026",
+        "Board of Supervisors Work Session",
+        "Planning Commission Special Meeting",
+    ],
+)
+def test_real_meeting_titles_still_pass_the_wider_blocklist(title):
+    assert assess_video_candidate(title=title, platform="youtube").passed

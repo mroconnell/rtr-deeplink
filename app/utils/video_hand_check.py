@@ -380,6 +380,30 @@ PROMO_BLOCKLIST = (
     # meeting recording. Ingested live before being caught by hand;
     # flagged for deletion (BACKLOG_DONE.md's WO-187 entry).
     "interview",
+    # Real, confirmed-by-hand misses from WO-235 (2026-09-11) and WO-247
+    # (2026-09-12): each title carries a body word but is not a meeting
+    # recording (backlog triage 2026-10-16).
+    # Pullman WA's "Pullman City Council Recap" clips (96-141 s) and
+    # Worthington MN's Spanish "Resumen" clips (58-75 s).
+    "recap",
+    "resumen",
+    # North Battleford SK's "UPAR Information Session" series.
+    "information session",
+    # Lone Tree CO's "... Planning Commission is Seeking New Members".
+    "seeking new members",
+    # Knox County IL's "Board's Personal Meeting Room" (an unused Zoom room).
+    "personal meeting room",
+    # West Haven CT's "FDA Food Code Training Virtual Session" ("training
+    # video" above did not match it).
+    "training session",
+    "training virtual session",
+    # Methuen MA's "Mayor Neil Perry Agenda Review Podcast".
+    "podcast",
+    # Produced shows: Havelock NC's "Mayor's Minute", Sidney OH's "Special
+    # Episode City Council Update".
+    "mayor's minute",
+    "mayor\u2019s minute",
+    "special episode",
 )
 
 
