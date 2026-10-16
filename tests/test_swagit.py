@@ -308,6 +308,21 @@ def test_extract_metadata_strips_a_revised_marker_from_jurisdiction():
     assert jurisdiction == "Long Beach, CA"
 
 
+def test_extract_metadata_keeps_a_hyphenated_place_name_whole():
+    # Real title, hastingsonhudsonny.swagit.com (checked live 2026-09-29):
+    # the separator regex used to accept a bare "-", so it split on the
+    # hyphen inside "Hastings-on-Hudson" and returned "Hudson, NY" -- a
+    # different real government.
+    soup = BeautifulSoup(
+        "<html><head><title>Oct 08, 2024 Information Session on the Plus One ADU Program - Hastings-on-Hudson, NY</title></head></html>",
+        "html.parser",
+    )
+    title, date, jurisdiction = SwagitAssetFinder._extract_metadata(soup)
+    assert title == "Oct 08, 2024 Information Session on the Plus One ADU Program"
+    assert date == "2024-10-08"
+    assert jurisdiction == "Hastings-on-Hudson, NY"
+
+
 # Real bug found live 2026-08-18: pasting a Swagit `/videos/{id}/transcript`
 # URL (a real, purpose-built transcript download distinct from the
 # `/videos/{id}` page -- see swagit.py's class docstring and

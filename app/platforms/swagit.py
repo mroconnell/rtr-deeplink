@@ -1028,8 +1028,11 @@ class SwagitAssetFinder(AssetFinder):
         # match instead backtracks from the end, always landing on the
         # *last* " - " before ", {State}$", which is the real city
         # boundary in every real title shape seen so far (both this one
-        # and the plain no-marker case).
-        match = re.match(r"^(.*)\s*-\s*([^,]+),\s*([A-Za-z]{2})\s*$", raw_title)
+        # and the plain no-marker case). The separator needs a space on
+        # both sides: a bare "-" also matched the hyphen inside a
+        # hyphenated place name, so "... - Hastings-on-Hudson, NY" (real,
+        # 2026-09-29) came out as "Hudson, NY", a different real city.
+        match = re.match(r"^(.*)\s+-\s+([^,]+),\s*([A-Za-z]{2})\s*$", raw_title)
         title, jurisdiction = raw_title or None, None
         date = None
         if match:
