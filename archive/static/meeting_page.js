@@ -899,6 +899,9 @@ document.addEventListener('DOMContentLoaded', () => {
   wireSaveMeetingButton();
   wireVersionAnalytics();
   wireRefreshPageButton();
+  // shared_static/meeting_tools.js: find bar, click-to-show agenda
+  // viewer, theater mode and player resize.
+  initMeetingTools();
 
   const wrapper = document.getElementById('videoWrapper');
   if (!wrapper) return;

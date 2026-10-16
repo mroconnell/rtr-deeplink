@@ -13,11 +13,12 @@
 // functions but no longer define them.
 
 let segments = [];
-// Only ever toggled on the resolver's page (its "Auto-scroll: On/Off"
-// button, #toggleAutoScrollBtn in player.js) -- the Archive page has no
-// such toggle and never changes this, so highlightSegment() below always
-// respects scrollIntoView alone there, same as before this file existed.
-let autoScrollEnabled = true;
+// Toggled by the "Auto-scroll: On/Off" button (#toggleAutoScrollBtn) on
+// both meeting pages. Off by default (Ryan, 2026-10-16): following the
+// playhead moved the page under a reader who had not asked for it. It
+// gates only the continuous "follow along" scroll; a deliberate jump (a
+// deep link, "Go to time") still scrolls -- see highlightSegment().
+let autoScrollEnabled = false;
 
 function getQueryParams() {
   return new URLSearchParams(window.location.search);
@@ -91,7 +92,7 @@ function highlightSegment(segId, scrollIntoView, scrollBlock = 'center') {
   const el = document.getElementById(segId);
   if (!el) return;
   el.classList.add('playing');
-  if (scrollIntoView && autoScrollEnabled) {
+  if (scrollIntoView) {
     // 'center' (the default) is for deliberate one-time jumps -- a
     // deep-link on page load, a "Go to time" submit, a transcript-line
     // click -- where recentering the target is exactly what was asked
@@ -103,6 +104,8 @@ function highlightSegment(segId, scrollIntoView, scrollBlock = 'center') {
     // (2026-08-08): 'center' on every tick made the page jerk down to
     // the transcript continuously during normal playback, even when the
     // reader had deliberately scrolled elsewhere to read the agenda.
+    // The auto-scroll toggle is checked by those 'nearest' callers
+    // themselves, not here, so a deep link still scrolls with it off.
     el.scrollIntoView({ behavior: 'smooth', block: scrollBlock });
   }
 }

@@ -277,6 +277,7 @@
      control renders itself only when the adapter declares speed support,
      and this page has four possible players. -#}
   <link rel="stylesheet" href="/shared-static/playback_speed.css">
+  <link rel="stylesheet" href="/shared-static/meeting_tools.css">
 {% endblock %}
 {% block content %}
   {#- User request 2026-08-11 (re-requested independently after already
@@ -455,11 +456,14 @@
           <video id="meetingVideo" controls playsinline preload="auto" src="{{ player_video_url }}"></video>
           {% endif %}
         </div>
-        {% if page.agenda_items or (active_version and active_version.segments) %}
         <div class="video-subtoolbar">
-          <button id="toggleAutoScrollBtn" class="btn btn-outline-secondary" title="Toggle auto-scroll">Auto-scroll: <span id="autoScrollState">On</span></button>
+          {% if page.agenda_items or (active_version and active_version.segments) %}
+          <button id="toggleAutoScrollBtn" class="btn btn-outline-secondary" title="Toggle auto-scroll">Auto-scroll: <span id="autoScrollState">Off</span></button>
+          {% endif %}
+          {#- Desktop only (hidden under 900px by meeting_tools.css).
+             Wired by shared_static/meeting_tools.js. #}
+          <button id="theaterModeBtn" type="button" class="btn btn-outline-secondary theater-mode-btn" aria-pressed="false" title="Show the video full width, with the transcript below it">Theater mode</button>
         </div>
-        {% endif %}
       </div>
       {% else %}
       {#- Real fix, 2026-08-10 (see BACKLOG_DONE.md) -- MeetingPage now has
@@ -555,6 +559,18 @@
     </div>
 
     <div id="transcriptColumn">
+    {% if page.agenda_items or (active_version and active_version.segments) %}
+    {#- Find bar over the agenda and transcript (Ryan, 2026-10-16): phones
+       have no easy Ctrl+F. Sticks to the top of the screen on narrow
+       screens. Wired by shared_static/meeting_tools.js's initFindBar(),
+       the same code the resolver's page uses. #}
+    <div id="transcriptSearch" class="transcript-search find-bar" role="search">
+      <input id="transcriptSearchInput" type="search" placeholder="Find in agenda and transcript&hellip;" aria-label="Find in agenda and transcript" enterkeyhint="search">
+      <span id="transcriptSearchCount" class="transcript-search-count" aria-live="polite"></span>
+      <button id="transcriptSearchPrev" type="button" class="btn btn-sm btn-outline-secondary" title="Previous match" aria-label="Previous match">&#9650;</button>
+      <button id="transcriptSearchNext" type="button" class="btn btn-sm btn-outline-secondary" title="Next match" aria-label="Next match">&#9660;</button>
+    </div>
+    {% endif %}
     {% if page.agenda_items or page.agenda_link %}
     {#- Some sources (confirmed: several CivicClerk cities' eventBookmarks)
        report every agenda item at the exact same instant -- e.g. 26
@@ -587,13 +603,21 @@
       <p class="source-guess">We think we found an agenda here: <a href="{{ page.agenda_link }}" target="_blank" rel="noopener noreferrer">{{ page.agenda_link }}</a></p>
       {% else %}
       <p class="source-guess">Agenda: <a href="{{ page.agenda_link }}" target="_blank" rel="noopener noreferrer">{{ page.agenda_link }}</a></p>
-      {# Cheapest version of an inline agenda viewer -- zero backend
-         change, per BACKLOG.md's "PDF agenda links are never rendered
-         inline" entry. The link above stays as a fallback: agenda_link
-         is set by ~30 independent adapters pointing at arbitrary
-         government/vendor hosts, and some will refuse framing
-         (X-Frame-Options/CSP) with no way to detect that server-side. #}
-      <iframe class="agenda-inline-frame" src="{{ page.agenda_link }}" title="Meeting agenda document" loading="lazy" referrerpolicy="no-referrer"></iframe>
+      {#- Inline agenda viewer, loaded on request only (Ryan,
+         2026-10-16). It used to be an <iframe src> that loaded with the
+         page, and some agenda links made the browser download the file
+         on page load: a server that sends it as an attachment, a wrapper
+         that falls through to the raw file (tests/test_granicus.py's
+         Walnut CA case), or a phone browser that cannot show a PDF in a
+         frame. None of that is detectable here, so nothing from the
+         agenda's host loads until the reader clicks.
+         shared_static/meeting_tools.js builds the frame on click. The
+         button is hidden on touch screens (meeting_tools.css), where a
+         framed PDF usually downloads anyway; the link above opens it in a
+         new tab instead. #}
+      <div class="agenda-viewer">
+        <button type="button" class="btn btn-sm btn-outline-secondary agenda-frame-toggle" data-src="{{ page.agenda_link }}" aria-expanded="false">Show the agenda here</button>
+      </div>
       {% endif %}
       {% endif %}
       {#- packet_link (2026-08-31): the fuller agenda-plus-every-staff-
@@ -750,5 +774,6 @@
   {#- Before meeting_page.js: it reads PLAYBACK_RATE_LADDER when building
      an adapter and calls initPlaybackSpeed() from wireSharedControls. -#}
   <script src="/shared-static/playback_speed.js"></script>
+  <script src="/shared-static/meeting_tools.js"></script>
   <script src="/archive-static/meeting_page.js"></script>
 {% endblock %}

@@ -3112,8 +3112,22 @@ What you can actually do once a meeting page has loaded:
 - **Transcript**: click a line to seek + highlight; a chain-link icon per
   line (visible on hover, or ambiently on the current line while paused)
   copies a link to that line without disturbing playback.
-- **Search**: mirrors browser Ctrl+F — highlights every match, "N/M" count,
-  cycles with prev/next or Enter/Shift+Enter.
+- **Find bar**: mirrors browser Ctrl+F over the agenda and the transcript —
+  highlights every match, "N/M" count, cycles with prev/next or
+  Enter/Shift+Enter, Esc clears. On a narrow screen it sticks to the top of
+  the screen, since phones have no easy Ctrl+F. Same code on both meeting
+  pages (`shared_static/meeting_tools.js`).
+- **Auto-scroll is off by default** (2026-10-16). The toggle turns on
+  "follow the playhead"; a deep link or "Go to time" scrolls either way.
+- **Agenda document viewer loads on click only** (Archive page,
+  2026-10-16). It used to frame `agenda_link` on page load, and some links
+  made the browser download the file. Now a "Show the agenda here" button
+  builds the frame; it is hidden on touch screens, where the plain link
+  opens the document instead.
+- **Theater mode and player resize** (desktop, both pages): a "Theater
+  mode" button puts the video full width with the transcript below it, and
+  a drag handle between the columns sets the player's width (double-click
+  resets). Both are remembered in `localStorage`.
 - **Manual timestamp entry**: a "Go to time" box in the toolbar (accepts
   `H:MM:SS`, `M:SS`, or plain seconds) — works even with no transcript,
   since deep-linking is the point even when there's nothing to click.
