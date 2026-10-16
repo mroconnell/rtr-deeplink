@@ -62,7 +62,19 @@ TENANT_HINTS_HEADER = ["tenant_host", "state", "source", "evidence"]
 
 # A `source` value starting with this marks a hand-written row. Only such
 # a row's `aliases` are trusted for LOOKUP -- see `curated_aliases()`.
-CURATED_SOURCE_PREFIX = "curated"
+#
+# 2026-10-16: also the governments our Find Meeting jobs mint into
+# `governments.csv` (`findmeeting-tx-spd-...`, `findmeeting-pn-mint-563-...`,
+# `findmeeting-match381-mint-...`, `findmeeting-pn-mint-held13-...`). Those
+# rows are a human-approved registry entry (Ryan approved each mint batch),
+# so their own name must find them: before, 291 of 305 Texas mints resolved
+# to their own id only at tier `unverified` (minted again from the name),
+# 14 resolved to a different id (12 to the county/place row sharing the
+# first words of the name, 2 to a slug that differs from the minted id's).
+# A mint row never beats a hand-written or national row of the same name --
+# see `curated_aliases()`.
+MINT_SOURCE_PREFIX = "findmeeting-"
+CURATED_SOURCE_PREFIX = ("curated", MINT_SOURCE_PREFIX)
 
 # The only relations D2 allows. Deliberately few, and deliberately not a
 # general "related to": a JPA's members and a fire district's served
@@ -664,8 +676,20 @@ def curated_aliases() -> Dict[Tuple[str, str], str]:
     `aliases` bought nothing.
     """
     out: Dict[Tuple[str, str], str] = {}
-    for gov in governments().values():
+    all_govs = governments().values()
+    # Names a mint row must not take over: every non-mint row's own name
+    # (a national-table row or a hand-written one) in the same state.
+    claimed = {
+        (g.state.upper(), g.gov_name.strip().lower())
+        for g in all_govs
+        if not g.source.startswith(MINT_SOURCE_PREFIX)
+    }
+    mint_rows = []
+    for gov in all_govs:
         if not gov.source.startswith(CURATED_SOURCE_PREFIX):
+            continue
+        if gov.source.startswith(MINT_SOURCE_PREFIX):
+            mint_rows.append(gov)
             continue
         keys = set(gov.aliases)
         keys.add(gov.gov_name)
@@ -673,6 +697,11 @@ def curated_aliases() -> Dict[Tuple[str, str], str]:
             key = alias.strip().lower()
             if key:
                 out[(gov.state.upper(), key)] = gov.gov_id
+    # Mint rows go in last, by name only, and never over an existing key.
+    for gov in mint_rows:
+        key = (gov.state.upper(), gov.gov_name.strip().lower())
+        if key[1] and key not in claimed and key not in out:
+            out[key] = gov.gov_id
     return out
 
 
