@@ -267,7 +267,7 @@ Reliability, ops & cost  (6)
   `/coverage` as a QA surface
 
 Trust, safety & data quality  (11)
-  No endpoint can correct a wrong word or name in a stored transcript
+  Known wrong names in Whisper transcripts are not fixed yet…
   Pinned hosts: machine-made pins with no Archive pages yet are…
   2 already-pinned YouTube channels still disagree with the Archive's…
   27 real Quebec municipalities are marked `reject_reason=off-mission`,…
@@ -358,7 +358,7 @@ something hasn't been decided.
 ### English Whisper stays shown over a station's English captions; fix wrong names instead `[STANDING]`
 
 - **Issue**: some pages hold two English versions: our Whisper transcript and the station's own captions. Whisper reads more cleanly. The captions are more word-for-word and sometimes get a name right that Whisper missed ("Groton Hill", not "Grotten Hill").
-- **What this means**: Ryan, 2026-09-29: keep Whisper shown. Do not promote sourced English captions over it by default. Where a name is wrong, correct the word (see "Trust, safety & data quality": no endpoint can edit transcript words yet).
+- **What this means**: Ryan, 2026-09-29: keep Whisper shown. Do not promote sourced English captions over it by default. Where a name is wrong, correct the word with `POST /internal/transcript-version/correct-text` (WO-1964; see "Trust, safety & data quality").
 - **History**: `BACKLOG_DONE.md` WO-1160 (the 3 TelVue pages, caption versions 12320, 12322, 12326 left hidden).
 
 ### No Viebit meeting can get a real transcript today -- confirmed at both the probe level and the transcription level `[STANDING]`
@@ -2085,13 +2085,13 @@ actionability sections above.
 
 ## Trust, safety & data quality
 
-### No endpoint can correct a wrong word or name in a stored transcript
+### Known wrong names in Whisper transcripts are not fixed yet (correct-text route waits on a deploy)
 
-- **Issue**: the Archive can promote a version, drop segments, and fix a version's language or warning labels. It cannot edit a segment's text. Ryan wants wrong names fixed in the shown Whisper transcript rather than swapping in station captions (Standing decisions).
+- **Issue**: WO-1964 added `POST /internal/transcript-version/correct-text`, which fixes one word or name in one segment. No real page has been corrected with it yet, and it is not live until the Archive is deployed.
 - **Impact**: known wrong names stay on the page. Example: `/m/city-ma-city-council-5-6-2025` (Whisper version 1762) reads "Grotten Hill Music Center"; it is Groton Hill.
-- **Next action**: add an admin-token `POST /internal/transcript-version/correct-text` (page, version id, segment index or time, old text, new text; refuse if the old text is not there). Then take the correct spelling from the meeting's own agenda: it names the members, staff, speakers and places in writing, so it is the source for each fix. Use the government's member list where the agenda does not name someone. Never fix a name from the captions alone.
-- **Constraint**: a caption/Whisper disagreement is a lead, not proof. A word-by-word comparison on the 3 WO-1160 pages (2026-09-29) found dozens of name differences per page; captions were right on some (Groton Hill, Framingham, HVAC), and on many (councilor names) neither text could be confirmed without the agenda. Needs an Archive deploy.
-- **History**: `BACKLOG_DONE.md` WO-1160, WO-1164.
+- **Next action**: after the deploy, fix the Groton Hill example first. For every other fix, take the spelling from the meeting's own agenda: it names the members, staff, speakers and places in writing. Use the government's member list where the agenda does not name someone. Never fix a name from the captions alone.
+- **Constraint**: a caption/Whisper disagreement is a lead, not proof. A word-by-word comparison on the 3 WO-1160 pages (2026-09-29) found dozens of name differences per page; captions were right on some (Groton Hill, Framingham, HVAC), and on many (councilor names) neither text could be confirmed without the agenda.
+- **History**: `BACKLOG_DONE.md` WO-1964, WO-1160, WO-1164.
 
 ### Pinned hosts: machine-made pins with no Archive pages yet are unchecked `[NEEDS-AUDIT]`
 
