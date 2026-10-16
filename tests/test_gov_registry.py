@@ -4261,3 +4261,36 @@ def test_charter_township_of_x_keys_to_the_charter_township(raw):
     match = resolver.resolve_government(raw)
     assert match.gov_id == "us:cousub:2609972820"
     assert not match.meeting_body
+
+
+@pytest.mark.parametrize(
+    "raw, gov_id",
+    [
+        ("Oshtemo Township, MI", "us:cousub:2607761400"),
+        ("Canton Township, MI", "us:cousub:2616313120"),
+        ("Kalamazoo Township, MI", "us:cousub:2607742180"),
+        ("Texas Township, MI", "us:cousub:2607779300"),
+        # A plain township still keys as itself.
+        ("Plainfield Township, MI", "us:cousub:2606964640"),
+    ],
+)
+def test_x_township_falls_back_to_the_census_charter_township(raw, gov_id):
+    """Backlog triage 2026-10-16 (found by WO-1100: Kalamazoo's TelVue
+    station writes "Oshtemo Township"). Census keys these as "<X> charter
+    township", so the plain spelling minted. The retry runs only when
+    the state has no township of the plain name at all."""
+    assert resolver.resolve_government(raw).gov_id == gov_id
+
+
+def test_x_township_charter_fallback_never_picks_from_an_ambiguous_name():
+    """MI has two plain "Bloomfield township" rows (us:cousub:2606309060,
+    2611309080) besides Bloomfield charter township (2612509110), so
+    "Bloomfield Township, MI" is genuinely ambiguous and still mints
+    rather than guessing the Oakland County one. And the fallback never
+    reaches the place table: Kalamazoo is also a city."""
+    assert resolver.resolve_government("Bloomfield Township, MI").tier == (
+        resolver.TIER_UNVERIFIED
+    )
+    assert resolver.resolve_government("Kalamazoo Township, MI").gov_id.startswith(
+        "us:cousub:"
+    )

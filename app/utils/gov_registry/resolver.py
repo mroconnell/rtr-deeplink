@@ -1110,6 +1110,17 @@ def _national_lookup(
         hit = tables.us_cousubs().lookup(name, state)
         if hit:
             return _cousub_result(hit)
+        # "Oshtemo Township, MI": Census keys it "Oshtemo charter township",
+        # so the plain spelling finds nothing and mints. Retry as a charter
+        # township only when the state has NO township of the plain name --
+        # an ambiguous one (MI has two plain Bloomfield townships besides
+        # the charter one) still declines. The cousub table only, so a
+        # village or city of the same name can never answer.
+        base = _TRAILING_TOWNSHIP_RE.sub("", name).strip()
+        if state and base != name and not tables.us_cousubs().lookup_all(name, state):
+            hit = tables.us_cousubs().lookup(f"{base} Charter Township", state)
+            if hit:
+                return _cousub_result(hit)
         return None
 
     # Unclassified or municipality: the general-purpose tables, in the
@@ -1205,6 +1216,10 @@ def _national_lookup(
     if cousub:
         return _cousub_result(cousub)
     return None
+
+
+# Only a plain "X Township" -- "X Charter Township" already keys directly.
+_TRAILING_TOWNSHIP_RE = re.compile(r"(?<!charter)\s+township$", re.I)
 
 
 def _cousub_result(hit) -> Tuple[Government, str, str]:

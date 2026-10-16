@@ -273,14 +273,15 @@ def test_telvue_name_that_matches_the_pin_keeps_the_pinned_tier():
     assert match.tier == TIER_PINNED
 
 
-def test_telvue_oshtemo_stays_blank_because_its_name_only_mints():
+def test_telvue_oshtemo_resolves_to_the_charter_township_by_name():
     # "Oshtemo Township - Planning Commission - September 24, 2026
-    # Meeting". The Census row is "Oshtemo charter township", and the
-    # ladder does not match "Oshtemo Township, MI" to it (it mints), so
-    # the name identifies nobody and the unpinned station stays blank.
+    # Meeting". The Census row is "Oshtemo charter township". This used to
+    # stay blank because "Oshtemo Township, MI" only minted; since the
+    # 2026-10-16 backlog triage the ladder retries the charter spelling,
+    # so the meeting's own name identifies the township.
     # Media id synthetic: the real 1047784 got its own pin in WO-1149.
     match = _resolve("Oshtemo Township", _TELVUE, _KALAMAZOO + "1047799")
-    assert match.gov_id == "rtr:unknown:videoplayer.telvue.com"
+    assert match.gov_id == "us:cousub:2607761400"
 
 
 @pytest.mark.parametrize(
