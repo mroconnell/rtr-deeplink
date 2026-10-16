@@ -4963,6 +4963,11 @@ async def get_page_by_slug(slug: str) -> Optional[dict]:
                     "language": v.language,
                     "source": v.source,
                     "is_default": v.is_default,
+                    # The version picker adds this date when two versions
+                    # share a language and source label.
+                    "created_date": (
+                        v.created_at.date().isoformat() if v.created_at else None
+                    ),
                     "segments": v.segments,
                     "transcript_warnings": v.transcript_warnings or [],
                 }
