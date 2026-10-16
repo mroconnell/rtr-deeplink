@@ -10,6 +10,7 @@ README.md's platform table. Only one real customer checked so far.
 
 from app.platforms.base import detect_platform
 from app.platforms.clerkbase import ClerkBaseAssetFinder
+from app.platforms.models import ResolvedMeeting
 from app.platforms.youtube import YouTubeAssetFinder
 
 from aiohttp_mock import FakeResponse, mock_session
@@ -131,3 +132,53 @@ def test_extract_jurisdiction_from_client_site_slug():
         ClerkBaseAssetFinder._extract_jurisdiction("https://clerkshq.com/help?ajax=1")
         is None
     )
+
+
+def test_extract_jurisdiction_reads_a_lowercase_state_slug():
+    # Real ClerkBase tenant slugs (found by WO-1057's archive comparison)
+    # carry the state in lowercase. The old uppercase-only pattern gave
+    # these no jurisdiction at all.
+    assert (
+        ClerkBaseAssetFinder._extract_jurisdiction("https://clerkshq.com/Scituate-ri")
+        == "Scituate, RI"
+    )
+    assert (
+        ClerkBaseAssetFinder._extract_jurisdiction(
+            "https://clerkshq.com/WestWarwick-ri?docId=x"
+        )
+        == "West Warwick, RI"
+    )
+    # A lowercase run-together place part is not the government's name, so
+    # only the state is taken from it.
+    school_url = "https://clerkshq.com/southkingstownschools-ri"
+    assert ClerkBaseAssetFinder._extract_jurisdiction(school_url) is None
+    assert ClerkBaseAssetFinder._extract_state(school_url) == "RI"
+    # Not a state code: no jurisdiction.
+    assert (
+        ClerkBaseAssetFinder._extract_jurisdiction("https://clerkshq.com/sign-zz")
+        is None
+    )
+
+
+async def test_resolve_adds_slug_state_when_the_place_part_is_unusable(monkeypatch):
+    # Synthetic: the URL is a real tenant slug and the page is the Yellow
+    # Springs fixture's shape. The delegated YouTube result is stubbed with
+    # the stateless name WO-1057 saw for this tenant; no live South Kingstown
+    # sample was fetched for this test.
+    async def fake_resolve_video_id(video_id, source_url=None):
+        return ResolvedMeeting(
+            platform="youtube",
+            source_url=source_url,
+            jurisdiction="South Kingstown School Committee",
+        )
+
+    monkeypatch.setattr(
+        YouTubeAssetFinder, "resolve_video_id", staticmethod(fake_resolve_video_id)
+    )
+    url = "https://clerkshq.com/Content/southkingstownschools-ri/sc/2022/x.htm"
+    routes = {url: FakeResponse(status=200, text=CONTENT_HTML, url=url)}
+
+    with mock_session(routes):
+        result = await ClerkBaseAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "South Kingstown School Committee, RI"

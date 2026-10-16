@@ -6,6 +6,7 @@ from urllib.parse import urljoin, urlparse
 import aiohttp
 
 from .base import AssetFinder
+from .granicus import US_STATE_ABBREVIATIONS
 from .models import ResolvedMeeting
 from .youtube import YouTubeAssetFinder
 
@@ -46,7 +47,11 @@ class ClerkBaseAssetFinder(AssetFinder):
 
     _AUTO_OPEN_URL_RE = re.compile(r"window\.autoOpenDocUrl\s*=\s*'([^']+)'")
     _AUTO_OPEN_TITLE_RE = re.compile(r"window\.autoOpenDocTitle\s*=\s*'([^']+)'")
-    _SITE_SLUG_RE = re.compile(r"/([A-Za-z]+)-([A-Z]{2})(?:[/?]|$)")
+    # The state part is matched in any case: real RI tenants use a lowercase
+    # one (`clerkshq.com/Scituate-ri`, `/Pawtucket-ri`, found by WO-1057), and
+    # an uppercase-only pattern left all five of them with no state.
+    _SITE_SLUG_RE = re.compile(r"/([A-Za-z]+)-([A-Za-z]{2})(?:[/?]|$)")
+    _HAS_STATE_RE = re.compile(r",\s*[A-Z]{2}$")
 
     def __init__(self):
         self.headers = {
@@ -94,6 +99,17 @@ class ClerkBaseAssetFinder(AssetFinder):
             resolved.title = title
         if jurisdiction:
             resolved.jurisdiction = jurisdiction
+        else:
+            # The slug's place part is not a usable name (an all-lowercase
+            # run-together one, e.g. `southkingstownschools-ri`), but its
+            # state still is: add it to a name that has none.
+            state = self._extract_state(url)
+            if (
+                state
+                and resolved.jurisdiction
+                and not self._HAS_STATE_RE.search(resolved.jurisdiction)
+            ):
+                resolved.jurisdiction = f"{resolved.jurisdiction}, {state}"
         return resolved
 
     @staticmethod
@@ -105,10 +121,31 @@ class ClerkBaseAssetFinder(AssetFinder):
             return await response.text()
 
     @classmethod
-    def _extract_jurisdiction(cls, url: str) -> Optional[str]:
+    def _site_slug(cls, url: str) -> Optional[tuple[str, str]]:
         match = cls._SITE_SLUG_RE.search(urlparse(url).path)
         if not match:
             return None
         name, state = match.groups()
+        if state.lower() not in US_STATE_ABBREVIATIONS:
+            return None
+        return name, state.upper()
+
+    @classmethod
+    def _extract_state(cls, url: str) -> Optional[str]:
+        slug = cls._site_slug(url)
+        return slug[1] if slug else None
+
+    @classmethod
+    def _extract_jurisdiction(cls, url: str) -> Optional[str]:
+        slug = cls._site_slug(url)
+        if not slug:
+            return None
+        name, state = slug
+        # A CamelCase place part ("YellowSprings", "WestWarwick") is the
+        # client site's own place name. An all-lowercase one is not always
+        # the government's name (`southkingstownschools-ri`), so only the
+        # state is taken from it (see resolve()).
+        if not name[0].isupper():
+            return None
         spaced = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", name)
         return f"{spaced}, {state}"
