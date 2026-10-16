@@ -252,19 +252,7 @@ https://vimeo.com/868329507	https://vimeo.com/868329507	us:cousub:2501125730
 https://liveoakcity.primegov.com/Portal/Meeting?meetingTemplateId=1764	https://liveoakcity.primegov.com/Portal/Meeting?meetingTemplateId=1764	us:place:0641936
 https://www.youtube.com/watch?v=1XoLzWJF3Tc	https://www.youtube.com/live/1XoLzWJF3Tc	us:county:06031
 https://www.youtube.com/watch?v=YwhP9Y8Mq9M	https://www.youtube.com/watch?v=YwhP9Y8Mq9M	us:county:34039
-https://scgtv.new.swagit.com/videos/19946	https://scgtv.new.swagit.com/views/11	rtr:us:ga:supreme-court-of-georgia
 https://vimeo.com/568976671	https://vimeo.com/568976671	us:place:4163650
-https://newtriertwpil.portal.civicclerk.com/event/233/media		us:cousub:1703152909
-https://crowleyisdtx.new.swagit.com/videos/400659		us:sd:4815910
-https://delvalleisdtx.new.swagit.com/videos/401213		us:sd:4816620
-https://sanfrancisco.granicus.com/MediaPlayer.php?view_id=47&clip_id=53209		us:sd:0634410
-https://fulton.legistar.com/MeetingDetail.aspx?LEGID=6395&GID=817&G=197058BF-F352-4423-BE44-04DFABBD8188		us:county:13121
-https://beaufort.granicus.com/MediaPlayer.php?view_id=3&clip_id=4774		us:place:4534045
-http://cityofhamburgmn.com/Meetings/9_22_2026_RM.mp3	http	us:place:2726666
-https://greenmountainfalls.colorado.gov/sites/g/files/lrnvjt1201/files/2023-01-24%20Planning%20Commission%20Meeting.mp4	https	us:place:0832650
-https://ob.elkocitynv.gov/OnBaseAgendaOnline/Meetings/ViewMeeting?id=920&doctype=1	https	us:place:3222500
-https://s3.us-east-2.amazonaws.com/city-of-cheboygan/brownfield-redevelopment-20190812.mp3	https	us:place:2615000
-https://www.newhamptonia.com/wp-content/uploads/2026/08/City-council-8.27.26.m4a?_=2	https	us:place:1956100
 https://marshvillenc.portal.civicclerk.com/event/162/media		us:place:3741640
 https://neptunebeachfl.portal.civicclerk.com/event/2226/media		us:place:1248100
 https://play.champds.com/mentoroh/event/310		us:place:3949056
@@ -1488,3 +1476,10 @@ https://tpcg.granicus.com/MediaPlayer.php?view_id=3&clip_id=4		us:county:22109
 https://garlandisdtx.new.swagit.com/videos/400264		us:sd:4820340
 https://villageofeggharbor.granicus.com/MediaPlayer.php?view_id=1&clip_id=222	https://villageofeggharbor.granicus.com/MediaPlayer.php?view_id=1&clip_id=222	us:place:5522850
 https://lonestargcd.new.swagit.com/videos/400293	https://lonestargcd.new.swagit.com/views/58	rtr:us:tx:lone-star-groundwater-conservation-district
+https://newtriertwpil.portal.civicclerk.com/event/233/media		us:cousub:1703152909
+https://scgtv.new.swagit.com/videos/19946	https://scgtv.new.swagit.com/views/11	rtr:us:ga:supreme-court-of-georgia
+https://crowleyisdtx.new.swagit.com/videos/400659		us:sd:4815910
+https://delvalleisdtx.new.swagit.com/videos/401213		us:sd:4816620
+https://sanfrancisco.granicus.com/MediaPlayer.php?view_id=47&clip_id=53209		us:sd:0634410
+https://fulton.legistar.com/MeetingDetail.aspx?LEGID=6395&GID=817&G=197058BF-F352-4423-BE44-04DFABBD8188		us:county:13121
+https://beaufort.granicus.com/MediaPlayer.php?view_id=3&clip_id=4774		us:place:4534045
