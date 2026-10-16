@@ -596,7 +596,20 @@ function wireTranscribeForm() {
         // this hour." Checked before `data.ok` specifically so a real
         // rate limit is never mistaken for that. Same duplicated fix as
         // app/static/player.js's copy of this function.
-        checkStatusEl.textContent = "You've hit the transcript request limit for now — please try again in about an hour.";
+        //
+        // Signed-in visitors are exempt from this limit, so offer a plain
+        // link to the /sign-in page (never Clerk's modal -- see BACKLOG_DONE
+        // .md's accounts phase-1 saga). rtrMarkSignInReturn (clerk_nav.js)
+        // brings the visitor back to this page afterwards.
+        checkStatusEl.textContent = "You've hit the transcript request limit for now — please try again in about an hour, or ";
+        const signInLink = document.createElement('a');
+        signInLink.href = '/sign-in';
+        signInLink.className = 'transcribe-rate-limit-sign-in';
+        signInLink.textContent = 'sign in';
+        signInLink.addEventListener('click', () => {
+          if (window.rtrMarkSignInReturn) window.rtrMarkSignInReturn();
+        });
+        checkStatusEl.append(signInLink, ' to request without the limit.');
         checkStatusEl.className = 'transcribe-status error';
       } else if (data.ok) {
         feasibilityOk = true;
