@@ -501,6 +501,15 @@ def is_placeholder_title(title: Optional[str]) -> bool:
 # Council Grove city, KS, WO-284). Add a host only with a real example.
 DECORATIVE_ASSET_HOSTS = ("muscache.com",)
 
+# Exact decorative files, matched by host AND path, for a vendor whose host
+# may also carry real content. Real: HelloNation's site template embeds a
+# stock header clip, `www.hellonation.com/media/hn_hdr26.mp4`, with no title
+# or date. Three unrelated CivicPlus governments' newest "meeting video"
+# resolved to that same file (La Vergne TN, Lawrenceburg TN, Hamburg village
+# NY; WO-349, 2026-09-13). Only this one path is refused, not the whole
+# host. Add a file only with a real example.
+DECORATIVE_ASSET_FILES = (("hellonation.com", "/media/hn_hdr26.mp4"),)
+
 # Filename tokens of a decorative homepage video. Built from real hits
 # (WO-355/361/364/368, tokens added by WO-909, "videobg"/"background" by WO-933
 # for Dummerston town, VT's real `img/videobg.mp4`, named in BACKLOG.md's
@@ -542,7 +551,8 @@ def _parsed(url: Optional[str]):
 def decorative_url_reason(url: Optional[str], *, check_filename: bool = False):
     """A short tag when the URL's own shape says "decorative", else None.
 
-    - A decorative-asset host (`DECORATIVE_ASSET_HOSTS`).
+    - A decorative-asset host (`DECORATIVE_ASSET_HOSTS`), or one exact
+      decorative file (`DECORATIVE_ASSET_FILES`).
     - Vimeo's hero-embed query signature: `background=1`, or `loop=1`
       (WO-355 confirmed `background=1` / `loop=1`+`muted=1` on 20 real
       government tenants; WO-909 found a real hero embed with `loop=1`
@@ -556,6 +566,11 @@ def decorative_url_reason(url: Optional[str], *, check_filename: bool = False):
     for asset_host in DECORATIVE_ASSET_HOSTS:
         if host == asset_host or host.endswith("." + asset_host):
             return f"decorative_asset_host:{asset_host}"
+    for asset_host, asset_path in DECORATIVE_ASSET_FILES:
+        if (
+            host == asset_host or host.endswith("." + asset_host)
+        ) and parsed.path.lower() == asset_path:
+            return f"decorative_asset_file:{asset_host}{asset_path}"
     params = parse_qs(parsed.query.lower())
     if "1" in params.get("background", []):
         return "hero_embed_parameter:background=1"

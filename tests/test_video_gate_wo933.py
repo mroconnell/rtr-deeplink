@@ -316,6 +316,20 @@ def test_the_muscache_widget_animation_is_rejected_by_host():
     assert verdict.verdict == REJECT
 
 
+def test_the_hellonation_stock_header_clip_is_rejected_by_exact_path():
+    # Real (WO-349): La Vergne TN, Lawrenceburg TN and Hamburg village NY all
+    # resolved their newest "meeting video" to this same title-less file.
+    url = "https://www.hellonation.com/media/hn_hdr26.mp4"
+    assert (
+        decorative_url_reason(url)
+        == "decorative_asset_file:hellonation.com/media/hn_hdr26.mp4"
+    )
+    verdict = assess_video_candidate(video_url=url, platform="direct_file")
+    assert verdict.verdict == REJECT
+    # Only that one file: another file on the same host is not refused here.
+    assert decorative_url_reason("https://www.hellonation.com/media/other.mp4") is None
+
+
 @pytest.mark.parametrize(
     "url, expected",
     [
