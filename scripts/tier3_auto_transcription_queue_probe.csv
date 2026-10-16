@@ -12359,3 +12359,16 @@ https://play.champds.com/signalmountaintn/event/13,champds,head+champds-vod2,189
 https://play.champds.com/yubacoca/event/31,champds,hls-master+variant,16220.23,,,1,accept,,1.20,2026-10-16T16:58:11+00:00,,0
 https://play.champds.com/yubacoca/event/31,champds,head+champds-vod2,16220.23,2023-07-25,517532122,1,accept,,2.09,2026-10-16T16:58:13+00:00,feed_tier3_auto_transcription,0
 https://lonestargcd.new.swagit.com/videos/400293,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-16T16:58:17+00:00,,0
+https://scgtv.new.swagit.com/videos/19946,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.12,2026-10-16T21:43:33+00:00,,0
+https://newtriertwpil.portal.civicclerk.com/event/233/media,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ERROR: [youtube] FpAF-JSfSmw: Unable to download API page: refused: www.youtube.com is a YouTube host; YouTube is fetched only by the drip Mac (CLAUDE.md) (caused by TransportError('refused: www.youtu,0.05,2026-10-16T21:43:36+00:00,,0
+https://crowleyisdtx.new.swagit.com/videos/400659,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.04,2026-10-16T21:43:39+00:00,,0
+https://delvalleisdtx.new.swagit.com/videos/401213,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.04,2026-10-16T21:43:42+00:00,,0
+https://sanfrancisco.granicus.com/MediaPlayer.php?view_id=47&clip_id=53209,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.04,2026-10-16T21:43:44+00:00,,0
+https://fulton.legistar.com/MeetingDetail.aspx?LEGID=6395&GID=817&G=197058BF-F352-4423-BE44-04DFABBD8188,legistar,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.05,2026-10-16T21:43:49+00:00,,0
+https://beaufort.granicus.com/MediaPlayer.php?view_id=3&clip_id=4774,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.06,2026-10-16T21:43:51+00:00,,0
+http://cityofhamburgmn.com/Meetings/9_22_2026_RM.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.15,2026-10-16T21:43:53+00:00,,0
+https://greenmountainfalls.colorado.gov/sites/g/files/lrnvjt1201/files/2023-01-24%20Planning%20Commission%20Meeting.mp4,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.09,2026-10-16T21:43:55+00:00,,0
+https://ob.elkocitynv.gov/OnBaseAgendaOnline/Meetings/ViewMeeting?id=920&doctype=1,hyland,hls-master+variant,3471.21,,,1,accept,,3.43,2026-10-16T21:44:03+00:00,,0
+https://ob.elkocitynv.gov/OnBaseAgendaOnline/Meetings/ViewMeeting?id=920&doctype=1,hyland,hls-master+variant,3471.21,,,1,accept,,0.08,2026-10-16T21:44:03+00:00,feed_tier3_auto_transcription,0
+https://s3.us-east-2.amazonaws.com/city-of-cheboygan/brownfield-redevelopment-20190812.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.12,2026-10-16T21:44:05+00:00,,0
+https://www.newhamptonia.com/wp-content/uploads/2026/08/City-council-8.27.26.m4a?_=2,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.09,2026-10-16T21:44:07+00:00,,0
