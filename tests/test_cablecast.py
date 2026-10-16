@@ -416,6 +416,42 @@ async def test_resolve_newer_template_falls_back_to_json_api_when_root_also_fail
     assert result.transcript_warnings == ["No transcript found for this event."]
 
 
+async def test_resolve_internetchannel_show_404_falls_back_to_json_api():
+    # Niagara Falls City SD, NY's tenant (reflect-niagarafallsosc, WO-309
+    # 2026-09-12): "/internetchannel/show/{id}?channel=1" 404s outright while
+    # the same host's CablecastPublicSite API serves the show. Synthetic
+    # routing: no Niagara Falls API response was saved, so this reuses the
+    # real Brooklyn Center show/vod JSON from the test above on its own
+    # real host, with the old-style URL 404ing and the root redirecting.
+    show_json = load_fixture(
+        "cablecast", "ccx_brooklyncenter_publicsite_show_41024.json"
+    )
+    vod_json = load_fixture("cablecast", "ccx_brooklyncenter_publicsite_vod_13099.json")
+    url = "https://reflect-ccx.cablecast.tv/internetchannel/show/41024?channel=1"
+    direct_url = "http://reflect-ccx.cablecast.tv/internetchannel/show/41024?channel=1"
+    root_url = "http://reflect-ccx.cablecast.tv/"
+
+    routes = {
+        direct_url: FakeResponse(status=404, text=""),
+        root_url: FakeResponse(status=302, text=""),
+        "https://reflect-ccx.cablecast.tv/cablecastapi/v1/shows/41024": FakeResponse(
+            status=200, text=show_json
+        ),
+        "https://reflect-ccx.cablecast.tv/cablecastapi/v1/vods/13099": FakeResponse(
+            status=200, text=vod_json
+        ),
+    }
+
+    with mock_session(routes):
+        result = await CablecastAssetFinder().resolve(url)
+
+    assert result.title == "Brooklyn Center City Council 9/28/2026"
+    assert result.video_url == (
+        "https://reflect-ccx.cablecast.tv/store-17/"
+        "41024-Brooklyn-Center-City-v3/vod.mp4"
+    )
+
+
 async def test_resolve_newer_template_json_api_fallback_not_tried_when_root_finds_show():
     # Companion negative case for the fallback above: when the root-page
     # retry DOES find the show (this test's own real Satellite Beach
@@ -1927,3 +1963,13 @@ async def test_resolve_hls_subtitle_fallback_still_reports_no_transcript_when_no
 
     assert result.segments == []
     assert result.transcript_warnings == ["No transcript found for this event."]
+
+
+def test_extract_jurisdiction_wellfleet_host_is_massachusetts():
+    # Real tenant (WO-309 resume, 2026-09-12): Wellfleet, MA on Cape Cod.
+    # Its "Town of Wellfleet" branding resolved to Wellfleet village, NE
+    # before the known-host entry. The site dict is synthetic, shaped like
+    # the real `site` object's title field.
+    url = "https://reflect-townofwellfleet.cablecast.tv/internetchannel/show/1"
+    site = {"title": "Town of Wellfleet", "pageDescription": None}
+    assert CablecastAssetFinder._extract_jurisdiction(site, url) == "Wellfleet, MA"

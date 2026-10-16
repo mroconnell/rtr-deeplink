@@ -109,8 +109,8 @@ from the caller, carried through rather than discarded). Today's one
 real caller with a known origin domain is `chicago_elms.py`, which
 already knows its own portal domain. A bare `vimeo.com/...` URL with no
 known origin (a cold user paste) still has no hint to give -- that's the
-separate, not-yet-built scrape-the-`<title>`-tag fallback noted in
-BACKLOG.md, out of scope here.
+`<title>`/og:title fallback (`_title_from_video_page()`), which
+`resolve_video_id()` uses when oEmbed gives no title.
 
 ## Captions ARE server-reachable after all, via the headless browser (2026-08-31)
 
@@ -623,6 +623,26 @@ async def _fetch_player_page_directly(
         return None, None
 
 
+_PAGE_TITLE_SUFFIX_RE = re.compile(r"\s+on Vimeo\s*$", re.IGNORECASE)
+
+
+def _title_from_video_page(html: Optional[str]) -> Optional[str]:
+    """A video's own title from its plain `vimeo.com/{id}` page: the
+    `og:title` meta tag, else `<title>` minus Vimeo's " on Vimeo" suffix
+    (both shapes as in tests/fixtures/vimeo/channel_coscouncil.html).
+    `None` for a challenge page or a bare Vimeo error title."""
+    if not html or _looks_like_challenge_page(html):
+        return None
+    soup = BeautifulSoup(html, "html.parser")
+    meta = soup.find("meta", attrs={"property": "og:title"})
+    title = (meta.get("content") or "").strip() if meta else ""
+    if not title and soup.title and soup.title.string:
+        title = _PAGE_TITLE_SUFFIX_RE.sub("", soup.title.string).strip()
+    if not title or title.lower() == "vimeo" or title.lower().startswith("vimeo /"):
+        return None
+    return title
+
+
 def _date_from_title(title: Optional[str]) -> Optional[str]:
     if not title:
         return None
@@ -744,6 +764,12 @@ class VimeoAssetFinder(AssetFinder):
             )
 
         title = (oembed or {}).get("title") or None
+        if not title:
+            # Vimeo's oEmbed 404s for some real, playable videos (Beaufort
+            # County NC `844049346`, WO-196) while the plain video page
+            # still names the meeting -- read its og:title/<title> so the
+            # meeting isn't left untitled. Fills a blank only.
+            title = await cls._fetch_page_title(video_id, privacy_hash, domain_hint)
         resolved = ResolvedMeeting(
             platform=cls.platform_name,
             source_url=source_url or canonical_video_url(video_id, privacy_hash),
@@ -1045,6 +1071,19 @@ class VimeoAssetFinder(AssetFinder):
         except ValueError:
             return None
         return payload if isinstance(payload, dict) else None
+
+    @classmethod
+    async def _fetch_page_title(
+        cls,
+        video_id: str,
+        privacy_hash: Optional[str],
+        domain_hint: Optional[str] = None,
+    ) -> Optional[str]:
+        body = await cls._fetch(
+            canonical_video_url(video_id, privacy_hash),
+            referer=_referer_from_domain_hint(domain_hint),
+        )
+        return _title_from_video_page(body)
 
     @classmethod
     async def _listing_candidates(cls, url: str) -> List[CalendarCandidate]:

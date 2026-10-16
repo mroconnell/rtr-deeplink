@@ -287,7 +287,7 @@ td.url a:hover{text-decoration:underline}
 <header>
   <div>
     <h1>Archive Meeting Inventory</h1>
-    <p>One row per archived meeting page. Every value is stored or derived by the site itself; blanks are real and are counted above the table. Click a tile to filter to those rows, a column header to sort, and type in the filter row to narrow a column.</p>
+    <p>One row per archived meeting page. Every value is stored or derived by the site itself; blanks are real and are counted above the table. Click a tile to filter to those rows, a column header to sort, and type in the filter row to narrow a column (<code>!text</code> excludes, <code>=</code> shows blanks only, <code>!=</code> hides blanks).</p>
   </div>
   <p>Built __BUILT__ from __TOTAL__ pages.</p>
 </header>
@@ -332,13 +332,26 @@ function cell(k, v){
 function renderHead(){
   const bands = '<tr class="bands"><th class="id">id</th>'+BANDS.map(b=>'<th colspan="'+b[1].length+'">'+esc(b[0])+'</th>').join('')+'</tr>';
   const heads = '<tr class="heads">'+COLS.map(c=>'<th data-k="'+c[0]+'" class="'+(c[0]==='page_id'?'id':'')+'">'+esc(c[1])+(sortKey===c[0]?'<span class="dir">'+(sortDir>0?'▲':'▼')+'</span>':'')+'</th>').join('')+'</tr>';
-  const fl = '<tr class="filters">'+COLS.map(c=>'<th class="'+(c[0]==='page_id'?'id':'')+'"><input data-k="'+c[0]+'" value="'+esc(filters[c[0]]||'')+'" placeholder="filter" aria-label="Filter '+esc(c[1])+'"></th>').join('')+'</tr>';
+  const fl = '<tr class="filters">'+COLS.map(c=>'<th class="'+(c[0]==='page_id'?'id':'')+'"><input data-k="'+c[0]+'" value="'+esc((filters[c[0]]||{}).raw||'')+'" placeholder="text, !text, = or !=" title="text: contains; !text: excludes; =: blank only; !=: non-blank only" aria-label="Filter '+esc(c[1])+'"></th>').join('')+'</tr>';
   document.querySelector('#t thead').innerHTML = bands+heads+fl;
+}
+// Column filter syntax: "text" contains, "!text" excludes, "=" blank only,
+// "!=" non-blank only. Case-insensitive.
+function parseFilter(raw){
+  const t = raw.trim(), low = t.toLowerCase();
+  if(!t) return null;
+  if(t==='=') return {raw:t, blank:true};
+  if(t==='!=') return {raw:t, nonblank:true};
+  if(t.startsWith('!') && t.length>1) return {raw:t, not:low.slice(1)};
+  return {raw:t, text:low};
 }
 function matches(r){
   for(const k in filters){const f=filters[k]; if(f===undefined) continue;
     const v = String(r[k]===null||r[k]===undefined?'':r[k]);
     if(f.exact!==undefined){ if(v!==f.exact) return false; }
+    else if(f.blank){ if(v.trim()!=='') return false; }
+    else if(f.nonblank){ if(v.trim()==='') return false; }
+    else if(f.not!==undefined){ if(v.toLowerCase().includes(f.not)) return false; }
     else if(f.text && !v.toLowerCase().includes(f.text)) return false;}
   if(query){const q=query; if(!KEYS.some(k=>String(r[k]??'').toLowerCase().includes(q))) return false;}
   return true;
@@ -365,7 +378,7 @@ function applyTile(t){
 }
 document.getElementById('tiles').addEventListener('click', e=>{const b=e.target.closest('.tile'); if(!b||b.disabled) return; applyTile(TILES[+b.dataset.i]);});
 document.querySelector('#t thead').addEventListener('click', e=>{const th=e.target.closest('tr.heads th'); if(!th) return; const k=th.dataset.k; if(sortKey===k) sortDir=-sortDir; else {sortKey=k; sortDir=1;} renderHead(); renderBody();});
-document.querySelector('#t thead').addEventListener('input', e=>{const i=e.target; if(!i.dataset.k) return; const v=i.value.trim().toLowerCase(); if(v) filters[i.dataset.k]={text:v}; else delete filters[i.dataset.k]; if(activeTile){activeTile=null; renderTiles();} renderBody();});
+document.querySelector('#t thead').addEventListener('input', e=>{const i=e.target; if(!i.dataset.k) return; const f=parseFilter(i.value); if(f) filters[i.dataset.k]=f; else delete filters[i.dataset.k]; if(activeTile){activeTile=null; renderTiles();} renderBody();});
 document.getElementById('q').addEventListener('input', e=>{query=e.target.value.trim().toLowerCase(); renderBody();});
 document.getElementById('clear').addEventListener('click', ()=>{filters={}; query=''; activeTile=null; document.getElementById('q').value=''; renderTiles(); renderHead(); renderBody();});
 function toCsv(rows){

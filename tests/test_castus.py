@@ -397,3 +397,63 @@ async def test_jurisdiction_from_tenant_slug_declines_ambiguous_westford_without
     # bare "Westford" is a real 6-state collision the generic
     # Census-backed lookup correctly declines rather than guessing.
     assert CastusAssetFinder._jurisdiction_from_tenant_slug("westford") is None
+
+
+def test_jurisdiction_from_tenant_slug_marathon_is_florida():
+    # Real tenant (WO-306, 2026-09-12): Marathon, FL in the Florida Keys.
+    # The generic path guessed "City Of Marathon, WI", a different real
+    # place, before the curated entry.
+    assert (
+        CastusAssetFinder._jurisdiction_from_tenant_slug("city-of-marathon")
+        == "Marathon, FL"
+    )
+
+
+async def test_resolve_accepts_private_path_segment():
+    # Vero Beach, FL's real Castus links use `/vod/vero-beach/private/{id}`
+    # (found 2026-09-07), which the old `/video/`-only regex never matched.
+    # Synthetic: the URL swaps `video` for `private` on Billings' real video
+    # and reuses its real /upload/info fixture. That a private-path video
+    # answers the same info API was not checked live.
+    video_info = load_fixture("castus", "video_info.json")
+    captions = load_fixture("castus", "captions.vtt")
+    destinyhosted_html = load_fixture("castus", "destinyhosted_billings_agenda.html")
+    routes = {
+        CAPTIONS_URL: FakeResponse(status=200, text=captions, url=CAPTIONS_URL),
+        DESTINYHOSTED_URL: FakeResponse(
+            status=200, text=destinyhosted_html, url=DESTINYHOSTED_URL
+        ),
+    }
+    post_routes = {
+        VIDEO_INFO_URL: FakeResponse(status=200, text=video_info, url=VIDEO_INFO_URL),
+    }
+    url = "https://cloud.castus.tv/vod/comm7tv/private/6a83b3f9d94c83000226f83d"
+
+    with mock_session(routes, post_routes=post_routes):
+        result = await CastusAssetFinder().resolve(url)
+
+    assert result.external_id == "castus:comm7tv:6a83b3f9d94c83000226f83d"
+    assert result.video_url == HLS_URL
+
+
+def test_split_title_date_reads_a_numeric_date_at_either_end():
+    # Real title shapes: Manchester, NH (manchestertv, 2026-09-14) leads
+    # with "MM/DD/YY"; Vero Beach, FL ends with "MM/DD/YYYY".
+    assert CastusAssetFinder._split_title_date("08/25/26 Heritage Commission") == (
+        "Heritage Commission",
+        "2026-08-25",
+    )
+    assert CastusAssetFinder._split_title_date("City Council 08/25/2026") == (
+        "City Council",
+        "2026-08-25",
+    )
+    # No date in the title: title kept, no date guessed.
+    assert CastusAssetFinder._split_title_date("Heritage Commission") == (
+        "Heritage Commission",
+        None,
+    )
+    # Not a real calendar date: left alone.
+    assert CastusAssetFinder._split_title_date("13/45/26 Heritage Commission") == (
+        "13/45/26 Heritage Commission",
+        None,
+    )

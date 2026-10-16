@@ -386,6 +386,16 @@ _CCX_MEDIA_SITES = {
 # infrastructure this session hasn't seen.
 _VENDOR_DEMO_HOST = "yourtown.cablecast.tv"
 
+# Hosts whose own branding text names a place the generic tiers in
+# `_extract_jurisdiction()` file under the wrong state. Checked first.
+# - reflect-townofwellfleet: "Town of Wellfleet" came back as
+#   "Town of Wellfleet, NE" (Wellfleet village, NE). This is Wellfleet, MA
+#   on Cape Cod (WO-309 resume, 2026-09-12; rtr-business
+#   research/wo309b_report.csv; gov_id pin in tenant_overrides.csv).
+_KNOWN_HOST_JURISDICTIONS = {
+    "reflect-townofwellfleet.cablecast.tv": "Wellfleet, MA",
+}
+
 
 class CablecastAssetFinder(AssetFinder):
     """Detroit, MI and Charlotte, NC's Cablecast video portals (Remix.js
@@ -503,19 +513,23 @@ class CablecastAssetFinder(AssetFinder):
                 # own standard no-video response below so the caller sees
                 # one consistent shape rather than the API's own
                 # differently-worded warning.
-                api_result = await self._resolve_publicsite(url, show_id)
-                if api_result.title is not None:
-                    if api_result.jurisdiction is None and jurisdiction is not None:
-                        # Keep jurisdiction extraction consistent with the
-                        # other paths here: prefer whatever this method's
-                        # own Remix-based `_extract_jurisdiction()` already
-                        # found (from a partial direct/root fetch) over
-                        # letting a real result go out with no
-                        # jurisdiction at all.
-                        api_result = api_result.model_copy(
-                            update={"jurisdiction": jurisdiction}
-                        )
+                api_result = await self._publicsite_api_fallback(
+                    url, show_id, jurisdiction
+                )
+                if api_result is not None:
                     return api_result
+
+        if not show and html is None and _SHOW_ID_RE.search(urlparse(fetch_url).path):
+            # Niagara Falls City SD, NY's shared tenant
+            # (reflect-niagarafallsosc.cablecast.tv, WO-309 2026-09-12): the
+            # old-style "/internetchannel/show/{id}" page 404s outright and
+            # the root catalog does not list the show, but the same host's
+            # CablecastPublicSite API serves it. Tried only when the direct
+            # page fetch failed (404, block or network error), not when the
+            # page loaded and simply had no such show.
+            api_result = await self._publicsite_api_fallback(url, show_id, jurisdiction)
+            if api_result is not None:
+                return api_result
 
         if show:
             show = await self._show_with_full_date_title(
@@ -667,6 +681,24 @@ class CablecastAssetFinder(AssetFinder):
             alternate_transcripts=alternate_transcripts,
             transcript_warnings=transcript_warnings,
         )
+
+    @staticmethod
+    async def _publicsite_api_fallback(
+        url: str, show_id: int, jurisdiction: Optional[str]
+    ) -> Optional[ResolvedMeeting]:
+        """`_resolve_publicsite()` as a last resort for a Remix-shaped URL.
+        Returns None when the API does not know the show either, so the
+        caller gives its own standard no-video response."""
+        api_result = await CablecastAssetFinder._resolve_publicsite(url, show_id)
+        if api_result.title is None:
+            return None
+        if api_result.jurisdiction is None and jurisdiction is not None:
+            # Keep jurisdiction extraction consistent with the other paths:
+            # prefer whatever the Remix-based `_extract_jurisdiction()`
+            # already found (from a partial direct/root fetch) over letting
+            # a real result go out with no jurisdiction at all.
+            api_result = api_result.model_copy(update={"jurisdiction": jurisdiction})
+        return api_result
 
     @staticmethod
     async def _resolve_publicsite(url: str, show_id: int) -> ResolvedMeeting:
@@ -1310,6 +1342,8 @@ class CablecastAssetFinder(AssetFinder):
             return ccx_jurisdiction
 
         netloc = urlparse(url).netloc.lower()
+        if netloc in _KNOWN_HOST_JURISDICTIONS:
+            return _KNOWN_HOST_JURISDICTIONS[netloc]
         page_description = site.get("pageDescription")
         # Real gap found 2026-08-29 auditing stored (not missing --
         # confidently WRONG) jurisdictions via /coverage: the narrower

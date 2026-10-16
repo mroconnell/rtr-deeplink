@@ -659,33 +659,51 @@ async def promote_transcript_version(slug: str, version_id: int) -> Optional[dic
         return None
 
 
+# Pauses before each retry of the daily alert sweep. A 2026-09-17 sweep
+# hit a 502 while the Archive was restarting (a ~5 s health-check blip)
+# and the day's alerts were skipped. Only a refused connection or a
+# 502/503/504 is retried -- the request never reached the sweep. A
+# timeout is not retried: the sweep may still be running.
+SEARCH_ALERTS_RETRY_DELAYS = (5, 10)
+_SEARCH_ALERTS_RETRY_STATUSES = frozenset({502, 503, 504})
+
+
 async def send_search_alerts(dry_run: bool = False) -> Optional[dict]:
     """Admin action: run the saved-search alert sweep -- see app/main.py's
-    /admin/send-search-alerts. Returns None on any failure, same pattern
-    as every other call here."""
+    /admin/send-search-alerts. Retries a gateway error or refused
+    connection (see SEARCH_ALERTS_RETRY_DELAYS); returns None on any
+    other failure, same pattern as every other call here."""
     base = _base_url()
     if not base:
         return None
 
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                f"{base}/internal/account/send-search-alerts",
-                params={"dry_run": "true" if dry_run else "false"},
-                headers=_headers(),
-                timeout=SEARCH_ALERTS_TIMEOUT,
-            ) as response:
-                if response.status == 200:
-                    return await response.json()
-                logger.error(
-                    "Archive send-search-alerts failed (%s): %s",
-                    response.status,
-                    await response.text(),
-                )
-                return None
-    except Exception:
-        logger.exception("Archive send-search-alerts request failed.")
-        return None
+    delays = list(SEARCH_ALERTS_RETRY_DELAYS)
+    while True:
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    f"{base}/internal/account/send-search-alerts",
+                    params={"dry_run": "true" if dry_run else "false"},
+                    headers=_headers(),
+                    timeout=SEARCH_ALERTS_TIMEOUT,
+                ) as response:
+                    if response.status == 200:
+                        return await response.json()
+                    logger.error(
+                        "Archive send-search-alerts failed (%s): %s",
+                        response.status,
+                        await response.text(),
+                    )
+                    retryable = response.status in _SEARCH_ALERTS_RETRY_STATUSES
+        except aiohttp.ClientConnectorError:
+            logger.exception("Archive send-search-alerts could not connect.")
+            retryable = True
+        except Exception:
+            logger.exception("Archive send-search-alerts request failed.")
+            return None
+        if not retryable or not delays:
+            return None
+        await asyncio.sleep(delays.pop(0))
 
 
 async def correct_transcript_language(

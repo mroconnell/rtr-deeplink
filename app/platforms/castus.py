@@ -231,10 +231,18 @@ TARGET_LANGUAGE = "en"
 # `resolve()` now names it as a separate platform instead of failing
 # with the generic "no tenant/video id" message. Building it is a real
 # second adapter (confirmed shapes above are enough to start from).
-_URL_RE = re.compile(r"/vod/([^/?#]+)/video/([^/?#]+)")
+# `private` is a real second path segment (Vero Beach, FL's
+# `/vod/vero-beach/private/{id}`, two videos, found 2026-09-07); every other
+# tenant seen uses `video`.
+_URL_RE = re.compile(r"/vod/([^/?#]+)/(?:video|private)/([^/?#]+)")
 _PLAYLIST_URL_RE = re.compile(r"/vod/([^/?#]+)/playlist/([^/?#]+)")
 _HUB_URL_RE = re.compile(r"/vod/([^/?#]+)/?(?:[?#]|$)")
 _TITLE_DATE_RE = re.compile(r"^(.*?)\s*-\s*([A-Za-z]+ \d{1,2},? \d{4})$")
+# Numeric dates at either end of the title: Manchester, NH's
+# "08/25/26 Heritage Commission" (manchestertv, 2026-09-14) and Vero
+# Beach, FL's "City Council 08/25/2026". A two-digit year is 20xx.
+_LEADING_NUMERIC_DATE_RE = re.compile(r"^(\d{1,2})/(\d{1,2})/(\d{2}|\d{4})\s+(.+)$")
+_TRAILING_NUMERIC_DATE_RE = re.compile(r"^(.+?)\s+(\d{1,2})/(\d{1,2})/(\d{2}|\d{4})$")
 _DESTINYHOSTED_TENANT_ID_RE = re.compile(r"destinyhosted\.com/(\d+)/")
 
 VIDEO_INFO_URL = "https://imd0mxanj2.execute-api.us-west-2.amazonaws.com/upload/info"
@@ -296,11 +304,15 @@ _KNOWN_DESTINYHOSTED_TENANT_JURISDICTIONS = {
 # returns "Tyngsborough, MA" (nationally unique name), which its own
 # playlist confirms ("Tyngsborough, MA Pre-Town Meeting Informational
 # Session | April 29, 2025") -- the first real positive for that path.
+# - "city-of-marathon": the generic path returned "City Of Marathon, WI" --
+#   WRONG. This is Marathon, FL (Florida Keys), confirmed resolving a real
+#   video for WO-306 (2026-09-12; rtr-business research/wo306_report.csv).
 _KNOWN_TENANT_SLUG_JURISDICTIONS = {
     "westfordcat": "Westford, MA",
     "blackstone": "Blackstone, MA",
     "lincoln": "Lincoln, MA",
     "durham": "Durham, NH",
+    "city-of-marathon": "Marathon, FL",
 }
 
 
@@ -600,7 +612,7 @@ class CastusAssetFinder(AssetFinder):
         raw_title = raw_title.strip()
         match = _TITLE_DATE_RE.match(raw_title)
         if not match:
-            return raw_title or None, None
+            return CastusAssetFinder._split_numeric_title_date(raw_title)
         title, date_text = match.groups()
         for fmt_text in (date_text, date_text.replace(",", "")):
             for fmt in ("%B %d %Y", "%b %d %Y"):
@@ -613,6 +625,27 @@ class CastusAssetFinder(AssetFinder):
                 except ValueError:
                     continue
         return title.strip() or None, None
+
+    @staticmethod
+    def _split_numeric_title_date(
+        raw_title: str,
+    ) -> Tuple[Optional[str], Optional[str]]:
+        from datetime import date as _date
+
+        leading = _LEADING_NUMERIC_DATE_RE.match(raw_title)
+        trailing = None if leading else _TRAILING_NUMERIC_DATE_RE.match(raw_title)
+        if leading:
+            month, day, year, title = leading.groups()
+        elif trailing:
+            title, month, day, year = trailing.groups()
+        else:
+            return raw_title or None, None
+        year_num = int(year) + 2000 if len(year) == 2 else int(year)
+        try:
+            parsed = _date(year_num, int(month), int(day))
+        except ValueError:
+            return raw_title or None, None
+        return title.strip() or None, parsed.isoformat()
 
     @staticmethod
     async def _agenda_and_jurisdiction(

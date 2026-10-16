@@ -183,9 +183,14 @@ def is_plausible_meeting_duration(seconds: float) -> bool:
     return MIN_PLAUSIBLE_MEETING_SECONDS <= seconds <= MAX_PLAUSIBLE_MEETING_SECONDS
 
 
+# A current desktop Chrome. This used to claim Chrome 91 (2021), and
+# Cloudflare answered 403 to it on at least one real government recording
+# (simpsonville.com, checked 2026-09-25) while a current Chrome got 206. That
+# is a "look like a normal browser" request, not a "Verify you are human"
+# challenge (CLAUDE.md). The tier-3 queue probe and ffmpeg share this string.
 _DESKTOP_USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+    "(KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36"
 )
 
 
