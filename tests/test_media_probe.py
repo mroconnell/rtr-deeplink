@@ -1348,3 +1348,17 @@ async def test_probe_has_video_stream_none_when_ffprobe_missing(monkeypatch):
         source_page_url="https://example.granicus.com/player/clip/1",
     )
     assert result is None
+
+
+def test_desktop_user_agent_is_not_the_stale_chrome_91_string():
+    # Cloudflare 403'd Chrome/91 on simpsonville.com's recording (2026-09-25)
+    # and served a current Chrome UA. The queue probe and ffmpeg's headers
+    # must carry the same current string.
+    from app.platforms import queue_probe
+
+    ua = media_probe._DESKTOP_USER_AGENT
+    assert "Chrome/91." not in ua
+    assert queue_probe._POLITE_UA == ua
+    assert f"User-Agent: {ua}\r\n" in media_probe.realistic_headers(
+        "https://www.simpsonville.com/x"
+    )
