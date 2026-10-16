@@ -3,8 +3,10 @@ abbotsford,ca:csd:5909052,abbotsford-bc,"'Abbotsford' now resolves to ca:csd:590
 aiken-county-public-schools-sc,us:sd:4500720,aiken-county-school-district-sc,"'Aiken County Public Schools, SC' now resolves to us:sd:4500720 (Aiken County School District, SC)"
 al,us:place:4202000,allentown-pa,"'City of Al' now resolves to us:place:4202000 (Allentown, PA)"
 alameda,us:place:0600562,alameda-ca,"'City of Alameda' now resolves to us:place:0600562 (Alameda, CA)"
+albion,us:place:2600980,albion-city-mi,'albion' hub retired by scripts/backfill_gov_id.py --apply on 2026-10-16; its pages moved to albion-city-mi (us:place:2600980)
 albuquerque-bernalillo-county-water-utility-authority,rtr:us:nm:albuquerque-bernalillo-county-water-utility-authority,albuquerque-bernalillo-county-water-utility-authority-nm,"'Albuquerque Bernalillo County Water Utility Authority' now resolves to rtr:us:nm:albuquerque-bernalillo-county-water-utility-authority (Albuquerque Bernalillo County Water Utility Authority, NM)"
 altoona,us:place:5501550,altoona-wi,"'City of Altoona' now resolves to us:place:5501550 (Altoona, WI)"
+ames,us:place:1901855,ames-ia,'ames' hub retired by scripts/backfill_gov_id.py --apply on 2026-10-16; its pages moved to ames-ia (us:place:1901855)
 amherst-oh,us:place:3901798,amherst-city-oh,"'Amherst, OH' now resolves to us:place:3901798 (Amherst (city), OH)"
 amsterdam-ny,us:place:3602066,amsterdam-city-ny,"'Amsterdam, NY' now resolves to us:place:3602066 (Amsterdam (city), NY)"
 anderson-in,us:place:1801468,anderson-city-in,"'City of Anderson, IN' now resolves to us:place:1801468 (Anderson (city), IN)"
@@ -91,6 +93,7 @@ charlestown-town-ri,us:cousub:4400914500,charlestown-ri,"'Charlestown Town, RI' 
 charlotte,us:county:12015,charlotte-county-fl,"'Charlotte' now resolves to us:county:12015 (Charlotte County, FL)"
 chatham-kent,ca:csd:3536020,chatham-kent-on,"'Chatham Kent' now resolves to ca:csd:3536020 (Chatham-Kent, ON)"
 chatham-town-ma,us:cousub:2500112995,chatham-ma,"'Chatham Town, MA' now resolves to us:cousub:2500112995 (Chatham, MA)"
+chester,ca:csd:1206009,chester-ns,'chester' hub retired by scripts/backfill_gov_id.py --apply on 2026-10-16; its pages moved to chester-ns (ca:csd:1206009)
 chesterfield,us:county:51041,chesterfield-county-va,"'Chesterfield' now resolves to us:county:51041 (Chesterfield County, VA)"
 chesterfield-township,us:cousub:2609915340,chesterfield-township-mi,"'Chesterfield Township' now resolves to us:cousub:2609915340 (Chesterfield Township, MI)"
 cheyenne,us:place:5613900,cheyenne-wy,"'City of Cheyenne' now resolves to us:place:5613900 (Cheyenne, WY)"
@@ -207,6 +210,7 @@ fargo,us:place:3825700,fargo-nd,"'Fargo' now resolves to us:place:3825700 (Fargo
 farmington,us:place:2720618,farmington-city-mn,"'City of Farmington' now resolves to us:place:2720618 (Farmington (city), MN)"
 fayetteville,us:place:3722920,fayetteville-nc,"'City of Fayetteville' now resolves to us:place:3722920 (Fayetteville, NC)"
 flandreau-sd,us:place:4621540,flandreau-city-sd,"'Flandreau, SD' now resolves to us:place:4621540 (Flandreau (city), SD)"
+flemington-nj,us:county:34019,hunterdon-county-nj,'flemington-nj' hub retired by scripts/backfill_gov_id.py --apply on 2026-10-16; its pages moved to hunterdon-county-nj (us:county:34019)
 folsom,us:place:0624638,folsom-ca,"'City of Folsom' now resolves to us:place:0624638 (Folsom, CA)"
 fond-du-lac-wi,us:place:5526275,fond-du-lac-city-wi,"'Fond du Lac, WI' now resolves to us:place:5526275 (Fond du Lac (city), WI)"
 fontana,us:place:0624680,fontana-ca,"'Fontana' now resolves to us:place:0624680 (Fontana, CA)"
@@ -249,6 +253,7 @@ haldimand-county,rtr:ca:on:haldimand-county,haldimand-county-on,"'Haldimand Coun
 half-moon-bay,us:place:0631708,half-moon-bay-ca,"'City of Half Moon Bay' now resolves to us:place:0631708 (Half Moon Bay, CA)"
 halifax,ca:csd:1209034,halifax-ns,"'Halifax' now resolves to ca:csd:1209034 (Halifax, NS)"
 hamburg-mi,us:cousub:2609336100,hamburg-township-mi,"'Hamburg, MI' now resolves to us:cousub:2609336100 (Hamburg Township, MI)"
+hamburg-village-ny,us:cousub:3602931654,hamburg-town-ny,'hamburg-village-ny' hub retired by scripts/backfill_gov_id.py --apply on 2026-10-16; its pages moved to hamburg-town-ny (us:cousub:3602931654)
 hamden-town-ct,us:cousub:0917035650,hamden-ct,"'Hamden Town, CT' now resolves to us:cousub:0917035650 (Hamden, CT)"
 hamilton,us:place:3933012,hamilton-city-oh,"'Hamilton' now resolves to us:place:3933012 (Hamilton, OH) -- WO-112 flip per Ryan's explicit review of the live site (2026-09-03): supersedes WO-109's cautious incumbent-keep (was rtr:ca:on:hamilton-police-services-board / hamilton-police-services-board-on, still independently reachable as that government's own hub)"
 hampton,us:place:5135000,hampton-va,"'City of Hampton' now resolves to us:place:5135000 (Hampton, VA)"
@@ -269,6 +274,7 @@ herndon,us:place:5136648,herndon-va,"'Herndon' now resolves to us:place:5136648 
 hesperia,us:place:0633434,hesperia-ca,"'City of Hesperia' now resolves to us:place:0633434 (Hesperia, CA)"
 hidalgo-county,us:county:48215,hidalgo-county-tx,"'Hidalgo County' now resolves to us:county:48215 (Hidalgo County, TX)"
 highlands-borough-fl,us:county:12055,highlands-county-fl,"'Highlands Borough, FL' now resolves to us:county:12055 (Highlands County, FL)"
+hilliard,us:place:3935476,hilliard-oh,'hilliard' hub retired by scripts/backfill_gov_id.py --apply on 2026-10-16; its pages moved to hilliard-oh (us:place:3935476)
 holbrook-town-ma,us:cousub:2502130455,holbrook-ma,"'Holbrook Town, MA' now resolves to us:cousub:2502130455 (Holbrook, MA)"
 holden,us:cousub:2502730560,holden-ma,"'Holden' now resolves to us:cousub:2502730560 (Holden Town, MA)"
 holden-town-ma,us:cousub:2502730560,holden-ma,"'Holden Town, MA' now resolves to us:cousub:2502730560 (Holden, MA)"
@@ -304,6 +310,8 @@ jordan-mn,us:place:2732174,jordan-city-mn,"'City of Jordan, MN' now resolves to 
 july13-2026-town-of-bladensburg-maryland-meetings-hub,us:place:2407850,bladensburg-md,"'July13, 2026 | Town of Bladensburg Maryland Meetings Hub' now resolves to us:place:2407850 (Bladensburg, MD)"
 kankakee-il,us:county:17091,kankakee-county-il,"'Kankakee, IL' was the 2018 Ethics Commission page on kankakeecountyil.gov; keyed to Kankakee city by name until the authoritative county pin, Ryan 2026-09-10 -- pointed straight at the county hub, not via the retired kankakee-city-il"
 kankakee-city-il,us:county:17091,kankakee-county-il,"kankakeecountyil.gov pinned authoritative to Kankakee County, IL, Ryan 2026-09-10; its one page moved off the city hub and no other page names the city"
+lake-county-illinois,us:county:17097,lake-county-il,'lake-county-illinois' hub retired by scripts/backfill_gov_id.py --apply on 2026-10-16; its pages moved to lake-county-il (us:county:17097)
+manassas,us:place:5148952,manassas-va,'manassas' hub retired by scripts/backfill_gov_id.py --apply on 2026-10-16; its pages moved to manassas-va (us:place:5148952)
 mclean-il,us:county:17113,mclean-county-il,"mcleancountyil.gov pinned authoritative to McLean County, IL, Ryan 2026-09-10; the County Board page moved off the village hub and no other page names the village"
 kansas-city,us:place:2938000,kansas-city-mo,"'Kansas City' now resolves to us:place:2938000 (Kansas City, MO)"
 kechi-ks,us:place:2036225,kechi-city-ks,"'City of Kechi, KS' now resolves to us:place:2036225 (Kechi (city), KS)"
@@ -390,6 +398,7 @@ mesa,us:place:0446000,mesa-az,"'City of Mesa' now resolves to us:place:0446000 (
 metropolitan-airports-commission-mac,rtr:us:mn:metropolitan-airports-commission,metropolitan-airports-commission-mn,"'Metropolitan Airports Commission (MAC)' now resolves to rtr:us:mn:metropolitan-airports-commission (Metropolitan Airports Commission, MN)"
 miami,us:place:1245000,miami-fl,"'City of Miami' now resolves to us:place:1245000 (Miami, FL)"
 miami-dade-county,us:county:12086,miami-dade-county-fl,"'Miami Dade County' now resolves to us:county:12086 (Miami-Dade County, FL)"
+middleton-school-district-ma,us:cousub:2500941095,middleton-ma,'middleton-school-district-ma' hub retired by scripts/backfill_gov_id.py --apply on 2026-10-16; its pages moved to middleton-ma (us:cousub:2500941095)
 middletown,us:place:0947290,middletown-ct,"'City of Middletown' now resolves to us:place:0947290 (Middletown, CT)"
 middletown-nj,us:cousub:3402545990,middletown-township-nj,"'Middletown, NJ' now resolves to us:cousub:3402545990 (Middletown Township, NJ)"
 midland,us:place:2653780,midland-mi,"'City of Midland' now resolves to us:place:2653780 (Midland, MI)"
@@ -397,6 +406,7 @@ midlothian,us:place:4848096,midlothian-tx,"'Midlothian' now resolves to us:place
 mill-creek,us:place:4950150,millcreek-ut,"'Mill Creek' now resolves to us:place:4950150 (Millcreek, UT)"
 millersburg,us:place:4148300,millersburg-or,"'City of Millersburg' now resolves to us:place:4148300 (Millersburg, OR)"
 milwaukee,us:place:5553000,milwaukee-wi,"'City of Milwaukee.' now resolves to us:place:5553000 (Milwaukee, WI)"
+minnesota-public-utilities-commission,rtr:us:mn:minnesota-public-utilities-commission,minnesota-public-utilities-commission-mn,'minnesota-public-utilities-commission' hub retired by scripts/backfill_gov_id.py --apply on 2026-10-16; its pages moved to minnesota-public-utilities-commission-mn (rtr:us:mn:minnesota-public-utilities-commission)
 mission,ca:csd:5909056,mission-bc,"'Mission' now resolves to ca:csd:5909056 (Mission, BC)"
 mn-senate,us:state:27,state-of-minnesota,'Mn Senate' now resolves to us:state:27 (State of Minnesota)
 monroe-oh,us:place:3951310,monroe-city-oh,"'Monroe, OH' now resolves to us:place:3951310 (Monroe (city), OH)"
@@ -405,6 +415,7 @@ montgomery-county,us:county:24031,montgomery-county-md,"'Montgomery County' now 
 moorhead-mn,us:place:2743864,moorhead-city-mn,"'Moorhead, MN' now resolves to us:place:2743864 (Moorhead (city), MN)"
 morgan-hill-ca-california,us:place:0649278,morgan-hill-ca,"'MORGAN HILL, CA - California' now resolves to us:place:0649278 (Morgan Hill, CA)"
 morgantown-wv,rtr:us:wv:morgantown,the-city-of-morgantown-wv,"'The City of Morgantown, WV' now resolves to rtr:us:wv:morgantown (The City of Morgantown, WV)"
+morrisville,us:place:3744520,morrisville-nc,'morrisville' hub retired by scripts/backfill_gov_id.py --apply on 2026-10-16; its pages moved to morrisville-nc (us:place:3744520)
 mountain-view,us:place:0649670,mountain-view-ca,"'Mountain View' now resolves to us:place:0649670 (Mountain View, CA)"
 mountain-view-county,ca:csd:4806028,mountain-view-county-ab,"'Mountain View County' now resolves to ca:csd:4806028 (Mountain View County, AB)"
 mt-juliet-city-tn,us:place:4750780,mount-juliet-tn,"'Mt Juliet City, TN' now resolves to us:place:4750780 (Mount Juliet, TN)"
@@ -425,6 +436,7 @@ needham-town-ma,us:cousub:2502144105,needham-ma,"'Needham Town, MA' now resolves
 nelson,ca:csd:5903015,nelson-bc,"'City of Nelson' now resolves to ca:csd:5903015 (Nelson, BC)"
 nevada-county,us:county:06057,nevada-county-ca,"'Nevada County' now resolves to us:county:06057 (Nevada County, CA)"
 nevada-legislature,us:state:32,state-of-nevada,'Nevada Legislature' now resolves to us:state:32 (State of Nevada)
+new-brighton,us:place:2745430,new-brighton-mn,'new-brighton' hub retired by scripts/backfill_gov_id.py --apply on 2026-10-16; its pages moved to new-brighton-mn (us:place:2745430)
 new-carlisle,us:place:3954334,new-carlisle-oh,"'City of New Carlisle' now resolves to us:place:3954334 (New Carlisle, OH)"
 new-hanover,us:county:37129,new-hanover-county-nc,"'New Hanover' now resolves to us:county:37129 (New Hanover County, NC)"
 newburgh,us:place:3650034,newburgh-city-ny,"'Newburgh' now resolves to us:place:3650034 (Newburgh (city), NY)"
@@ -441,6 +453,7 @@ north-providence-town-ri,us:cousub:4400751760,north-providence-ri,"'North Provid
 northcowichan,ca:csd:5919008,north-cowichan-bc,"'Northcowichan' now resolves to ca:csd:5919008 (North Cowichan, BC)"
 northfield,us:place:2746924,northfield-city-mn,"'City of Northfield' now resolves to us:place:2746924 (Northfield (city), MN)"
 nsb,us:place:1248625,new-smyrna-beach-fl,"'Nsb' now resolves to us:place:1248625 (New Smyrna Beach, FL)"
+oak-grove,us:place:2747690,oak-grove-mn,'oak-grove' hub retired by scripts/backfill_gov_id.py --apply on 2026-10-16; its pages moved to oak-grove-mn (us:place:2747690)
 oak-harbor,us:place:5350360,oak-harbor-wa,"'City of Oak Harbor' now resolves to us:place:5350360 (Oak Harbor, WA)"
 oak-park,us:place:1754885,oak-park-il,"'Oak Park' now resolves to us:place:1754885 (Oak Park, IL)"
 oak-ridge,us:place:4755120,oak-ridge-tn,"WO-293 (2026-09-12): same second-hop gap -- 'oak-ridge' pointed at the now-dead minted hub 'the-city-of-oak-ridge-tn' (rtr:us:tn:oak-ridge). Now points directly at us:place:4755120's live hub (Oak Ridge, TN; not yet frozen, 1 page)."
@@ -451,6 +464,7 @@ orange-county,us:county:12095,orange-county-fl,"'Orange County' now resolves to 
 orange-county-comptroller,us:county:12095,orange-county-fl,"'Orange County Comptroller' now resolves to us:county:12095 (Orange County, FL)"
 orangeville,ca:csd:3522014,orangeville-on,"'Orangeville' now resolves to ca:csd:3522014 (Orangeville, ON)"
 osawatomie-ks,us:place:2053225,osawatomie-city-ks,"'City of Osawatomie, KS' now resolves to us:place:2053225 (Osawatomie (city), KS)"
+ottawa,ca:csd:3506008,ottawa-on,'ottawa' hub retired by scripts/backfill_gov_id.py --apply on 2026-10-16; its pages moved to ottawa-on (ca:csd:3506008)
 ottawa-ks,us:place:2053550,ottawa-city-ks,"'City of Ottawa, KS' now resolves to us:place:2053550 (Ottawa (city), KS)"
 oxford-county-on,ca:cd:3532,oxford-on,"'Oxford County, ON' now resolves to ca:cd:3532 (Oxford, ON)"
 oxford-oh,us:place:3959234,oxford-city-oh,"'City of Oxford, OH' now resolves to us:place:3959234 (Oxford (city), OH)"
@@ -461,6 +475,7 @@ palm-springs,us:place:0655254,palm-springs-ca,"'City of Palm Springs' now resolv
 palo-alto-amending-section,us:place:0655282,palo-alto-ca,"'City of Palo Alto Amending Section' now resolves to us:place:0655282 (Palo Alto, CA)"
 paradise-valley,us:place:0452930,paradise-valley-az,"'Paradise Valley' now resolves to us:place:0452930 (Paradise Valley, AZ)"
 paramount-retiree-ca,rtr:us:ca:paramount-retiree,city-of-paramount-retiree-ca,"'City of Paramount Retiree, CA' now resolves to rtr:us:ca:paramount-retiree (City of Paramount Retiree, CA)"
+park-city,us:place:4958070,park-city-ut,'park-city' hub retired by scripts/backfill_gov_id.py --apply on 2026-10-16; its pages moved to park-city-ut (us:place:4958070)
 park-ridge,us:place:1757875,park-ridge-il,"'City of Park Ridge' now resolves to us:place:1757875 (Park Ridge, IL)"
 parker,us:place:0857630,parker-co,"'Parker' now resolves to us:place:0857630 (Parker, CO)"
 parowan-city-ut,us:place:4958510,parowan-ut,"'PAROWAN city, UT' now resolves to us:place:4958510 (Parowan, UT)"
@@ -471,6 +486,7 @@ peel-region-on,ca:cd:3521,peel-on,"'Peel Region, ON' now resolves to ca:cd:3521 
 pekin,us:place:1758447,pekin-city-il,"'Pekin' now resolves to us:place:1758447 (Pekin (city), IL)"
 pelham-ny,us:place:3657001,pelham-village-ny,"'PELHAM, NY' now resolves to us:place:3657001 (Pelham (village), NY)"
 penfield-ny,us:cousub:3605557144,penfield-town-ny,"'Penfield, NY' now resolves to us:cousub:3605557144 (Penfield Town, NY)"
+pennington-county,us:county:46103,pennington-county-sd,'pennington-county' hub retired by scripts/backfill_gov_id.py --apply on 2026-10-16; its pages moved to pennington-county-sd (us:county:46103)
 pensacola,us:place:1255925,pensacola-fl,"'City of Pensacola' now resolves to us:place:1255925 (Pensacola, FL)"
 peoria,us:place:1759000,peoria-il,"'City of Peoria' now resolves to us:place:1759000 (Peoria, IL)"
 perrysburg-oh,us:place:3962148,perrysburg-city-oh,"'Perrysburg, OH' now resolves to us:place:3962148 (Perrysburg (city), OH)"
@@ -486,6 +502,7 @@ plantation,us:place:1257425,plantation-fl,"'City of Plantation' now resolves to 
 pleasant-hill,us:place:0657764,pleasant-hill-ca,"'City of Pleasant Hill' now resolves to us:place:0657764 (Pleasant Hill, CA)"
 plymouth,us:place:2751730,plymouth-mn,"'City of Plymouth' now resolves to us:place:2751730 (Plymouth, MN)"
 port-colborne-resolution,us:place:2509000,brockton-ma,"'Port Colborne Resolution' now resolves to us:place:2509000 (Brockton, MA)"
+port-hope,ca:csd:3514020,port-hope-on,'port-hope' hub retired by scripts/backfill_gov_id.py --apply on 2026-10-16; its pages moved to port-hope-on (ca:csd:3514020)
 port-st-lucie,rtr:us:fl:port-st-lucie,port-st-lucie-fl,"'City of Port St Lucie' now resolves to rtr:us:fl:port-st-lucie (Port St. Lucie, FL)"
 portage,us:place:1861092,portage-city-in,"'City of Portage' now resolves to us:place:1861092 (Portage (city), IN)"
 portage-mi,us:place:2665560,portage-city-mi,"'Portage, MI' now resolves to us:place:2665560 (Portage (city), MI)"
@@ -513,6 +530,7 @@ riverhead-ny,us:cousub:3610361984,riverhead-town-ny,"'Riverhead, NY' now resolve
 riverside,us:place:0662000,riverside-ca,"'City of Riverside' now resolves to us:place:0662000 (Riverside, CA)"
 riverside-il,us:place:1764421,riverside-village-il,"'Riverside, IL' now resolves to us:place:1764421 (Riverside (village), IL)"
 riverview,us:place:2668880,riverview-mi,"'Riverview' now resolves to us:place:2668880 (Riverview, MI)"
+rmwb,ca:csd:4816037,wood-buffalo-ab,'rmwb' hub retired by scripts/backfill_gov_id.py --apply on 2026-10-16; its pages moved to wood-buffalo-ab (ca:csd:4816037)
 robbinsdale-isd-281,rtr:us:mn:robbinsdale-isd-281,robbinsdale-isd-281-mn,"'Robbinsdale ISD 281' now resolves to rtr:us:mn:robbinsdale-isd-281 (Robbinsdale ISD 281, MN)"
 rochester-mn,us:place:2754880,rochester-city-mn,"'Rochester, MN' now resolves to us:place:2754880 (Rochester (city), MN)"
 rockaway-nj,us:place:3464050,rockaway-borough-nj,"'Rockaway, NJ' now resolves to us:place:3464050 (Rockaway (borough), NJ)"
@@ -528,6 +546,7 @@ sagaponack-village-ny,us:place:3664452,sagaponack-ny,"'Sagaponack Village, NY' n
 saint-croix-county-wi,us:county:55109,st-croix-county-wi,"'Saint Croix County, WI' now resolves to us:county:55109 (St. Croix County, WI)"
 saint-louis-mo,us:place:2965000,st-louis-mo,"'Saint Louis, MO' now resolves to us:place:2965000 (St. Louis, MO)"
 saint-paul,us:place:2758000,st-paul-mn,"'City of Saint Paul' now resolves to us:place:2758000 (St. Paul, MN)"
+san-antonio,us:place:4865000,san-antonio-tx,'san-antonio' hub retired by scripts/backfill_gov_id.py --apply on 2026-10-16; its pages moved to san-antonio-tx (us:place:4865000)
 san-juan-capistrano,us:place:0668028,san-juan-capistrano-ca,"'The City of San Juan Capistrano' now resolves to us:place:0668028 (San Juan Capistrano, CA)"
 san-marcos,us:place:0668196,san-marcos-ca,"'City of San Marcos' now resolves to us:place:0668196 (San Marcos, CA)"
 sandag-ca,rtr:us:ca:san-diego-association-of-governments,san-diego-association-of-governments-ca,"'Sandag, CA' now resolves to rtr:us:ca:san-diego-association-of-governments (San Diego Association of Governments, CA)"
@@ -545,6 +564,7 @@ sheboygan-wi,us:place:5572975,sheboygan-city-wi,"'Sheboygan, WI' now resolves to
 shelby-mi,us:place:2672840,shelby-village-mi,"'Shelby, MI' now resolves to us:place:2672840 (Shelby (village), MI)"
 sherman,us:place:4867496,sherman-tx,"'Sherman' now resolves to us:place:4867496 (Sherman, TX)"
 skowhegan-town-me,us:cousub:2302568910,skowhegan-me,"'Skowhegan Town, ME' now resolves to us:cousub:2302568910 (Skowhegan, ME)"
+slrd,ca:cd:5931,squamish-lillooet-bc,'slrd' hub retired by scripts/backfill_gov_id.py --apply on 2026-10-16; its pages moved to squamish-lillooet-bc (ca:cd:5931)
 smithtown-ny,us:cousub:3610368000,smithtown-town-ny,"'SMITHTOWN, NY' now resolves to us:cousub:3610368000 (Smithtown Town, NY)"
 smyrna,us:place:1371492,smyrna-ga,"'City of Smyrna' now resolves to us:place:1371492 (Smyrna, GA)"
 somerville,us:place:2562535,somerville-ma,"'Somerville' now resolves to us:place:2562535 (Somerville, MA)"
@@ -559,6 +579,7 @@ southampton-ny,us:place:3668462,southampton-town-ny,"'Southampton, NY' now resol
 southern-california-association-of-governments,rtr:us:ca:southern-california-association-of-governments,southern-california-association-of-governments-ca,"'Southern California Association of Governments' now resolves to rtr:us:ca:southern-california-association-of-governments (Southern California Association of Governments, CA)"
 southwick-town-ma,us:cousub:2501365825,southwick-ma,"'Southwick Town, MA' now resolves to us:cousub:2501365825 (Southwick, MA)"
 spring-hill-ks,us:place:2067625,spring-hill-city-ks,"'City of Spring Hill, KS' now resolves to us:place:2067625 (Spring Hill (city), KS)"
+spring-town,us:place:4869800,springtown-tx,'spring-town' hub retired by scripts/backfill_gov_id.py --apply on 2026-10-16; its pages moved to springtown-tx (us:place:4869800)
 st,us:place:2757220,st-louis-park-mn,"'St' now resolves to us:place:2757220 (St. Louis Park, MN)"
 st-george,us:place:4965330,st-george-ut,"'City of St. George' now resolves to us:place:4965330 (St. George, UT)"
 st-james-mn,us:place:2757040,st-james-city-mn,"'St James, MN' now resolves to us:place:2757040 (St. James (city), MN)"
@@ -570,6 +591,7 @@ stjohns,ca:csd:1001519,st-john-s-nl,"'Stjohns' now resolves to ca:csd:1001519 (S
 stockbridge,us:place:1373704,stockbridge-ga,"'Stockbridge' now resolves to us:place:1373704 (Stockbridge, GA)"
 stockton,us:place:0675000,stockton-ca,"'City of Stockton' now resolves to us:place:0675000 (Stockton, CA)"
 stoneham-ma,us:cousub:2501767665,stoneham-town-ma,"'Stoneham, MA' now resolves to us:cousub:2501767665 (Stoneham Town, MA)"
+stratford-ad,ca:csd:3531011,stratford-on,'stratford-ad' hub retired by scripts/backfill_gov_id.py --apply on 2026-10-16; its pages moved to stratford-on (ca:csd:3531011)
 strathcona,us:place:2763130,strathcona-mn,"'Strathcona' now resolves to us:place:2763130 (Strathcona, MN)"
 strathroy-caradoc,ca:csd:3539015,strathroy-caradoc-on,"'Strathroy Caradoc' now resolves to ca:csd:3539015 (Strathroy-Caradoc, ON)"
 sturgeon-county,ca:csd:4811059,sturgeon-county-ab,"'Sturgeon County' now resolves to ca:csd:4811059 (Sturgeon County, AB)"
@@ -584,6 +606,8 @@ sunset-valley-travis-county-tx,us:place:4871324,sunset-valley-tx,"'City of Sunse
 sunshine-coast-regional-district-bc,ca:cd:5929,sunshine-coast-bc,"'Sunshine Coast Regional District, BC' now resolves to ca:cd:5929 (Sunshine Coast, BC)"
 superior,us:place:5578650,superior-city-wi,"'City of Superior' now resolves to us:place:5578650 (Superior (city), WI)"
 superior-wi,us:cousub:5503178675,superior-town-wi,"'Superior, WI' now resolves to us:cousub:5503178675 (Superior (town), WI)"
+sylvania-township,us:cousub:3909576025,sylvania-township-oh,'sylvania-township' hub retired by scripts/backfill_gov_id.py --apply on 2026-10-16; its pages moved to sylvania-township-oh (us:cousub:3909576025)
+syosset-school-district,us:sd:3628560,syosset-central-school-district-ny,'syosset-school-district' hub retired by scripts/backfill_gov_id.py --apply on 2026-10-16; its pages moved to syosset-central-school-district-ny (us:sd:3628560)
 talbot-county,us:county:24041,talbot-county-md,"'Talbot County' now resolves to us:county:24041 (Talbot County, MD)"
 tampa-d,rtr:us:fl:tampa-bay-water,tampa-bay-water-fl,"'City of Tampa D.' now resolves to rtr:us:fl:tampa-bay-water (Tampa Bay Water, FL)"
 taylor-mi-city,us:place:2679000,taylor-mi,"'Taylor, MI City' now resolves to us:place:2679000 (Taylor, MI)"
@@ -626,6 +650,7 @@ town-of-cutler-bay-fl,us:place:1215968,cutler-bay-fl,"'Town of Cutler Bay, FL' n
 town-of-danville-ca,us:place:0617988,danville-ca,"'Town of Danville, CA' now resolves to us:place:0617988 (Danville, CA)"
 town-of-davie-fl,us:place:1216475,davie-fl,"'Town of Davie, FL' now resolves to us:place:1216475 (Davie, FL)"
 town-of-dewey-humboldt-az,us:place:0419145,dewey-humboldt-az,"'Town of Dewey-Humboldt, AZ' now resolves to us:place:0419145 (Dewey-Humboldt, AZ)"
+town-of-dumfries,us:place:5123760,dumfries-va,'town-of-dumfries' hub retired by scripts/backfill_gov_id.py --apply on 2026-10-16; its pages moved to dumfries-va (us:place:5123760)
 town-of-edenton-nc,us:place:3720120,edenton-nc,"'Town of Edenton, NC' now resolves to us:place:3720120 (Edenton, NC)"
 town-of-emerald-isle-nc,us:place:3721160,emerald-isle-nc,"'Town of Emerald Isle, NC' now resolves to us:place:3721160 (Emerald Isle, NC)"
 town-of-erie-co,us:place:0824950,erie-co,"'Town of Erie, CO' now resolves to us:place:0824950 (Erie, CO)"
@@ -640,6 +665,7 @@ town-of-frisco,us:place:0828690,frisco-co,"'Town of Frisco' now resolves to us:p
 town-of-frisco-co,us:place:0828690,frisco-co,"'Town of Frisco, CO' now resolves to us:place:0828690 (Frisco, CO)"
 town-of-fuquay-varina-nc,us:place:3725300,fuquay-varina-nc,"'Town of Fuquay-Varina, NC' now resolves to us:place:3725300 (Fuquay-Varina, NC)"
 town-of-georgina-on,ca:csd:3519070,georgina-on,"'Town of Georgina, ON' now resolves to ca:csd:3519070 (Georgina, ON)"
+town-of-gilbert,us:place:0427400,gilbert-az,'town-of-gilbert' hub retired by scripts/backfill_gov_id.py --apply on 2026-10-16; its pages moved to gilbert-az (us:place:0427400)
 town-of-grand-valley-on,ca:csd:3522010,grand-valley-on,"'Town of Grand Valley, ON' now resolves to ca:csd:3522010 (Grand Valley, ON)"
 town-of-gray-me,us:cousub:2300528870,gray-me,"'Town of Gray, ME' now resolves to us:cousub:2300528870 (Gray Town, ME)"
 town-of-halton-hills-on,ca:csd:3524015,halton-hills-on,"'Town of Halton Hills, ON' now resolves to ca:csd:3524015 (Halton Hills, ON)"
@@ -691,6 +717,7 @@ town-of-slave-lake-ab,ca:csd:4817029,slave-lake-ab,"'Town of Slave Lake, AB' now
 town-of-snowmass-village-co,us:place:0871755,snowmass-village-co,"'Town of Snowmass Village, CO' now resolves to us:place:0871755 (Snowmass Village, CO)"
 town-of-southwick-ma,us:cousub:2501365825,southwick-ma,"'Town of Southwick, MA' now resolves to us:cousub:2501365825 (Southwick Town, MA)"
 town-of-sullivan-ny,us:cousub:3605371993,sullivan-county-ny,"'Town of Sullivan, NY' now resolves to us:cousub:3605371993 (Sullivan Town, NY)"
+town-of-superior,us:place:0875640,superior-co,'town-of-superior' hub retired by scripts/backfill_gov_id.py --apply on 2026-10-16; its pages moved to superior-co (us:place:0875640)
 town-of-surfside-beach,us:place:4570585,surfside-beach-sc,"'Town of Surfside Beach' now resolves to us:place:4570585 (Surfside Beach, SC)"
 town-of-surfside-fl,us:place:1270075,surfside-fl,"'Town of Surfside, FL' now resolves to us:place:1270075 (Surfside, FL)"
 town-of-tiburon-ca,us:place:0678666,tiburon-ca,"'Town of Tiburon, CA' now resolves to us:place:0678666 (Tiburon, CA)"
@@ -737,6 +764,7 @@ upper-dublin-pa,us:cousub:4209179008,upper-dublin-township-pa,"'Upper Dublin, PA
 vacaville-unified-school-district,us:sd:0640590,vacaville-unified-school-district-ca,"'Vacaville Unified School District' now resolves to us:sd:0640590 (Vacaville Unified School District, CA)"
 van-buren-tn,us:county:47175,van-buren-county-tn,"'Van Buren, TN' now resolves to us:county:47175 (Van Buren County, TN)"
 venice,us:place:1273900,venice-fl,"'Venice' now resolves to us:place:1273900 (Venice, FL)"
+vermilion,ca:csd:4810042,vermilion-ab,'vermilion' hub retired by scripts/backfill_gov_id.py --apply on 2026-10-16; its pages moved to vermilion-ab (ca:csd:4810042)
 vermillion-sd,us:place:4666700,vermillion-city-sd,"'Vermillion, SD' now resolves to us:place:4666700 (Vermillion (city), SD)"
 verona,us:place:5582600,verona-city-wi,"'City of Verona' now resolves to us:place:5582600 (Verona (city), WI)"
 victor-ny,us:place:3677376,victor-village-ny,"'Victor, NY' now resolves to us:place:3677376 (Victor (village), NY)"
@@ -777,10 +805,12 @@ walton-county-meetings-portal,us:county:13297,walton-county-ga,"'Walton County M
 walworth-county,us:county:55127,walworth-county-wi,"'Walworth County' now resolves to us:county:55127 (Walworth County, WI)"
 walworth-wi,us:place:5583250,walworth-village-wi,"'Walworth, WI' now resolves to us:place:5583250 (Walworth (village), WI)"
 wasatch-ut,us:county:49051,wasatch-county-ut,"'Wasatch, UT' now resolves to us:county:49051 (Wasatch County, UT)"
+washington-suburban-sanitary-commission,rtr:us:md:washington-suburban-sanitary-commission,washington-suburban-sanitary-commission-md,'washington-suburban-sanitary-commission' hub retired by scripts/backfill_gov_id.py --apply on 2026-10-16; its pages moved to washington-suburban-sanitary-commission-md (rtr:us:md:washington-suburban-sanitary-commission)
 waukesha-wi,us:place:5584250,waukesha-city-wi,"'City of Waukesha, WI' now resolves to us:place:5584250 (Waukesha (city), WI)"
 waverly,us:place:1982875,waverly-ia,"'City of Waverly' now resolves to us:place:1982875 (Waverly, IA)"
 welland-on,ca:cd:3534,elgin-on,"'Welland, ON' now resolves to ca:cd:3534 (Elgin, ON)"
 wellington,us:place:1275812,wellington-fl,"'Wellington' now resolves to us:place:1275812 (Wellington, FL)"
+west-county-wastewater,rtr:us:ca:west-county-wastewater-district,west-county-wastewater-district-ca,'west-county-wastewater' hub retired by scripts/backfill_gov_id.py --apply on 2026-10-16; its pages moved to west-county-wastewater-district-ca (rtr:us:ca:west-county-wastewater-district)
 westminster,us:place:0684550,westminster-ca,"'City of Westminster' now resolves to us:place:0684550 (Westminster, CA)"
 westport-town-ct,us:cousub:0919083500,westport-ct,"'Westport Town, CT' now resolves to us:cousub:0919083500 (Westport, CT)"
 whitehouse,us:place:4878388,whitehouse-tx,"'City of Whitehouse' now resolves to us:place:4878388 (Whitehouse, TX)"
@@ -788,6 +818,7 @@ williams-county,us:county:38105,williams-county-nd,"'Williams County' now resolv
 williamsburg,us:place:5186160,williamsburg-va,"'City of Williamsburg' now resolves to us:place:5186160 (Williamsburg, VA)"
 willow-park-texas-meetings-hub,us:place:4879492,willow-park-tx,"'Willow Park Texas Meetings Hub' now resolves to us:place:4879492 (Willow Park, TX)"
 wilmington,us:place:3774440,wilmington-nc,"'Wilmington' now resolves to us:place:3774440 (Wilmington, NC)"
+wilmot,ca:csd:3530020,wilmot-on,'wilmot' hub retired by scripts/backfill_gov_id.py --apply on 2026-10-16; its pages moved to wilmot-on (ca:csd:3530020)
 wilson-county-schools-tn,us:sd:4704550,wilson-county-school-district-tn,"'Wilson County Schools, TN' now resolves to us:sd:4704550 (Wilson County School District, TN)"
 winchendon-town-ma,us:cousub:2502780405,winchendon-ma,"'Winchendon Town, MA' now resolves to us:cousub:2502780405 (Winchendon, MA)"
 windham-town-me,us:cousub:2300586025,windham-me,"'Windham Town, ME' now resolves to us:cousub:2300586025 (Windham, ME)"
@@ -860,6 +891,7 @@ crawford,us:place:3111195,crawford-ne,"'crawford' hub re-keyed by the 2026-09-11
 town-of-oakland,us:cousub:2301154560,oakland-me,"'town-of-oakland' hub re-keyed by the 2026-09-11 post-deploy backfill_gov_id run (WO-188 pins); now us:cousub:2301154560 (Oakland, ME)"
 town-of-townsend,us:cousub:2501770360,townsend-ma,"'town-of-townsend' hub re-keyed by the 2026-09-11 post-deploy backfill_gov_id run (WO-188 pins); now us:cousub:2501770360 (Townsend, MA)"
 salem-township,us:cousub:2616171130,salem-township-mi,"'salem-township' hub re-keyed by the 2026-09-11 post-deploy backfill_gov_id run (WO-188 pins); now us:cousub:2616171130 (Salem (township), MI)"
+york-county-video-services,us:county:51199,york-county-va,'york-county-video-services' hub retired by scripts/backfill_gov_id.py --apply on 2026-10-16; its pages moved to york-county-va (us:county:51199)
 ypsilanti-township-mi,us:cousub:2616189160,ypsilanti-charter-township-mi,"'ypsilanti-township-mi' hub re-keyed by the 2026-09-11 post-deploy backfill_gov_id run (WO-188 pins); now us:cousub:2616189160 (Ypsilanti Charter Township, MI)"
 new-london,us:cousub:3301352100,new-london-nh,"'new-london' hub re-keyed by the 2026-09-11 post-deploy backfill_gov_id run (WO-188 pins); now us:cousub:3301352100 (New London, NH)"
 bethlehem-township,us:cousub:3401905650,bethlehem-township-nj,"'bethlehem-township' hub re-keyed by the 2026-09-11 post-deploy backfill_gov_id run (WO-188 pins); now us:cousub:3401905650 (Bethlehem Township, NJ)"
