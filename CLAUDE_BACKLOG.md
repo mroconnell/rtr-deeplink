@@ -338,10 +338,11 @@ request, deliberately not built as part of it — see `BACKLOG_DONE.md`'s
   a citable source. The transcription pipeline already uses self-hosted
   `faster-whisper` specifically because it's the same base model WhisperX
   builds real diarization on top of (via `pyannote.audio`) — and
-  `TranscriptSegment` (`app/platforms/models.py`) already carries an
-  unused `speaker` field for exactly this, added cheaply now rather than
-  needing a schema touch later, so this is additive to the existing data
-  model, not a redesign. Real work still needed: running the diarization
+  `TranscriptSegment` (`app/platforms/models.py`) already carries a
+  `speaker` field, and since WO-1967 (2026-10-16) the meeting page and
+  `.txt` download show it where it changes (filled today only from source
+  captions' WebVTT voice tags), so diarization output would display with
+  no further UI or schema work. Real work still needed: running the diarization
   pass itself (a real compute/latency cost on top of transcription — size
   it before committing), and a UI for someone to label "Speaker 1" as an
   actual name (per meeting, or per recurring seat/role if a

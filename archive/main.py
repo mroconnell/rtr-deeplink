@@ -1694,11 +1694,11 @@ class TranscriptSegmentIn(BaseModel):
     start: float
     end: float
     text: str
-    # Unused today (see app/platforms/models.py's TranscriptSegment for
-    # why it exists at all) -- declared here too so it round-trips through
-    # ingest instead of Pydantic silently dropping an unrecognized field,
-    # which would otherwise quietly break a future diarization pass that
-    # assumes this value survives the resolver -> Archive boundary.
+    # A speaker label from the source's captions (WO-1967; see
+    # app/platforms/models.py's TranscriptSegment). Declared here so it
+    # round-trips through ingest instead of Pydantic silently dropping it.
+    # Stored inside the segments JSON, so it needed no migration. The
+    # meeting page and the .txt export show it where it changes.
     speaker: Optional[str] = None
 
 

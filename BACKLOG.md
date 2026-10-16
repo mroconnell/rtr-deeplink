@@ -2287,11 +2287,11 @@ actionability sections above.
 
 ### Adapters drop signals that show a person captioned the meeting (found 2026-10-09, WO-1960) `[IMPROVEMENT-ROUND]`
 
-- **Issue**: typed speaker names survive only as inline text (Tampa: "ALAN CLENDENIN : ..."); `TranscriptSegment.speaker` is never filled. TelVue's `<v Speaker N>` tags and Cablecast's `S1:` labels are stripped before storage. Tampa's page header ("unedited version of realtime captioning") is cut before the first timestamp. The Archive's `source` only separates `transcribed` from everything else, so human, edited and automatic captions all look the same.
+- **Issue**: WebVTT voice tags now fill `speaker` (WO-1967, `BACKLOG_DONE.md`). Still dropped: Cablecast's `S1:` labels and Tampa's typed "ALAN CLENDENIN :" names (no real fixture of either shape in `tests/fixtures` yet), and Tampa's page header ("unedited version of realtime captioning"), which is cut before the first timestamp. The Archive's `source` only separates `transcribed` from everything else, so human, edited and automatic captions all look the same.
 - **Impact**: finding human-captioned meetings takes a text-pattern scan of every stored transcript (`scripts/find_named_speaker_transcripts.py`), and it cannot use the header. Name labels also appear in video-call machine transcripts, so a label alone is not evidence of a person.
-- **Next action**: fill `speaker` where an adapter has a reliable label and leave the text unchanged; keep a short caption credit (such as Tampa's header) with the version. Skip room or account labels such as "El Cerrito Council Chamber".
-- **Constraint**: a new field on the ingest payload needs an Alembic migration (`archive/alembic/`). A label alone is not a person.
-- **History**: rtr-business `research/CAPTION_METHODOLOGY.md` (2026-10-09 to 10-12).
+- **Next action**: (1) save a real Cablecast `S1:` transcript and a real Tampa transcript page as fixtures, then set `speaker` in `cablecast._parse_transcript()` and `tampa.py`, leaving the text as is; (2) keep a short caption credit (Tampa's header) on the transcript version, which needs a new column. Room labels are already skipped by `vtt_parser.clean_speaker_label()`; reuse it.
+- **Constraint**: the caption credit is a new field on the ingest payload and needs an Alembic migration (`archive/alembic/`). The speaker label itself needs none (it lives in the segments JSON). A label alone is not a person.
+- **History**: rtr-business `research/CAPTION_METHODOLOGY.md` (2026-10-09 to 10-12). WO-1967 (2026-10-16) built voice tags, the page display and the `.txt` export.
 
 ### `[IMPROVEMENT-ROUND]` Pierce County TV: per-government YouTube leads for the drip Mac
 

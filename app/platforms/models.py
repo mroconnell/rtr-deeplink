@@ -6,9 +6,11 @@ class TranscriptSegment(BaseModel):
     start: float
     end: float
     text: str
-    # Unused by every adapter today (always None) -- forward-compat for a
-    # future diarization pass over on-demand-transcribed audio, so that
-    # feature won't need another schema touch when it's actually built.
+    # A speaker label the source's own captions carried. Since WO-1967
+    # (2026-10-16) parse_vtt() fills it from WebVTT voice tags
+    # (`<v Speaker 1>`, TelVue and Orange County FL in real files); see
+    # vtt_parser.extract_voice_speakers() for which labels are kept. None
+    # everywhere else, including our own AI transcriptions (no diarization).
     speaker: Optional[str] = None
 
 

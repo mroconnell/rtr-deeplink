@@ -26,7 +26,18 @@ def _txt_timestamp(seconds: float) -> str:
 
 def to_txt(segments: list) -> str:
     """Plain-text transcript, one timestamped line per segment -- readable
-    on its own, not just a stripped-down SRT (no cue numbers/arrows)."""
-    return "\n".join(
-        f"[{_txt_timestamp(seg['start'])}] {seg['text']}" for seg in segments
-    )
+    on its own, not just a stripped-down SRT (no cue numbers/arrows).
+
+    WO-1967: when a segment carries a speaker label from the station's
+    captions and it differs from the last label shown, the line reads
+    "[1:05] NAME: text", the same rule the meeting page uses. The .srt
+    export stays label-free: subtitle players show cue text as it is."""
+    lines = []
+    last_speaker = None
+    for seg in segments:
+        speaker = seg.get("speaker")
+        prefix = f"{speaker}: " if speaker and speaker != last_speaker else ""
+        if speaker:
+            last_speaker = speaker
+        lines.append(f"[{_txt_timestamp(seg['start'])}] {prefix}{seg['text']}")
+    return "\n".join(lines)
