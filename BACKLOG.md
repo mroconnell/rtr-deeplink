@@ -145,7 +145,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (6)
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (38)
   [HUMAN] Archive page 12994 carries a job label as its source address;…
-  [HUMAN] Ryan decides which Granicus feeds from his two lead…
+  [HUMAN] Two Granicus lead-sheet feeds need Ryan's call: Gretna LA's…
   [HUMAN] [LOGIN] WO-1055's live page moves and twin deletes wait for a…
   [HUMAN] WO-1165: 15 CivicMedia page renames, one refresh and one…
   [HUMAN] Promote the hidden transcript version on about 6 pages where…
@@ -954,11 +954,12 @@ of human step they need.
   - **Next action**: an admin sets page 12994's source address to its Drive link `https://drive.google.com/file/d/1Z2ir3mX1Fjhz3XlYpc-yLSXbD0dBdloI/view?usp=sharing`; Find Meeting finds which group4 job wrote the label and stops it; then re-push the 9 backups.
   - **Constraint**: do not overwrite page 12994 from any queue line. Not verified: whether the drip `direct` lane or the cloud feed ever created another page this way (the 2026-10-14 inventory shows one page with a non-URL source).
 
-- **[HUMAN] Ryan decides which Granicus feeds from his two lead spreadsheets are subscribed, once each host's owner is confirmed (2026-10-07).**
-  - **Issue**: Ryan's two `granicus-meeting-links` sheets (73 rows each, view ids found by hand) gave 63 feed addresses never seen in our local records. A direct check (own 3 s pacing, `~/Documents/rtr-findmeeting/data/granicus_norss_rss_check_2026-10-07/results/leads_direct/results.csv`) found 35 feeds with real items on 26 hosts, 10 parsed but empty, and `oregon.granicus.com` gated on every view.
-  - **Impact**: possible new governments, mostly special districts and authorities; "never seen in our records" is not "no Archive page", since the Archive inventory was not readable.
-  - **Next action**: confirm each host's owner (a hand check, not the sheet's match), pin it, then subscribe under findmeeting's PR 73 rules (pinned tenant, real items, no internal or test channel title). Leave out iframe-copy views (Clark, view 17 and 23) and stale feeds (Somerton 2021, Jackson Health 2024).
-  - **Constraint**: the sheets flag 11 ownership mismatches (`cityofgonzales` is Gonzales CA, not the county in TX; `alameda` is the City of Alameda, not the school district; `pinole` is the City of Pinole). Never pin from the sheet's match.
+- **[HUMAN] Two Granicus lead-sheet feeds need Ryan's call: Gretna LA's "New View", and Scranton's two authority views filed under the city (2026-10-16).**
+  - **Issue**: (1) Gretna's only feed, `gretnala.granicus.com` view 1, is titled "Gretna, LA: New View". findmeeting's internal/test title rule holds it back, but the page lists real "Mayor and City Council" meetings (owner checked by hand 2026-10-16, now pinned to `us:place:2231915`). (2) `scrantonpa.granicus.com` views 10 ("Scranton Housing Authority") and 14 ("Scranton Redevelopment Authority") were subscribed on 2026-10-07 under the City of Scranton (`us:place:4269000`), but each is a separate public body.
+  - **Impact**: (1) Gretna's council meetings are not read. (2) Pages from those two views would be filed under the city.
+  - **Next action**: (1) Ryan decides whether to subscribe Gretna view 1 by hand despite its title. (2) Ryan decides whether to remove the two Scranton authority views from `feed_subscriptions.csv` in rtr-findmeeting, or give each its own government and a `match` pin.
+  - **Constraint**: never pin from the sheets' own match.
+  - **History**: `BACKLOG_DONE.md`, "Granicus feeds from Ryan's two lead sheets: owners checked by hand".
 
 - **[HUMAN] [LOGIN] WO-1055's live page moves and twin deletes wait for a deploy, then one worklist run.**
   - **Issue**: WO-1055 committed the registry fixes (METRO, The Harris Center, the Port of Corpus Christi, the Metropolitan Water District, six county hosts) but moved no live page. Its session had no Archive token. Pages to fix: 399, 4177, 5908 (to METRO), 3759 (to The Harris Center), 2659 and the 2026-08-18 Port Commission page (to the Port), 2535 and any other `mwdh2o.granicus.com` page (to the Metropolitan Water District of Southern California), any page on the six county hosts still under a city (two Sedgwick pages sit on a "County of Sedgwick" hub), and three deletes: twins 1171 and 3964, trailer 5775.
