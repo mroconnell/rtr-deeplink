@@ -296,11 +296,15 @@ _KNOWN_DESTINYHOSTED_TENANT_JURISDICTIONS = {
 # returns "Tyngsborough, MA" (nationally unique name), which its own
 # playlist confirms ("Tyngsborough, MA Pre-Town Meeting Informational
 # Session | April 29, 2025") -- the first real positive for that path.
+# - "city-of-marathon": the generic path returned "City Of Marathon, WI" --
+#   WRONG. This is Marathon, FL (Florida Keys), confirmed resolving a real
+#   video for WO-306 (2026-09-12; rtr-business research/wo306_report.csv).
 _KNOWN_TENANT_SLUG_JURISDICTIONS = {
     "westfordcat": "Westford, MA",
     "blackstone": "Blackstone, MA",
     "lincoln": "Lincoln, MA",
     "durham": "Durham, NH",
+    "city-of-marathon": "Marathon, FL",
 }
 
 

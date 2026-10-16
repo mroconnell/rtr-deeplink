@@ -1963,3 +1963,13 @@ async def test_resolve_hls_subtitle_fallback_still_reports_no_transcript_when_no
 
     assert result.segments == []
     assert result.transcript_warnings == ["No transcript found for this event."]
+
+
+def test_extract_jurisdiction_wellfleet_host_is_massachusetts():
+    # Real tenant (WO-309 resume, 2026-09-12): Wellfleet, MA on Cape Cod.
+    # Its "Town of Wellfleet" branding resolved to Wellfleet village, NE
+    # before the known-host entry. The site dict is synthetic, shaped like
+    # the real `site` object's title field.
+    url = "https://reflect-townofwellfleet.cablecast.tv/internetchannel/show/1"
+    site = {"title": "Town of Wellfleet", "pageDescription": None}
+    assert CablecastAssetFinder._extract_jurisdiction(site, url) == "Wellfleet, MA"

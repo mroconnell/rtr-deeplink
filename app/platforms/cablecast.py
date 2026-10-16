@@ -386,6 +386,16 @@ _CCX_MEDIA_SITES = {
 # infrastructure this session hasn't seen.
 _VENDOR_DEMO_HOST = "yourtown.cablecast.tv"
 
+# Hosts whose own branding text names a place the generic tiers in
+# `_extract_jurisdiction()` file under the wrong state. Checked first.
+# - reflect-townofwellfleet: "Town of Wellfleet" came back as
+#   "Town of Wellfleet, NE" (Wellfleet village, NE). This is Wellfleet, MA
+#   on Cape Cod (WO-309 resume, 2026-09-12; rtr-business
+#   research/wo309b_report.csv; gov_id pin in tenant_overrides.csv).
+_KNOWN_HOST_JURISDICTIONS = {
+    "reflect-townofwellfleet.cablecast.tv": "Wellfleet, MA",
+}
+
 
 class CablecastAssetFinder(AssetFinder):
     """Detroit, MI and Charlotte, NC's Cablecast video portals (Remix.js
@@ -1334,6 +1344,8 @@ class CablecastAssetFinder(AssetFinder):
             return ccx_jurisdiction
 
         netloc = urlparse(url).netloc.lower()
+        if netloc in _KNOWN_HOST_JURISDICTIONS:
+            return _KNOWN_HOST_JURISDICTIONS[netloc]
         page_description = site.get("pageDescription")
         # Real gap found 2026-08-29 auditing stored (not missing --
         # confidently WRONG) jurisdictions via /coverage: the narrower

@@ -397,3 +397,13 @@ async def test_jurisdiction_from_tenant_slug_declines_ambiguous_westford_without
     # bare "Westford" is a real 6-state collision the generic
     # Census-backed lookup correctly declines rather than guessing.
     assert CastusAssetFinder._jurisdiction_from_tenant_slug("westford") is None
+
+
+def test_jurisdiction_from_tenant_slug_marathon_is_florida():
+    # Real tenant (WO-306, 2026-09-12): Marathon, FL in the Florida Keys.
+    # The generic path guessed "City Of Marathon, WI", a different real
+    # place, before the curated entry.
+    assert (
+        CastusAssetFinder._jurisdiction_from_tenant_slug("city-of-marathon")
+        == "Marathon, FL"
+    )
