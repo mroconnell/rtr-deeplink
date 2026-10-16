@@ -263,3 +263,22 @@ def test_session_for_uses_the_raised_header_size_limits():
             await fetcher.aclose()
 
     asyncio.run(_check())
+
+
+async def test_plain_get_refused_by_the_budget_does_not_wait_out_the_host_delay(
+    monkeypatch,
+):
+    # Backlog triage 2026-10-16 (CLAUDE_BACKLOG.md): `_plain_get` used to
+    # sleep out the per-host delay (up to 2.5 s) and only then ask the
+    # budget. `_headless` already asked first.
+    fetcher = Fetcher(max_fetches=1)
+    fetcher._take_budget()
+    waited = []
+
+    async def _record_wait(host):
+        waited.append(host)
+
+    monkeypatch.setattr(fetcher, "_wait_for_host", _record_wait)
+    with pytest.raises(BudgetExceeded):
+        await fetcher._plain_get("https://example.gov/meetings", browser=False)
+    assert waited == []
