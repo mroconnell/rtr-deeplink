@@ -133,27 +133,14 @@ Standing decisions — do NOT re-raise  (23)
   `[LATER]` Prompt injection isn't a live product risk today, but the…
   `[LATER]` If a Content-Security-Policy is ever added, it must allow…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (19)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (6)
   The "no adapter" comment on `MULTI_GOV_HOSTS` is out of date: BoxCast…
-  `swagit.py`'s title parser cuts a hyphenated place name in half,…
-  Our fetch user-agent claims Chrome 91 (2021), and Cloudflare refuses…
-  ClerkBase pages name the council without its state, so they stay…
-  `cablecast.py`: a resolve()-level fallback for Niagara Falls City SD…
-  `cablecast.py`'s tenant-slug jurisdiction fallback also mis-guesses…
-  `castus.py`'s tenant-slug jurisdiction fallback guessed the wrong…
-  `_VENDOR_MARKETING_APEX` (`scripts/wo147_access_ladder_sweep.py`)…
-  `VimeoAssetFinder.resolve()` has no title fallback when Vimeo's own…
-  Dashboard filters: exclude a string, and filter on blank / non-blank…
   Coverage registry: per-state view and other dashboard additions…  (2)
     [JUST-DO-IT] `[EASY]` A government that stops being ingested only…
     [JUST-DO-IT] `[EASY]` Two hub-membership asymmetries left by WO-256's…
-  `civicclerk.py`'s `resolve()` can return a bare…
-  iQM2's meeting body is only on the calendar listing page; fetch it…  (3)
-    [JUST-DO-IT] `[EASY]` `archive_client.send_search_alerts()` has no…
-    [JUST-DO-IT] `[EASY]` `sitemap.xml` lists old slugs that 301 through…
+  iQM2's meeting body is only on the calendar listing page; fetch it…  (1)
     [JUST-DO-IT] CLAUDE.md's sample-sheet note calling Whitehall, OH's…
   Granicus: discover a tenant's `view_id` so a bare tenant hub lists…
-  Legistar answers 410 Gone to a meeting link without its `GUID`, and…
   [NEEDS-AUDIT] `[EASY]` A video whose own title is a camera or file…
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (38)
@@ -197,7 +184,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (38)
   `[IMPROVEMENT-ROUND]` Full Context entries on YouTube-backed meetings…
   [IMPROVEMENT-ROUND] Lifecycle-triggered transactional emails (Resend)…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (93)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (73)
   [NEEDS-AUDIT] Tampa deep links assume the video starts at the first…
   [NEEDS-AUDIT] Some stored captions do not line up with their video,…
   [NEEDS-AUDIT] Meeting Finder picks the wrong clip from a Granicus…
@@ -213,18 +200,14 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (93)
   [NEEDS-AUDIT] `[EXAMPLE]` `civicplus.io`: platform or CivicPlus web…
   [NEEDS-AUDIT] Seven hand-confirmed government platform links still…
   Blackstone, MA's Castus hub walk resolves, but to a 5-day-stale…
-  Self-hosted Castus VOD widget (`{tenant}.vod.castus.tv`) has no…  (31)
+  Self-hosted Castus VOD widget (`{tenant}.vod.castus.tv`) has no…  (23)
     [NEEDS-AUDIT] `[EASY]` Two writers still emit the dead…
-    [NEEDS-AUDIT] `[EASY]` `queue_probe.py` sends a Vimeo video found…
-    [NEEDS-AUDIT] `[EXAMPLE]` `hellonation.com` serves the identical,…
     [NEEDS-AUDIT] Four Kind-A/wrong-domain findings from WO-349's…
     [NEEDS-AUDIT] 146 tier-3 queue lines on shared video hosts have no…
     [NEEDS-AUDIT] `[EASY]` Pierce County WA's tier-3 queue line may be a…
     [NEEDS-AUDIT] `fetch_headless_sync()` has no wall-clock limit on…
     [NEEDS-AUDIT] 6 TelVue pages still keyed to Pittsford village NY have…
-    [NEEDS-AUDIT] `[EASY]` `civicclerk.py` reports `video_found=True`…
     [JUST-DO-IT] YouTube video `ci9jnPULx5M` is pinned to Ste. Genevieve…
-    [JUST-DO-IT] `[EASY]` `MEETING_ALLOWLIST` has no French words, so…
     [NEEDS-AUDIT] Real meetings found under the wrong government, never…
     [NEEDS-AUDIT] Check whether BoxCast re-signed Livermore Falls ME's…
     [NEEDS-AUDIT] Wheatfield town, IN's Town Board videos are linked from…
@@ -234,11 +217,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (93)
     [NEEDS-AUDIT] `[EASY]` SLC, LIMS and PrimeGov fail the whole resolve…
     [NEEDS-AUDIT] `[EASY]` yt-dlp's "This live event has ended." message…
     [NEEDS-AUDIT] Two tests failed only in full local runs on Ryan's Mac,…
-    [NEEDS-AUDIT] `[EASY]` Six tests in `test_generic_fallback.py` still…
-    [NEEDS-AUDIT] A Meeting Finder run still cannot exit while an…
-    [NEEDS-AUDIT] `[EASY]` The YouTube fetch guard does not block…
     [NEEDS-AUDIT] A bare unqualified name that exists in BOTH the
-    [NEEDS-AUDIT] `[EASY]` A bare name for one of 16 "X Town city" places…
     [NEEDS-AUDIT] eScribe archives one meeting once per `Agenda=` value…
     [HUMAN] Re-run the wrong-content screen after the wrong-page sheet is…
     [NEEDS-AUDIT] `scripts/score_gov_registry.py` can't see `match`-
@@ -252,36 +231,24 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (93)
   `transcribe_backlog_locally.py`'s asyncio/subprocess context hangs…
   Adapter, tenant & jurisdiction-extraction odds and ends `[LATER]`
   `[JUST-DO-IT]` Anchorage and Santa Cruz OnBase/Hyland pages resolve…
-  Jurisdiction extraction & backfill  (11)
+  Jurisdiction extraction & backfill  (6)
     `[HUMAN]` Page 8878 (Town of Franklin, MA's Community Preservation…
-    `[JUST-DO-IT]` `[EASY]` "Charter Township of X" keys to the village…
-    `[JUST-DO-IT]` `[EASY]` "X Township, MI" mints instead of keying to…
-    `[JUST-DO-IT]` `[EASY]` A literal HTML entity in a stored…
     `[JUST-DO-IT]` `[EASY]` Census LSAD "corporation" is not stripped:…
-    `[NEEDS-AUDIT]` `[EASY]` `"Regional Municipality of X"`/`"Region of…
-    `[NEEDS-AUDIT]` `[EASY]` `classify.py`'s SPECIAL_DISTRICT rule…
     `[NEEDS-AUDIT]` `uatccta.primegov.com` is the first real…
     `[NEEDS-AUDIT]` A Swagit video opened through another government's
     `[NEEDS-AUDIT]` `[EASY]` Lloydminster, AB/SK: the hub is on neither…
     `[NEEDS-AUDIT]` A same-state place/county name collision falls…
-  Adapter & platform gaps  (21)
+  Adapter & platform gaps  (14)
     [NEEDS-AUDIT] A TikiLive title can still be a file name.
     [EASY] `jurisdiction_coverage.csv`'s…
     [JUST-DO-IT] `[EASY]` The shared meeting-title filter still passes…
     [NEEDS-AUDIT] `ec1c24.com` is an unrecognized video-index wrapper…
     [NEEDS-AUDIT] A same-named Granicus tenant is a real video source for…
     [NEEDS-AUDIT] SuiteOne: a bare tenant management root…
-    [JUST-DO-IT] `[EASY]` Castus tenants that put the date in the title…
-    [JUST-DO-IT] Castus's URL regex only matches `/video/{id}`, silently
     [JUST-DO-IT] City-YouTube-channel fallback: listings only reach ~400…
     [NEEDS-AUDIT] Pages with no jurisdiction ship an Event JSON-LD with…
     [NEEDS-AUDIT] Palm Beach County FL's SharePoint page now escalates…
     [NEEDS-AUDIT] `[WAIT]` open.media broke on 2026-09-26 (empty…
-    [NEEDS-AUDIT] The canary's `youtube` check passes even when YouTube…
-    [NEEDS-AUDIT] `civicplus.py`'s own docstring claims AgendaCenter rows…
-    [NEEDS-AUDIT] A jurisdiction string naming its state as a full word…
-    [NEEDS-AUDIT] `scripts/build_jurisdiction_data.py`'s blanket…
-    [NEEDS-AUDIT] `finalize_jurisdiction()`'s table validation doesn't…
     [NEEDS-AUDIT] TelVue's `resolve()` can return a perpetual…
     [NEEDS-AUDIT] `civicclerk.py`'s `resolve()` can return a Zoom join…
     [NEEDS-AUDIT] A real tier 1/3 "video found" verdict off…
@@ -307,29 +274,24 @@ Reliability, ops & cost  (6)
     [NEEDS-AUDIT] Search Console "Missing field" flags (Videos…
   `/coverage` as a QA surface
 
-Trust, safety & data quality  (18)
-  Find Meeting's fingerprint comparison: 69 multi-government hosts and…
+Trust, safety & data quality  (14)
   No endpoint can correct a wrong word or name in a stored transcript
   Pinned hosts: machine-made pins with no Archive pages yet are…
-  ChampDS customers that carry a second government need per-meeting…
   Invintus meetings from a separate government (regional council,…
   Own transcription: a warning for a transcript that stops early needs…
   Nothing records that a page was deliberately deleted, so a later…
-  The partial-transcript check reaches only some YouTube pages, and the…
   2 already-pinned YouTube channels still disagree with the Archive's…
   27 real Quebec municipalities are marked `reject_reason=off-mission`,…
   `jurisdiction_coverage.csv` rows whose recorded website belongs to…
   8 rows carrying `prior_reject_reason=already-covered` checked live,…
   A bare YouTube channel-listing scan measurably ingests non-meeting…
   Meeting body is blank on ~90% of archived pages `[NEEDS-AUDIT]`…
-  `[IMPROVEMENT-ROUND]` A low-trust review doesn't expire when the page…
   `[HUMAN]` `[BIG]` Nothing verifies a submitted URL is a genuine…
   `[NEEDS-AUDIT]` One row in `jurisdiction_coverage.csv` has…
   `[NEEDS-AUDIT]` `rtr-business/research/jurisdiction_coverage.csv` has…
 
-Roadmap & strategy `[IMPROVEMENT-ROUND]`  (22)
+Roadmap & strategy `[IMPROVEMENT-ROUND]`  (19)
   Adapters drop signals that show a person captioned the meeting (found…
-  A hub with its own meetings still shows the site's generic share…
   `[IMPROVEMENT-ROUND]` Pierce County TV: per-government YouTube leads…
   `[IMPROVEMENT-ROUND]` Vendor slug guess ladder for governments whose…
   `[IMPROVEMENT-ROUND]` `[BIG]` Agenda text as a first-class,…
@@ -342,13 +304,11 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (22)
     [IMPROVEMENT-ROUND] Batch lookup — accept multiple meeting URLs at
     [IMPROVEMENT-ROUND] A generated, branded share card would beat a raw
     `[IMPROVEMENT-ROUND]` Auto-post each newly published Full Context…
-  Search & metadata quality  (2)
-    [IMPROVEMENT-ROUND] Transcript version picker: real option labels
+  Search & metadata quality  (1)
     `[IMPROVEMENT-ROUND]` Full Context entries drop `line`/`version` from…
-  Transcription quality & cost  (3)
+  Transcription quality & cost  (2)
     [IMPROVEMENT-ROUND] Hallucinated-transcript detection doesn't catch
     [IMPROVEMENT-ROUND] Per-meeting `initial_prompt` seeded with real
-    [IMPROVEMENT-ROUND] A signed-out visitor who hits the
   Email, ops tooling & internal reporting  (2)
     [IMPROVEMENT-ROUND] Point the ops email defaults at…
     [IMPROVEMENT-ROUND] Add two missing metrics to the daily worker…
@@ -923,172 +883,6 @@ sync. History: `BACKLOG_DONE.md` `[Done 2026-08-22]`.
 - **Constraint**: do not remove any host from the set. The safeguard still refuses a blank-match pin on all of them.
 - **History**: found 2026-10-13 while checking `livestream.com` against the unsupported-platform file (rtr-business `research/UNSUPPORTED_PLATFORMS.md`, `ENUMERATION_METHODS.md` §401 follow-ups).
 
-### `swagit.py`'s title parser cuts a hyphenated place name in half, filing the meeting under the wrong government `[JUST-DO-IT]` `[EASY]`
-
-- **Issue**: `_extract_metadata()`'s title regex (`^(.*)\s*-\s*([^,]+),\s*([A-Za-z]{2})\s*$`) deliberately backtracks from the end to find the *last* " - " before ", {State}$" — a fix (2026-08-13) for titles carrying a "- Revised -" marker before the real city. But `\s*-\s*` also matches a bare hyphen with no surrounding spaces, so it fires again on a hyphenated place name's own internal hyphen. Confirmed live 2026-09-29: `hastingsonhudsonny.swagit.com`'s real title "Oct 08, 2024 Information Session on the Plus One ADU Program - Hastings-on-Hudson, NY" lands on the hyphen inside "Hastings-on-Hudson" itself, extracting `jurisdiction="Hudson, NY"` — a real, different government (Hudson city, NY) — at `resolve_government()`'s full **registry** confidence, not a low-confidence miss that would get caught downstream.
-- **Impact**: any Swagit tenant whose city/town name contains its own hyphen (e.g. Winston-Salem, Wilkes-Barre) is at risk of being confidently filed under the wrong government. Scope beyond this one confirmed case is unmeasured — found while hand-verifying one line of the tier-3 local-batch recovery (this PR), not from a dedicated sweep.
-- **Next action**: require at least one real space on both sides of the separator hyphen (`\s+-\s+` instead of `\s*-\s*`) in the backtracking half of the regex, so a same-word hyphen (no surrounding space) can't satisfy it. Re-run against the "Revised -"/"Closed Session -" cases already in the adapter's own test fixtures to confirm both stay fixed. Add a regression test for a real hyphenated-place title (Hastings-on-Hudson's is real and available).
-- **Constraint**: none known — this is a stricter version of the same pattern already in use, so it can only reject false matches the loose version wrongly accepted.
-- **History**: this PR's `reports/tier3_recovery/` README has the full recovery-task writeup; the one affected line was hand-corrected there (`us:place:3635969` → `us:place:3632710`) rather than left on the wrong government.
-
-### Our fetch user-agent claims Chrome 91 (2021), and Cloudflare refuses it on at least one government site `[JUST-DO-IT]` `[EASY]`
-
-- **Issue**: `media_probe._DESKTOP_USER_AGENT` (also the tier-3 probe's `_POLITE_UA`, and what ffmpeg sends) is `Chrome/91.0.4472.124`. Checked 2026-09-25: Simpsonville, SC's recording (`simpsonville.com/wp-content/uploads/2026/08/2026-09-08_Business.mp3`, behind Cloudflare) answers 403 to that user-agent and 206 to a current Chrome one. No challenge page is involved, so this is the "look like a normal browser" compliance case in CLAUDE.md, not a human-verification gate.
-- **Impact**: the queue probe rejects such recordings as dead, and the feeder drops the line, so these meetings never reach the Archive. The number of affected hosts is unknown.
-- **Next action**: update the string to a current desktop Chrome in `media_probe.py` (shared by the probe, both transcription paths and ffmpeg). Then re-probe Simpsonville's recording and queue it with `us:place:4566580`.
-- **Constraint**: never extend this to a real Cloudflare "Verify you are human" challenge (CLAUDE.md, Standing decisions).
-- **History**: found while queueing the 2026-09-22 phase-3 run's real finds; the Codington County queue PR.
-
-### ClerkBase pages name the council without its state, so they stay unresolved; the state is in the URL `[JUST-DO-IT]` `[EASY]`
-
-- **Issue**: `clerkbase.py`'s `_SITE_SLUG_RE` (`/([A-Za-z]+)-([A-Z]{2})`) only matches an uppercase state, but real slugs are lowercase (`clerkshq.com/Scituate-ri`), so no state is extracted.
-- **Impact**: 5 of 10 archived ClerkBase pages (all RI: Scituate, West Warwick, Cumberland, Pawtucket, South Kingstown schools) resolve to "unresolved".
-- **Next action**: match the state case-insensitively and upper-case it; when the slug's place part isn't the government's name, keep the page's own name and take only the state. Add a test with `Scituate-ri`, then rerun the archive comparison for `clerkshq.com`.
-- **Constraint**: the slug's place part is not always the government (`southkingstownschools-ri`).
-- **History**: `BACKLOG_DONE.md` WO-1057.
-
-### `cablecast.py`: a resolve()-level fallback for Niagara Falls City SD NY's 404-then-CablecastPublicSite shape `[NEEDS-AUDIT]`
-
-- **Issue:** on Niagara Falls City School District, NY's shared tenant
-  (`reflect-niagarafallsosc.cablecast.tv`), the normal
-  `/internetchannel/show/{id}?channel=1` path 404s outright, but
-  `/CablecastPublicSite/show/{id}?site=1` works and returns real data --
-  worth a resolve()-level fallback (try the CablecastPublicSite path
-  when the Remix path 404s) rather than requiring a hand-found URL
-  rewrite every time this shape recurs.
-- **Impact:** the Niagara Falls shape may recur on other tenants
-  silently -- anyone pasting the "natural" `/internetchannel/show/{id}`
-  URL for such a tenant gets a false "no video" instead of the real
-  content.
-- **Next action:** add a fallback in `CablecastAssetFinder.resolve()`:
-  when the Remix path's HTML fetch 404s (not just when Remix context is
-  missing), retry via `/CablecastPublicSite/show/{id}?site=<n>` before
-  giving up -- the `site=`/`channel=` query value must be preserved or
-  guessed (Niagara Falls used `site=1`, its own URL had `channel=1`, so
-  a plain re-map might work as a first attempt).
-- **Constraint:** none.
-- **History:** `BACKLOG_DONE.md`, WO-309 (resume) (2026-09-12), WO-344
-  (2026-09-13, closed this entry's other half -- the genuinely new third
-  CablecastPublicSite/FastBoot URL template, confirmed on Dyersville, IA
-  -- see that entry); `rtr-business/research/wo309b_report.csv`.
-
-### `cablecast.py`'s tenant-slug jurisdiction fallback also mis-guesses the wrong STATE for Wellfleet, MA (returns "Town of Wellfleet, NE") `[JUST-DO-IT]` `[EASY]`
-
-- **Issue:** resolving a real Wellfleet, MA (Cape Cod) Cablecast video
-  (`reflect-townofwellfleet.cablecast.tv`) returns
-  `jurisdiction="Town of Wellfleet, NE"` -- Nebraska, not Massachusetts.
-  Same bug class as the already-documented Marathon, FL/WI Castus
-  collision and Detroit/Charlotte-adjacent cablecast jurisdiction gaps.
-- **Impact:** low today (this WO's own ingest is safe via an explicit
-  `gov_id` pin), but any FUTURE resolve of this tenant with no override
-  would mis-tag the jurisdiction.
-- **Next action:** find whatever known-tenant/known-place map
-  `cablecast.py` uses for its jurisdiction fallback and add an explicit
-  `"reflect-townofwellfleet" -> "Wellfleet, MA"` entry (or fix the
-  underlying place-name-to-state resolution if it's a shared helper),
-  with a regression test pinning the correct state.
-- **Constraint:** none.
-- **History:** `BACKLOG_DONE.md`, WO-309 (resume) (2026-09-12);
-  `rtr-business/research/wo309b_report.csv`.
-
-### `castus.py`'s tenant-slug jurisdiction fallback guessed the wrong STATE for a real customer (Marathon, FL → "City Of Marathon, WI") `[JUST-DO-IT]` `[EASY]`
-
-- **Issue:** resolving a real Marathon, FL (Florida Keys) Castus video
-  (tenant slug `city-of-marathon`) returns `jurisdiction="City Of
-  Marathon, WI"` — the tenant-slug-based jurisdiction fallback picked
-  the wrong one of two real same-named places (Marathon, WI is also
-  real, as is Marathon County, WI).
-- **Impact:** low today (WO-306's own ingest from this tenant is safe
-  regardless, via an explicit `gov_id` pin), but any FUTURE resolve of
-  this tenant with no override would mis-tag the jurisdiction the same
-  way the Needham, AL/MA bug (`telvue.py`,
-  `_KNOWN_ORG_TOKEN_JURISDICTIONS`) already did for a different
-  platform — same root cause family, a bare place name resolving to the
-  wrong state.
-- **Next action:** add `"city-of-marathon": "Marathon, FL"` to
-  `castus.py`'s own known-tenant-slug jurisdiction map (same pattern as
-  `_KNOWN_DESTINYHOSTED_TENANT_JURISDICTIONS`/
-  `_KNOWN_TENANT_SLUG_JURISDICTIONS` already in that file), with a
-  regression test pinning the correct state.
-- **Constraint:** none.
-- **History:** WO-306 (2026-09-12), this session;
-  `rtr-business/research/wo306_report.csv`.
-
-### `_VENDOR_MARKETING_APEX` (`scripts/wo147_access_ladder_sweep.py`) recognizes `municodemeetings.com` but not the related marketing apex `municode.com`, letting a "Powered by Municode" link outrank a tenant's own real meeting page `[JUST-DO-IT]` `[EASY]`
-
-- **Issue**: A Municode Meetings tenant homepage (e.g.
-  `eustis-fl.municodemeetings.com`) can carry a footer/marketing link to
-  `www.municode.com/meetings` (the CMS vendor's own generic marketing
-  page, not a per-government tenant) alongside its own real meeting
-  listing entries. `_is_vendor_marketing_apex()` only recognizes
-  `municodemeetings.com` as a marketing apex, not the related
-  `municode.com` -- confirmed live 2026-09-12 building WO-274's hop-link
-  scorer: on Eustis FL's real homepage, that bare marketing link ranked
-  #1 in `find_hop_links()`'s new weighted scorer (ahead of the tenant's
-  own real `/meetings3?page=1` listing pages), because nothing excludes
-  it as a marketing badge the way `municodemeetings.com`,
-  `granicus.com`, etc. already are.
-- **Impact**: at least one real government (Eustis FL) gets a
-  vendor-marketing link instead of its own real meeting listing when a
-  hop-link scan runs against its homepage; likely affects every other
-  Municode Meetings tenant whose homepage carries the same footer badge
-  (not separately confirmed).
-- **Next action**: add `"municode.com"` to `_VENDOR_MARKETING_APEX` in
-  `scripts/wo147_access_ladder_sweep.py`. Left out of WO-274's own diff
-  on purpose -- that constant is shared by every caller in the file
-  (`find_platform_link()`, `looks_like_document_hub()`, the legacy WO-228
-  scorer, and the new WO-274 scorer), and WO-274 needed the legacy
-  scorer's behavior to stay byte-identical for its own before/after
-  comparison. Add a fixture test alongside the fix (a same-page link to
-  `www.municode.com/meetings` must never appear in either scorer's
-  output).
-- **History**: `docs/investigations/hop_scorer_measurement.md` (WO-274,
-  2026-09-12), `BACKLOG_DONE.md`'s WO-274 entry.
-
-### `VimeoAssetFinder.resolve()` has no title fallback when Vimeo's own oEmbed API 404s for a real, playable video `[JUST-DO-IT]`
-
-- **Issue:** Beaufort County, NC's `vimeo.com/844049346` (WO-196,
-  2026-09-11) is a real county committee meeting ("Affordable Workforce
-  Housing Taskforce/Committee", confirmed via the plain page's own
-  `<title>`/`og:title`/`og:description`) that got rejected as
-  off-mission because `app/platforms/vimeo.py`'s `title = (oembed or
-  {}).get("title") or None` comes back `None` -- confirmed live: Vimeo's
-  real oEmbed endpoint (`vimeo.com/api/oembed.json?url=...`) 404s for
-  this specific video id even though the plain page (and the embed
-  player) both work fine. A blank title defeats
-  `_looks_like_real_meeting()`'s `require_allowlist` check for every
-  Vimeo candidate this happens to, the same way a missing title already
-  does for YouTube (which is why `youtube_oembed_title()` exists as a
-  fallback there).
-- **Impact:** at least one real government meeting stayed unindexed for
-  a title-fetch gap alone, not a real off-mission video. Likely affects
-  other Vimeo videos whose oEmbed also 404s.
-- **Next action:** when `_fetch_oembed()` returns `None`/no title, fall
-  back to fetching the plain page and reading its `<title>`/`og:title`
-  meta tag (a normal HTTP GET, no auth needed — confirmed live with a
-  plain `curl` and a real browser User-Agent).
-- **Constraint:** don't overwrite what the real adapter otherwise
-  produces — this is purely a title-check fallback, same scope as
-  `youtube_oembed_title()`'s own "not used to overwrite what actually
-  gets sent to /internal/ingest" rule.
-- **History:** `BACKLOG_DONE.md`, WO-196, 2026-09-11.
-
-### Dashboard filters: exclude a string, and filter on blank / non-blank `[JUST-DO-IT]` `[EASY]`
-
-- **Issue:** Both review pages -- the meeting inventory
-  (`scripts/export_meeting_inventory.py`'s HTML) and the coverage
-  registry (`rtr-business/research/coverage_registry.py`'s HTML) -- only
-  filter a column by "contains". Ryan wants (1) filter OUT a string per
-  column, (2) show only blanks, (3) hide blanks.
-- **Impact:** Finding "governments with a domain but no hub" or "pages
-  whose body is blank" needs the CSV today; the page can't express it.
-- **Next action:** In each page's filter row accept `!text` (exclude),
-  `=` (blank only) and `!=` (non-blank), documented in the placeholder;
-  the `matches()` function in both templates is the only place to touch.
-  Same small change in both files; keep the two templates' JS aligned.
-- **Constraint:** None.
-- **History:** Asked 2026-09-09 in the WO-124 review.
-
 ### Coverage registry: per-state view and other dashboard additions `[JUST-DO-IT]`
 
 - **Issue:** `rtr-business/research/coverage_registry.py`'s dashboard
@@ -1118,40 +912,6 @@ sync. History: `BACKLOG_DONE.md` `[Done 2026-08-22]`.
   - **Constraint**: don't add a per-render query to `/m/{slug}` — it is the hottest page on the site, which is why this was left rather than fixed inline.
   - **History**: `BACKLOG_DONE.md`'s WO-256 part 2 entry; `docs/investigations/hub_architecture_audit.md` §5.
 
-### `civicclerk.py`'s `resolve()` can return a bare `youtube.com/channel/...` URL as `video_url`, bypassing `verify_hub()`'s YouTube guard `[JUST-DO-IT]` `[EASY]`
-
-- **Issue:** confirmed live 2026-09-13 (WO-350) on South Kingstown town,
-  RI (`southkingstownri.portal.civicclerk.com/event/2286/media`):
-  CivicClerk's own `externalMediaUrl`/`externalVideoUrl` field was
-  itself a `https://www.youtube.com/channel/...` string, which
-  `civicclerk.py` hands straight through as `ResolvedMeeting.video_url`.
-  `verify_hub()`'s `_youtube_resolve_guard()` only blocks an ADAPTER
-  dispatching a fetch to a youtube.com host (`YouTubeAssetFinder.resolve`/
-  `resolve_video_id`) — it never inspects a vendor API field that is
-  already a youtube.com string being passed through as-is. The result
-  came back `verdict=resolved`, `video_found=True`, not the
-  `youtube_lead` verdict this should produce.
-- **Impact:** a sweep that queues tier 3 off `video_found=True` alone
-  (without independently checking whether `video_url`'s own host is
-  youtube.com) would try to queue an unusable, non-specific channel URL
-  — not a real meeting. This WO caught it only because of the hand-check
-  gate; recorded as a YouTube lead instead of queued (see
-  `research/youtube_channel_leads.csv`), so no bad page/queue line
-  resulted this time.
-- **Next action:** in `civicclerk.py` (and any other adapter that passes
-  a vendor-supplied `externalVideoUrl`/`externalMediaUrl` field straight
-  through as `video_url`), check whether that URL's host is a
-  `MULTI_GOV_HOSTS` host (youtube.com/youtu.be/vimeo.com/...) before
-  accepting it as a real video — treat it the same way a real embedded
-  YouTube link would be treated (a lead, never fetched), not a resolved
-  video.
-- **Constraint:** only known confirmed instance is South Kingstown, RI;
-  worth a quick grep of `civicclerk.py`'s other `externalMediaUrl`/
-  `externalVideoUrl` call sites before assuming it's isolated to one
-  code path.
-- **History:** `BACKLOG_DONE.md`'s WO-350 entry; `rtr-business/research/
-  ENUMERATION_METHODS.md` §352.
-
 ### iQM2's meeting body is only on the calendar listing page; fetch it there `[JUST-DO-IT]`
 
 - **Issue**: `iqm2.py` reads only the meeting detail page, whose title runs body and meeting type together. The calendar (`Citizens/calendar.aspx?View=List&From={date}&To={date}`) answers a plain GET, and each `MeetingRow`'s `RowDetails` splits cleanly on `" - "` into body and type (checked live 2026-09-20 on Atlanta GA and Santa Clara County CA).
@@ -1159,19 +919,6 @@ sync. History: `BACKLOG_DONE.md` `[Done 2026-08-22]`.
 - **Next action**: after the detail fetch, GET the calendar for that one day, find the row whose `Detail_Meeting.aspx?ID=` matches, and take the text before `" - "`. Live-check on Atlanta and Santa Clara, then add a fixture test.
 - **Constraint**: match the row by meeting id, never by position.
 - **History**: `BACKLOG_DONE.md` WO-904/905/906.
-
-- **[JUST-DO-IT] `[EASY]` `archive_client.send_search_alerts()` has no retry, so one Archive restart blip skips the day's saved-search alerts.**
-  - **Issue**: `send_search_alerts()` (`app/archive_client.py`) makes one POST and returns `None` on any failure. The daily workflow calls it once through `/admin/send-search-alerts`.
-  - **Impact**: on 2026-09-17 a 502 during an Archive restart meant no saved-search emails went out that day. The health-check timeout behind it recurs about weekly.
-  - **Next action**: retry inside `send_search_alerts()` (for example 2 retries with a 5-10 s backoff) on a connection error or 5xx, with a unit test.
-  - **Constraint**: put the retry in the function, not only in the workflow's `curl`.
-  - **History**: inbox-triage Routine, 2026-09-17; re-verified 2026-09-21.
-
-- **[JUST-DO-IT] `[EASY]` `sitemap.xml` lists old slugs that 301 through `_SLUG_REDIRECTS`.**
-  - **Issue**: `list_all_page_slugs()` (`archive/db/crud.py`) does not exclude `_SLUG_REDIRECTS` keys (`archive/main.py`), so a reslugged page's old URL can stay in the sitemap.
-  - **Impact**: Search Console flagged "Page with redirect" (2026-09-16). The dict had 19 entries on 2026-09-21.
-  - **Next action**: move `_SLUG_REDIRECTS` to a module both files can import, and filter `MeetingPage.slug.notin_(...)` in the sitemap query. Add a test.
-  - **History**: inbox-triage Routine, 2026-09-17; re-verified 2026-09-21.
 
 - **[JUST-DO-IT] CLAUDE.md's sample-sheet note calling Whitehall, OH's CivicClerk tenant "agenda-only" is stale -- it now posts video on every recent meeting.**
   - **Issue**: CLAUDE.md's "Working conventions" bullet (dated 2026-08-08) lists "Whitehall OH (CivicClerk, agenda-only)" as a sample. Checked live 2026-09-23 while building WO-1024's Meeting Finder: `whitehalloh.api.civicclerk.com/v1/Events` shows `hasMedia: true` on every real meeting from 2026-07-28 through 2026-09-22 (10 of 10 checked) -- `app/platforms/meeting_finder`'s own live check resolved `whitehalloh.portal.civicclerk.com/event/325/media` to a real tier-3 video (152 minutes).
@@ -1187,13 +934,6 @@ sync. History: `BACKLOG_DONE.md` `[Done 2026-08-22]`.
 - **Next action**: build a bounded `view_id` probe on Meeting Finder's `Fetcher` and call it ahead of `list_recent_video_meetings()` in the listing path and in `granicus.py`'s `resolve()`. Use the 2026-10-07 measurement to choose which ids to probe.
 - **Constraint**: ids 1..5 are not enough (11 of 25 feeds only at 44-50; Alexandria at 29 and 57). `ViewPublisher.php` without a view_id is gated on purpose. Probe bounded numeric ids only, with a hard delay and no redirects followed.
 - **History**: `meeting_finder/listing.py` WO-1030 comment; `~/Documents/rtr-findmeeting/data/granicus_norss_rss_check_2026-10-07/`; findmeeting PR 73.
-
-### Legistar answers 410 Gone to a meeting link without its `GUID`, and `legistar.py` shows the reader a raw error `[JUST-DO-IT]` `[EASY]`
-
-- **Issue:** since late August 2026 a bare `MeetingDetail.aspx?ID=...` link returns 410 on every Legistar tenant checked (Phoenix, Charlotte, 2026-09-26); only `?ID=...&GUID=...` loads. `LegistarAssetFinder._fetch()` calls `raise_for_status()`, so the reader sees `ClientResponseError: 410`.
-- **Impact:** anyone pasting a trimmed Legistar link gets an unhelpful error. Links copied from Legistar itself carry the GUID, so this is uncommon.
-- **Next action:** catch 404/410 in `_fetch()` and return a `ResolvedMeeting` with a plain `video_warnings` message ("Legistar needs the full meeting link, including GUID=...") — the same pattern "No video link found" already uses.
-- **History:** split from the Phoenix canary entry, finished by WO-1112 — see `BACKLOG_DONE.md`.
 
 ### [NEEDS-AUDIT] `[EASY]` A video whose own title is a camera or file name ("video1516165031", "20251021", "CC20260908.mp4") becomes the page title as-is, on every platform: Ryan chose the fallback title "<government name> archive video"
 
@@ -1689,19 +1429,7 @@ of human step they need.
   - **Next action**: (1) return the bare Vimeo id and update the docstring and its test. (2) measure how many `youtube:` rows `has_owner()` misses, rewrite them to the bare 11-character id, and make `registry.match_shape_problem()` refuse the prefixed shape.
   - **Constraint**: keep each row's `source` and gov_id; never drop a row that is the only pin for its video.
   - **History**: `BACKLOG_DONE.md` WO-924.
-
-- **[NEEDS-AUDIT] `[EASY]` `queue_probe.py` sends a Vimeo video found through another platform's page to "no probe recipe" (unverified).**
-  - **Issue**: `probe_queue_entry()` falls back to parsing the video URL for YouTube (`YouTubeAssetFinder.extract_video_id(video_url)`) but only probes Vimeo when `resolved_platform` or `video_format` says "vimeo". WO-349's two CivicPlus finds (Western Springs IL, Edgewood WA) resolved to a Vimeo URL with `?share=copy&fl=sv&fe=ci` and were rejected "no probe recipe for this media shape".
-  - **Impact**: real, hand-confirmed meetings cannot reach the tier-3 queue.
-  - **Next action**: in `app/platforms/queue_probe.py` (the dispatch near line 1513) also route to `_probe_vimeo()` when `parse_vimeo_video(video_url)` returns an id; add a unit test with a CivicPlus-platform entry whose video URL carries the share params.
-  - **History**: `BACKLOG_DONE.md` WO-349.
-
-- **[NEEDS-AUDIT] `[EXAMPLE]` `hellonation.com` serves the identical, title-less, generic decorative header video (`hn_hdr26.mp4`) to at least 3 different CivicPlus governments' meeting-video links — a site-builder placeholder asset, not real meeting content, and likely present on more governments than these 3.**
-  - **Issue**: found live 2026-09-13 (WO-349). Three unrelated Tennessee/New York governments' confirmed CivicPlus listings all resolved their newest "meeting video" candidate to the exact same URL, `https://www.hellonation.com/media/hn_hdr26.mp4`, with no title, date, or jurisdiction obtainable from the file itself: La Vergne city TN, Lawrenceburg city TN, Hamburg village NY. "HelloNation" appears to be a website-builder/CMS vendor (same shape as `site_builder` values like `wordpress`/`townweb` in `jurisdiction_coverage.csv`) whose default template embeds a stock header video at a fixed path — every government using it would resolve to the same asset.
-  - **Impact**: all 3 were caught and rejected by this WO's hand-check (never queued), so no bad page or queue line resulted — but any future sweep that skips the hand-check step (or whose classifier doesn't flag a title-less resolve) would queue or ingest decorative content as if it were a real meeting, once per government using this site builder.
-  - **Next action**: add `hellonation.com/media/hn_hdr26.mp4` (and any sibling generic asset paths found on a second look) to a known-decorative-asset blocklist the hand-check/prober step can consult directly, the same shape as an existing generic-content filter if one exists; separately, check how many more CivicPlus governments' `hub_url` resolves through a HelloNation-templated site before assuming 3 is the full extent. (WO-356, 2026-09-13, resolved these exact 3 governments individually by walking each one's own real AgendaCenter listing instead of the elocallink.tv widget page — La Vergne TN and Lawrenceburg TN are real meeting-without-video; Hamburg village NY had a real video with real captions on its own Swagit tenant, ingested. The blocklist/broader-check ask below is still open — not done by that WO.)
-  - **Constraint**: don't reject every `hellonation.com` URL outright without checking whether the vendor also hosts real government-specific video elsewhere on the same domain — this entry is about the one confirmed placeholder path, not the whole vendor.
-  - **History**: `BACKLOG_DONE.md`'s WO-349 entry; `rtr-business/research/wo349_handcheck.csv`; `BACKLOG_DONE.md`'s WO-356 entry.
+  - **Update 2026-10-16**: Partly fixed in #2077 (`6365d170`): New override drafts use the bare Vimeo id; rewriting ~1,400 youtube:<id> rows still open.
 
 - **[NEEDS-AUDIT] Four Kind-A/wrong-domain findings from WO-349's CivicPlus run need the owning government matched: Town of Hempstead NY, City of Melbourne FL, Seward County KS, City of Bossier City LA.**
   - **Issue**: WO-349 found four hubs or videos that belong to a different real government than the row: Hempstead village's hub links the Town of Hempstead's YouTube; Melbourne Village links the City of Melbourne; Seward city's Swagit tenant is Seward County's; Bossier Parish's hub is the City of Bossier City's site. Bossier City already has YouTube channel pins (`us:place:2208920`).
@@ -1737,22 +1465,11 @@ of human step they need.
   - **Constraint**: do not re-key from title alone.
   - **History**: `BACKLOG_DONE.md` WO-316, WO-318, WO-1180.
 
-- **[NEEDS-AUDIT] `[EASY]` `civicclerk.py` reports `video_found=True` when `externalVideoUrl`/`externalMediaUrl` is a live-meeting join link (WebEx, Zoom, Zoom Gov), not a recording.**
-  - **Issue**: `resolve()` passes any `externalVideoUrl` through as `video_url`. It has special handling only for YouTube, BoxCast and Cablecast links. Real cases: Bemidji MN (event 1314, `*.my.webex.com/.../j.php`), Jo Daviess County IL (event 2478, `us06web.zoom.us/j/...`) and Brookline MA (`brooklinema.zoomgov.com/rec/share/...`). Google Drive single files now resolve through `direct_file` (#1409), so Drive is no longer part of this.
-  - **Impact**: false tier-3 candidates. These lines fail at probe or transcription time.
-  - **Next action**: in `civicclerk.py`, treat a `zoom.us/j/`, `zoomgov.com/j/`, `webex.com/.../j.php`, `teams.microsoft.com` or `meet.google.com` join link as "no playable video". Add a unit test for each shape. Zoom `rec/share` recordings belong to the Zoom entry (line 3905).
-  - **History**: WO-342, WO-363, WO-325. Merges the duplicate entry "`civicclerk.py`'s `resolve()` can return a Zoom join link" (line 6052).
-
 - **[JUST-DO-IT] YouTube video `ci9jnPULx5M` is pinned to Ste. Genevieve city, MO, but its own title says it is St. Mary, MO's Board of Aldermen.**
   - **Issue**: the `tenant_overrides.csv` row (`wo175_localview_recheck`) quotes the title "St. Mary (Mo, USA) Board of Aldermen, Tax Hearing" and pins it to `us:place:2964180` (Ste. Genevieve). St. Mary city, MO exists as `us:place:2965034`.
   - **Impact**: Ste. Genevieve shows coverage that belongs to St. Mary, and St. Mary shows none.
   - **Next action**: repoint the pin to `us:place:2965034`. If an Archive page exists, re-key it in production through `/internal/jurisdiction/override`. Mark Ste. Genevieve's research row as no-video unless `@Stegentv` has a real Ste. Genevieve meeting (checking that is drip-Mac work).
   - **History**: `BACKLOG_DONE.md` WO-258 part 2.
-
-- **[JUST-DO-IT] `[EASY]` `MEETING_ALLOWLIST` has no French words, so French-titled meetings come back `cannot_tell`.**
-  - **Issue**: "569e séance ordinaire du 1 juin 2026" (Val-d'Or QC) fails `classify_video_hand_check()`. A second real example now exists: WO-1027's follow-up (#1486) found a whole run of Quebec meetings titled in French, and fixed only the leads judge's `BODY_WORDS`.
-  - **Next action**: add the same French set (conseil, séance, assemblée, comité, audience publique, réunion du conseil) to `MEETING_ALLOWLIST` in `app/utils/video_hand_check.py`, with a test that a French promo still fails.
-  - **History**: `BACKLOG_DONE.md` WO-279, WO-933; #1486.
 
 - **[NEEDS-AUDIT] Real meetings found under the wrong government, never filed under their owner: NYS Board of Elections, Early County GA schools, Springfield MA School Committee, Chisholm MN.**
   - **Issue**: hand-read gates caught each one before ingest. `@NYSBOE` (found on Orleans County NY's row) is a state agency. `@earlycountyschoolsystem1705` (Early County GA) is a school district. The Springfield School Committee's CivicClerk event was found on Springfield city's row. "Chisholm City Council, September 9th, 2026" is on Mesabi Community TV (found on Mountain Iron MN's row).
@@ -1780,6 +1497,7 @@ of human step they need.
   - **Next action**: trace `app/utils/gov_registry/resolver.py`'s national-table rung for a raw name like "Ulster Town, NY" or "Lincoln, ME" and confirm whether it's genuinely falling through to a county match (and why a town-type name string reaches the county table at all), or whether this is an artifact specific to these two page's stored `jurisdiction` strings. Check for other town/county name pairs with the same shape before deciding this is systemic.
   - **Constraint**: don't touch either page — both are correctly protected `manual_override` rows and need no fix themselves; this is about the ladder's own county-matching behavior for a future unprotected page with the same name collision.
   - **History**: found by WO-215's dry run, 2026-09-11; see `BACKLOG_DONE.md`'s WO-215 entry.
+  - **Update 2026-10-16**: Partly fixed in #2077 (`5e0e0ddd`): "Ulster Town" keys to the town; bare county-name towns are a policy call.
 - **[HUMAN] Should an unverified per-video pin still beat the registry on a shared host?**
   - **Issue**: WO-221 made any matched per-video pin win. WO-1068 (#1466) later added a rule for the human-checked case: a person-checked fallback pin beats a namesake national-table match. WO-1185's pin audit (#1799) flags pins that contradict each other. A new unverified sweep pin still wins without any check.
   - **Next action**: Ryan picks one of two options. (a) Only pins with a "verified" strength beat the registry. (b) Cross-check the pin against the video's title or channel at resolve time. Separately, check whether the 4 WO-242 pages that were waiting on an owner mint (Bland County VA, Tangent OR, Canadice NY, Spencer County IN) were fixed by the 2026-10-06 owner-audit mints (#1804, #1826).
@@ -1797,6 +1515,7 @@ of human step they need.
   - **Next action**: keep failing outright (no new dead-embed pages; that matches current policy), and add one fixture-backed test per adapter that pins this behavior. Revisit only if a real page needs the degraded version.
   - **Constraint**: do not change `resolve_video_id()` itself.
   - **History**: `BACKLOG_DONE.md` WO-167.
+  - **Update 2026-10-16**: Tests added in #2077 (`4bf35e72`): Tests pin current behavior; the code fix is still open.
 
 - **[NEEDS-AUDIT] `[EASY]` yt-dlp's "This live event has ended." message isn't classified by `classify_unavailability()` — falls through to the generic "YouTube is blocking us" degrade, which is wrong.**
   - **Issue**: found live 2026-09-10 (WO-167) in `scripts/tier3_auto_transcription_queue_probe.csv` — two real ids (`my1pQX-Vhik`, `RzLW9WPBfAQ`) raised exactly `This live event has ended.` from yt-dlp's metadata-only extract. `app/platforms/youtube.py`'s `classify_unavailability()` only recognizes "will begin in" (not yet started), "removed"/"unavailable"/HTTP 404-410 (gone), "private", and "terminated" — this message matches none of them, so `resolve_video_id()` currently reports it as "YouTube is currently blocking automated caption requests from our server," which is inaccurate (nothing is blocked; the stream simply ended and yt-dlp hasn't/can't surface a VOD for it yet, or the VOD is delayed).
@@ -1810,24 +1529,7 @@ of human step they need.
   - **Impact**: none today. WO-1082 changed both tests so they no longer depend on the shared test database or on a fixed wait. But an import that changes the import path for the whole run can still affect other tests on the Mac.
   - **Next action**: on the Mac, run the full suite with `-p no:cacheprovider` and compare `sys.path`, `os.environ['DATABASE_URL']` and `sys.modules['app.db.engine'].engine.url` before and after collection. If rtr-discovery changes any of them, make those test modules import the script inside a fixture that restores `sys.path` afterwards.
   - **History**: `BACKLOG_DONE.md`, WO-1082 (2026-09-26); first seen 2026-09-10 (WO-166).
-
-- **[NEEDS-AUDIT] `[EASY]` Six tests in `test_generic_fallback.py` still make real DNS lookups; they pass without network, but the suite is not fully offline.**
-  - **Issue**: a full run with every DNS lookup blocked (2026-09-26, after WO-1090) still logged lookups from 6 tests in `test_generic_fallback.py` (`cdn.example.gov`, `cdn.city.gov`, `example-cdn.gov`, `example-cdn.pbc.gov`). All 6 pass with or without DNS. That file already fakes `url_guard._resolve_hostname`, so these lookups come from a different path. (`test_url_guard.py`'s one lookup is deliberate: it tests the lookup-failure path.) The two `test_wo1028_meeting_finder_listing.py` tests that fetched live pages are fixed (WO-1090).
-  - **Impact**: none on results. With network, these tests can send a real DNS query for a made-up host.
-  - **Next action**: rerun one of them with a stack trace on `socket.getaddrinfo` to find the caller, then fake that call.
-  - **History**: found in WO-1082's offline scan; narrowed by WO-1090 (`BACKLOG_DONE.md`).
-
-- **[NEEDS-AUDIT] A Meeting Finder run still cannot exit while an abandoned fetch is hung: `asyncio.run()` waits for it before WO-1042's exit step is reached.**
-  - **Issue**: `scripts/meeting_finder.py`'s `main()` calls `asyncio.run(...)` (line ~216) and only then `_join_lingering_threads()` and `os._exit()`. When `--gov-timeout-minutes` abandons a government whose headless fetch is stuck in `asyncio.to_thread()`, `asyncio.run()` shuts down its default thread pool and waits for that thread first. Measured 2026-09-26 on Python 3.11.15 and 3.12.3 with a 6-second abandoned `to_thread(time.sleep, 6)`: `asyncio.run()` returned only after the full 6s on both. The standard library caps that wait at 300s on 3.12 (documented, not measured here); 3.11 has no cap.
-  - **Impact**: the overnight-batch hang WO-1042 fixed can still happen, for up to 5 minutes on the pinned 3.12 (forever on 3.11), whenever a government's fetch hangs past the cap. WO-1042's own tests only cover `_join_lingering_threads()`, not this earlier wait.
-  - **Next action**: have `main()` run the loop without the default-executor wait, for example by creating the loop itself and calling `os._exit()` from inside it after the rows are written, or by running abandoned sync fetches on an explicitly daemon thread instead of the default executor. Then add a subprocess test with a hung `to_thread` call that must exit within a few seconds.
-  - **History**: found by WO-1090's slow-test audit (`BACKLOG_DONE.md`); WO-1042 is the original fix.
-
-- **[NEEDS-AUDIT] `[EASY]` The YouTube fetch guard does not block requests sent through an HTTPS proxy, which is how every cloud agent runs.**
-  - **Issue**: `scripts/youtube_fetch_guard.install()` refuses YouTube host names in `socket.getaddrinfo`. Behind `HTTPS_PROXY` the proxy does the lookup, so yt-dlp reached YouTube three times in a cloud container (2026-09-26).
-  - **Impact**: the "no YouTube off the drip Mac" rule is not enforced for cloud sessions.
-  - **Next action**: have `install()` also refuse YouTube hosts at the client level (wrap yt-dlp's opener and the aiohttp/requests session), or add YouTube hosts to `NO_PROXY`-style blocking. Add a test that sets a proxy.
-  - **History**: found running the full suite for WO-1082; WO-1090.
+  - **Update 2026-10-16**: Partly fixed in #2077 (`393f7a80`): conftest drops outside-repo import paths; not checked on the Mac.
 
 - **[NEEDS-AUDIT] A bare unqualified name that exists in BOTH the
   `us_places` and `us_cousubs` tables in the same state always resolves
@@ -1883,12 +1585,7 @@ of human step they need.
     `GOVERNMENT_IDENTITY_ARCHITECTURE.md`/`COUSUB_REQUIREMENTS.md`'s
     claim that Places and active-government COUSUBs are disjoint by
     construction — they are not; not yet in `BACKLOG_DONE.md`.
-
-- **[NEEDS-AUDIT] `[EASY]` A bare name for one of 16 "X Town city" places (e.g. "West Springfield, MA") mints an `rtr:` id instead of finding the place.**
-  - **Issue**: `us_places.csv` names these "West Springfield Town city", "Agawam Town city" and so on. "Town of West Springfield, MA" now resolves (`us:place:2577890`), but "West Springfield, MA" and "Agawam, MA" still mint `rtr:us:ma:...` (re-run 2026-10-16).
-  - **Impact**: `westspringfieldma.granicus.com`'s pages are filed under a minted id. 14 MA towns plus Old Town ME, New Town ND and Charles Town WV are affected.
-  - **Next action**: in `app/utils/gov_registry/resolver.py`, index each "X Town city" row under the bare "X" as well. Add a test for each of the two forms. Then re-run the backfill for these hosts.
-  - **History**: found 2026-09-09 (WO-121 alias regen).
+  - **Update 2026-10-16**: Partly fixed in #2077 (`63f93c79`): CT bare Groton/Litchfield/Newtown/Stonington key to the town; 19 VT pairs left.
 
 - **[NEEDS-AUDIT] eScribe archives one meeting once per `Agenda=` value (Agenda, Merged, PostMinutes...), creating duplicate pages.**
   - **Issue**: `escribe.py` sets no `external_id`, so the Archive dedupes on the full URL, and `?Agenda=Merged&Id=X` and `?Agenda=Agenda&Id=X` count as different meetings. As of 2026-09-03 there were 7 known pairs on 6 hosts (forterie, oshawa, abbotsford, peelregion, townshipofbrock, marvinnc, sandag).
@@ -1896,6 +1593,7 @@ of human step they need.
   - **Next action**: set `external_id=f"escribe:{host}:{Id}"` in `escribe.py` (the same pattern as cablecast.py:659), with a test. Then do a production merge pass for the existing pairs, keeping the copy with the fuller transcript.
   - **Constraint**: do not assume `Agenda=Agenda` is the canonical copy.
   - **History**: found 2026-09-04 (Abbotsford).
+  - **Update 2026-10-16**: Partly fixed in #2077 (`ea1a5afa`): eScribe Agenda= views now share one page via external_id; 7 existing pairs and older pages still need a merge pass.
 
 - **[HUMAN] Re-run the wrong-content screen after the wrong-page sheet is applied.**
   - **Issue**: the 2026-09-21 re-screen flagged 639 of 10,280 pages: 540 have no meeting word in the title, 90 hit the school-body rule, and 9 are talk-show or school-title cases.
@@ -1991,6 +1689,7 @@ of human step they need.
 - **Next action**: have `--apply` print the rows it wrote as CSV (or write them to `--report`'s folder) so they can be committed directly, and make `write_retirements()` drop a row whose old slug is now a live hub.
 - **Constraint**: don't let the script redirect one government's hub to a different government: WO-1060 found 9 such rows (Yarmouth MA -> ME, Armada Township -> village, ...). Only same-government renames should get a redirect.
 - **History**: `BACKLOG_DONE.md` WO-1060.
+- **Update 2026-10-16**: Partly fixed in #2077 (`5b8da07e`): backfill_gov_id --apply prints/writes hub alias changes and avoids loops; same-government check still open.
 
 ### WO-171 LocalView channel pins: at least two named a neighbouring government, so the rest need a check `[NEEDS-AUDIT]`
 
@@ -2056,106 +1755,12 @@ actionability sections above.
   - **Next action**: check whether `GGErk0S1ZOg` is page 8878's video. If it is, re-point that pin row to `us:place:2525172`. Then `POST /internal/jurisdiction/override?ids=8878&gov_id=us:place:2525172` (dry run first).
   - **History**: WO-235, WO-247 (`BACKLOG_DONE.md`).
 
-- **`[JUST-DO-IT]` `[EASY]` "Charter Township of X" keys to the village or city of the same name: `_LEADING_TYPE_RE` knows "Township of" but not "Charter Township of".**
-  - **Issue**: `resolve_government("Charter Township of Shelby, MI")` → `us:place:2672840` (Shelby *village*, Oceana County), while "Shelby Charter Township, MI" → `us:cousub:2609972820` correctly. `resolver.py`'s `_LEADING_TYPE_RE` lists `city|town|village|borough|township|…` without the `(?:charter\s+)?` prefix that `_TRAILING_TYPE_RE` and `_TRAILING_PAREN_TYPE_RE` already allow, so no township preference reaches the lookup and the place wins the tie. Michigan has ~130 charter townships and their IQM2/CivicClerk portals title themselves exactly this way.
-  - **Impact**: `shelbytownmi.iqm2.com`'s two pages were minted `rtr:us:mi:shelby-village` from this; every charter-township tenant will repeat it.
-  - **Next action**: add `(?:charter\s+)?` before `township` in `_LEADING_TYPE_RE` and a test with the Shelby pair. The page fix is in the `[HUMAN]` entry under Needs a human.
-  - **History**: found by WO-125's landing-page check, 2026-09-09.
-
-- **`[JUST-DO-IT]` `[EASY]` "X Township, MI" mints instead of keying to the Census's "X charter township".**
-  - **Issue**: `resolve_government("Oshtemo Township, MI")` → `rtr:us:mi:oshtemo-township` (unverified), while "Oshtemo Charter Township, MI" → `us:cousub:2607761400`. Same for Canton, Kalamazoo, Texas and Bloomfield Township, MI (all mint, checked 2026-09-26); Plainfield Township, MI (a plain township) keys fine. The lookup does not try the "charter township" spelling for a name written "X Township".
-  - **Impact**: Kalamazoo's TelVue station meeting "Oshtemo Township - Planning Commission - September 24, 2026 Meeting" stays blank after WO-1100, because its name only mints. Any adapter reading a Michigan charter township as "X Township" repeats it.
-  - **Next action**: when "X Township, MI" finds no township, try "X charter township" in the same state; test with the five names above.
-  - **Constraint**: never key "X Township" to a village or city of the same name (the entry above).
-  - **History**: found by WO-1100, 2026-09-26.
-
-- **`[JUST-DO-IT]` `[EASY]` A literal HTML entity in a stored jurisdiction (`Kaua&apos;i County, HI`) is never unescaped, so the county lookup fails on an apostrophe.**
-  - **Issue**: `kauai.granicus.com`'s two pages store `Kaua&apos;i County, HI` verbatim; `resolve_government()` on it is `unresolved` ("no 'Kaua&apos;i County' in HI"), while `Kaua'i County, HI` and `Kauai County, HI` both key to `us:county:15007` — `tables.lookup_keys()` already strips the ʻokina, it's only the entity that defeats it. Nothing on the path calls `html.unescape()`.
-  - **Impact**: two pages sat on `/j/kaua-apos-i-county-hi` until WO-125 pinned the host; any adapter that passes an entity-encoded title through (Granicus RSS titles do) will repeat it.
-  - **Next action**: `html.unescape()` the raw name at the top of the ladder (or in `finalize_jurisdiction()`), a test on the Kauaʻi string, and store the unescaped form at ingest.
-  - **History**: WO-125, 2026-09-09; the `kaua-apos-i-county-hi` → `kauai-county-hi` alias is already in `hub_slug_aliases.csv`.
-
 - **`[JUST-DO-IT]` `[EASY]` Census LSAD "corporation" is not stripped: "Ranson, WV" mints a duplicate and the hub reads "Ranson corporation, WV".**
   - **Issue**: `us_places.csv` lists "Ranson corporation" (`us:place:5466988`). `resolve_government("Ranson, WV")` mints `rtr:us:wv:ranson`, which now has its own governments.csv row (line 1167), and `display._TRAILING_TYPE_RE` lacks `corporation`.
   - **Impact**: Ranson's pages sit at `/j/ranson-corporation-wv`. Meeting Finder's resolver named the minted duplicate (WO-1163).
   - **Next action**: add `corporation` to the lookup-side trailing-type strip and to `display._TRAILING_TYPE_RE`. Add the Ranson pair to the Sitka test, add a `ranson-corporation-wv` -> `ranson-wv` alias, and retire the minted `rtr:us:wv:ranson` row.
   - **History**: WO-125, 2026-09-09; WO-1163 pin.
-
-- **`[NEEDS-AUDIT]` `[EASY]` `"Regional Municipality of X"`/`"Region of X"` split off as a body instead of resolving as the government.**
-  - **Issue**: `jurisdiction_enrich._split_entity_prefix()` reads
-    "Regional Municipality of Durham" as the same "`<Entity> of
-    <Jurisdiction>`" shape built for "Housing Authority of the County of
-    Santa Clara" — splitting it into `meeting_body="Regional
-    Municipality"`, `jurisdiction="Durham"`. For a housing authority that
-    is correct (D2: it has its own board/statute/budget, "Durham" is a
-    different question). For "Regional Municipality of X" it is wrong:
-    that phrase IS the government's own identity (`classify.
-    classify_government_type()` already returns `county` for it via
-    `_CA_UPPER_TIER_RE`), not a body within a place called "Durham". By
-    the time `resolve_government()`'s rung 3 classifies, the entity
-    prefix is already gone from the cleaned name, so "Durham" alone
-    classifies `other` and mints `rtr:ca:on:durham` instead of reaching
-    `ca:cd:3521`. "Region of Peel"/"County of X" do NOT have this bug —
-    only the longer "Regional Municipality of" phrasing triggers the
-    split. Confirmed live against this repo's own code 2026-09-03 (not a
-    hypothetical): `resolve_government("Regional Municipality of Durham,
-    ON")` → `tier=unverified`, `gov_id=rtr:ca:on:durham`.
-  - **Impact**: at least one real, named example (Durham) mints instead
-    of keying to its census division — a fragmentation of exactly the
-    shape Phase 1b/2 spent most of their effort closing. Scope beyond
-    Durham not yet measured (needs a live corpus check for how many
-    stored Ontario/other-province jurisdictions use this longer phrase).
-  - **Next action**: teach `_split_entity_prefix()`/`classify.
-    _ENTITY_OF_PLACE_RE` (or a guard ahead of them) to recognize
-    "Regional Municipality"/"Region"/"County" as IDENTITY-carrying
-    prefixes for a Canadian upper-tier name, not body-carrying ones — the
-    same distinction `classify._CA_UPPER_TIER_RE` already draws, just
-    applied before the entity-prefix split runs instead of after.
-  - **Constraint**: don't weaken the housing-authority case this
-    mechanism exists for — the fix needs to distinguish "this entity
-    phrase names an upper-tier Canadian government" from "this entity
-    phrase names a body", not just special-case the word "Regional".
-  - **History**: WO-105 (2026-09-03), found writing
-    `tests/test_gov_registry.py::
-    test_regional_municipality_of_durham_type_word_widened_but_resolution_unchanged`
-    while widening `resolver.py`'s type-word regexes — the widening
-    itself does not cause or fix this, it is pre-existing on `main`.
-
-- **`[NEEDS-AUDIT]` `[EASY]` `classify.py`'s SPECIAL_DISTRICT rule matches the bare word "district", misclassifying real BC "District of X" municipalities.**
-  - **Issue**: `classify._RULES`' SPECIAL_DISTRICT pattern includes a bare
-    `\bdistrict\b` alternative. District of North Vancouver, District of
-    Squamish, District of Saanich and District of Sechelt are all real,
-    current BC municipalities (a general-purpose government, StatCan CSD
-    type `DM`), not special districts — but `classify_government_type()`
-    files them SPECIAL_DISTRICT before `_CA_UPPER_TIER_RE`/the
-    municipality rule ever gets a look, the same shape as the already-
-    fixed "wastewater" (§1.4) and "port" (Phase 2's four-defects section)
-    negative-lookahead gaps.
-  - **Impact**: a real "District of X" name mints an `rtr:` id under
-    NON_PLACE_TYPES routing instead of reaching `ca:csd`'s real row for
-    it — confirmed live 2026-09-03:
-    `classify.classify_government_type("District of North Vancouver",
-    country="ca")` → `special_district`. `resolver.py`'s type-word
-    widening this same pass (WO-105) now correctly extracts "district" as
-    the raw name's own type word regardless, so the widening itself does
-    not make this worse, but it also can't fix it — rung 3 (type
-    classification) runs before `_leading_type_word()`'s result is ever
-    consulted, and it decides the branch.
-  - **Next action**: add a negative lookahead (or an upper-tier check
-    ahead of the special_district rule, mirroring `_CA_UPPER_TIER_RE`'s
-    own early check) so "district" only fires the special-district rule
-    when NOT preceded by "of" naming a Census/StatCan place — i.e.
-    "District of X" should classify the same way "Regional Municipality
-    of X"/"Region of X" already correctly do, not the way "X Water
-    District" should.
-  - **Constraint**: don't lose real special districts that DO use
-    "District of" phrasing, if any exist (not yet checked) — ground the
-    fix in a real confirmed example the way the wastewater/port fixes
-    were, not a blind exemption.
-  - **History**: WO-105 (2026-09-03), found building the type-word
-    widening; pinned as a known, current-state gap by
-    `tests/test_gov_registry.py::
-    test_district_of_north_vancouver_type_word_extracted_but_not_yet_resolved`.
+  - **Update 2026-10-16**: Partly fixed in #2077 (`cc30ce13`): "corporation" suffix stripped; Ranson hub alias and minted row still need a call.
 
 - **`[NEEDS-AUDIT]` `uatccta.primegov.com` is the first real multi-government tenant and still has no `match` discriminator.**
   - **Issue**: it is listed under El Cerrito **and** San Pablo in
@@ -2295,6 +1900,7 @@ actionability sections above.
   - **Next action**: add those phrases; widen "training video" to "training session"; consider a duration floor (under about 2 minutes with a body word: the known examples are 34-141 s). Add each real title as a test case.
   - **Constraint**: add only phrases confirmed by a real example ("town hall" stays out).
   - **History**: WO-235 (2026-09-11), WO-247 (2026-09-12), `BACKLOG_DONE.md`.
+  - **Update 2026-10-16**: Partly fixed in #2077 (`c8078f78`): Recap/info session/training/podcast titles blocked; duration floor and two ambiguous phrases still open.
 
 - **[NEEDS-AUDIT] `ec1c24.com` is an unrecognized video-index wrapper domain — Temple City, CA's real CivicPlus meetings all point at it, and it embeds a real YouTube video with per-agenda-item timestamps.**
   - **Issue**: WO-162 (2026-09-10) fixed CivicPlus's corporate-host substring bug (`connect.civicplus.com` no longer misclassified as a real tenant — see `BACKLOG_DONE.md`), using Temple City, CA (`www.templecityca.gov/agendacenter`) as the live example. Fetching that real page live turned up a second, separate gap: every one of its 103 `tr.catAgendaRow` rows links its `td.media` video to `templecity.ec1c24.com/citycouncil/{yyyy}/{mm}/{slug}.html`, a domain `detect_platform()` doesn't recognize at all. Fetching one of those pages live confirms it embeds a real single YouTube video (`youtube.com/embed/hXcwEqIekkc`) with per-agenda-item `?start={seconds}` deep links already built in — a real, resolvable meeting, just one hop further than `civicplus.py`'s `_is_real_video_link()` currently looks (it requires the row's own href to already be a directly-recognized platform link, so it correctly treats these rows as "no video" rather than fabricating one).
@@ -2316,55 +1922,6 @@ actionability sections above.
   - **Next action**: look for a listing endpoint on a live tenant (`lunaconm.suiteonemedia.com`); if one exists, list events and reuse `resolve_newest_candidate()` (`app/platforms/base.py`, built for eScribe in WO-938).
   - **Constraint**: confirm on a real tenant before building.
   - **History**: WO-149, WO-285 (fixed the `/web/live` stub), WO-938 (typed error), all in `BACKLOG_DONE.md`.
-
-- **[JUST-DO-IT] `[EASY]` Castus tenants that put the date in the title ("08/25/26 Heritage Commission") come back with `meeting_date` null.**
-  - **Issue**: Manchester, NH (`cloud.castus.tv/vod/manchestertv`, confirmed live 2026-09-14 by a hand spot-check, real playable HLS) resolves cleanly through `app/platforms/castus.py`, but every video title is shaped `MM/DD/YY {body name}` and the adapter does not parse a date out of the title, so `meeting_date` is null on a page whose date is in plain sight.
-  - **Impact**: undated pages sort and dedupe badly and hide from the "newest meeting" logic the sweeps rely on; the same title shape is likely on other Castus tenants run by the same cable-access operators.
-  - **Next action**: in `castus.py`, when the API/date field is empty, try a leading `MM/DD/YY` or `MM/DD/YYYY` on the title (two-digit year -> 2000s) before giving up; add Manchester's real title as a fixture case and one title without a date as the negative.
-  - **Constraint**: title-derived dates are a fallback only; never override a real date field with one parsed from text.
-  - **History**: found by the jx coverage triage session 2026-09-14; write-up in rtr-business `ENUMERATION_METHODS.md`, "Follow-up spot-check: Manchester, NH".
-
-- **[JUST-DO-IT] Castus's URL regex only matches `/video/{id}`, silently
-  missing the real `/private/{id}` path variant — confirmed live with
-  Vero Beach, FL.**
-  - **Issue**: `castus.py`'s `_URL_RE = re.compile(r"/vod/([^/?#]+)/
-    video/([^/?#]+)")` hardcodes the literal path segment `video`. Vero
-    Beach's own government-access channel (`cloud.castus.tv/vod/
-    vero-beach/private/6a8dc49212e21f0002bd8a31`, a real 1h37m "City
-    Council 08/25/2026" meeting, verified by loading it directly —
-    full council chamber, live timestamp overlay, not a promo or
-    placeholder) uses `private` instead, so the regex never matches at
-    all and `resolve()` falls straight to `"Could not find a tenant/
-    video id in this Castus URL."`. A same-tenant second video
-    (`6a8dc49212e21f0002bd8a31`'s sibling `67d82e28352ecb0008fcf4da`)
-    uses the same `private` shape, so this isn't a one-off typo on
-    Vero Beach's side.
-  - **Impact**: a same-day nationwide candidate sweep
-    (`~/Documents/rtr-business/research/nationwide_395_ingest_log.csv`)
-    hit this exact URL and, because the direct adapter call returned no
-    video, mis-classified a real meeting as `ingested_agenda_only`
-    (no video/transcript) instead of a real tier-1/2 ingest — caught
-    and corrected by hand in `jurisdiction_coverage.csv`, but the
-    underlying adapter gap is still live and would repeat for any other
-    Castus tenant using the `private` path. Every other Castus example
-    found in this project's research corpus (Andover MA, Seabrook TX,
-    Billings MT, Fort Mitchell KY, Greene ME) uses the working `/video/`
-    path, so this looks tenant/visibility-specific (private/unlisted
-    videos) rather than a second widespread product variant — not
-    confirmed beyond Vero Beach's two videos.
-  - **Next action**: widen `_URL_RE` to accept either `video` or
-    `private` as the path segment (e.g. `/vod/([^/?#]+)/(?:video|
-    private)/([^/?#]+)`) and confirm the rest of `resolve()` (asset
-    fetch, captions) behaves the same for a `private`-path video as a
-    `video`-path one — not verified here, since this was found and
-    fixed at the research layer, not by running the adapter itself.
-  - **History**: castus.py itself shipped 2026-08-21 (`BACKLOG_DONE.md`
-    "Castus (cloud.castus.tv): investigation spike... became a full new
-    platform adapter") — this is a gap in that adapter's URL matching,
-    not a missing platform. Found 2026-09-07 in rtr-business's
-    `ENUMERATION_METHODS.md` nationwide sweep (§75-76 and the Vero Beach
-    follow-up); a prior sighting of Castus generally (Andover, MA) is
-    also noted there at §67, unrelated to this specific bug.
 
 - **[JUST-DO-IT] City-YouTube-channel fallback: listings only reach ~400 entries per tab.**
   - **Issue**: yt-dlp's channel extraction is not lazy, so the WO-30
@@ -2427,40 +1984,6 @@ actionability sections above.
   - **Next action**: open `https://eugene.open.media/sessions/344982/city-council-work-session-july-15-2026` now. If a new structure is live, rebuild against its `/api/sessions/{id}/` and `/cue-points/` calls; if still broken, add `open_media` to `CANARY_KNOWN_CI_BLOCKS` with the date.
   - **Constraint**: do not build against the broken shell.
   - **History**: WO-1112 (2026-09-26), `BACKLOG_DONE.md`.
-
-- **[NEEDS-AUDIT] The canary's `youtube` check passes even when YouTube refuses the runner, so it can't see a YouTube caption break.**
-  - **Issue**: every canary run logs ~10 `yt-dlp` "Sign in to confirm you're not a bot" errors, yet `youtube` passes, because `has_real_content()` is satisfied by a `video_url` alone.
-  - **Impact**: a real YouTube caption failure (the thing `CLAUDE.md`'s yt-dlp bullet warns about) would never turn the canary red. Low urgency: YouTube captions come from the drip Mac, not from these runners.
-  - **Next action**: decide whether the canary should check YouTube at all from GitHub (it also makes YouTube requests from outside the drip Mac); if yes, require segments for `youtube` and list it in `CANARY_KNOWN_CI_BLOCKS`; if no, move it to `CANARY_EXCLUSIONS` with this reason.
-  - **History**: noticed while reading every canary log for WO-1112 (2026-09-26).
-
-- **[NEEDS-AUDIT] `civicplus.py`'s own docstring claims AgendaCenter rows render "newest-first" across the whole page — real, confirmed false for multi-category tenants; rows are newest-first *within* each category, with categories concatenated, not globally date-sorted.**
-  - **Issue**: confirmed live 2026-09-09 (WO-137) on lowellma.gov/AgendaCenter (330 rows): each `tr.catAgendaRow` sits inside a `<div id="category-panel-{N}">` wrapper (City Council rows 0-28, then several unrelated boards, then the Lowell License Commission's own rows starting at index 199) — each category's own rows are newest-first, but the categories themselves are concatenated in some category-ID order, not merged by date. `_find_candidate_rows()`'s and `resolve()`'s `_RETRY_LIMIT`-bounded walk (both `civicplus.py` and `adhoc_civicplus_pipeline.py`) assumes the first 5 DOM rows are the 5 most recent meetings on the whole page; for a tenant whose first-rendered category doesn't happen to have a recent video-bearing row, this can never reach a genuinely more-recent video sitting in a later category, no matter how small or large `_RETRY_LIMIT` is.
-  - **Impact**: measured on Lowell specifically: even walking the full 330-row page and correctly excluding `@handle`-only channel links (not real single-video links), the most recent genuinely resolvable per-meeting video is 6+ months old (License Commission, March 2026) — so this bug did not actually flip Lowell's real "no video" verdict in this instance, but the wrong assumption is real and would matter for a tenant whose first category is stale while a later category has a currently-active video-bearing series.
-  - **Next action**: sort `_find_candidate_rows()`'s returned list by parsed date (falling back to original DOM order for the unparseable minority) before `resolve()`'s retry walk uses it, so "the 5 most recent candidates" is true globally, not just within whichever category the DOM happens to render first. Update the class docstring's "same rendering order this page already uses" claim once fixed.
-  - **Constraint**: low priority on its own (didn't change any real verdict in the one confirmed case) — worth doing opportunistically alongside other `civicplus.py` work, not urgent by itself.
-  - **History**: `BACKLOG_DONE.md`, WO-137, 2026-09-09.
-
-- **[NEEDS-AUDIT] A jurisdiction string naming its state as a full word ("Ottawa County Michigan", not ", MI") can resolve to the wrong STATE entirely, not just the wrong government.**
-  - **Issue**: found live 2026-09-11 (WO-198's corpus-wide township/place scan) — a real page's own `jurisdiction_raw` is "Park Township, Ottawa County Michigan" (confirmed via yt-dlp channel "Park Township, Ottawa County Michigan"), but it had resolved to `us:place:2054400`, Park CITY, KANSAS — a different state, not merely a different government. `jurisdiction_enrich.py`'s `_split_state()` only recognizes a trailing 2-letter abbreviation, and `_strip_county_qualifier()`'s `_COUNTY_QUALIFIER_RE` requires the county phrase to end the string (`...County$`) with a leading comma — this raw string satisfies neither (no comma before "Ottawa", and "Michigan" trails after "County"), so both silently decline and something further down the ladder guesses Kansas instead.
-  - **Impact**: unmeasured how many other rows share this exact shape (a spelled-out state name after "County", with no comma) — this is the only confirmed instance so far, found as a side effect of WO-198's scan, not a dedicated search for it.
-  - **Next action**: grep the Archive export's `jurisdiction_raw` column for `County [A-Z][a-z]+$` (a spelled-out state word immediately after "County", no trailing 2-letter code) to size the population before deciding whether to widen `_split_state()`/`_strip_county_qualifier()` or handle it as a narrower one-off. This specific page already has a `tenant_overrides.csv` authoritative pin (`us:cousub:2613962460`, source `wo198`) so it isn't currently wrong in production once that pin's PR deploys — this entry is about the underlying extraction gap, not this one page.
-  - **Constraint**: don't widen `_split_state()`'s state-word matching without checking it against `us_states.csv`'s full name list first — a bare word match risks eating a real word that happens to also be a US state name (e.g. a government literally named "Georgia" something).
-  - **History**: `BACKLOG_DONE.md`, WO-198, 2026-09-11; `rtr-business/research/ENUMERATION_METHODS.md` (WO-198 section).
-
-- **[NEEDS-AUDIT] `scripts/build_jurisdiction_data.py`'s blanket `.decode("latin-1")` on raw Census source files double-corrupts the handful of rows whose real source bytes are UTF-8 — confirmed live, 23 real government names affected, root cause traced but not fixed at the generator.**
-  - **Issue**: found 2026-09-10 investigating why `lacanadaflintridge-ca.granicus.com` never resolves a gov_id — `us_places.csv` stored the government's real name as `La CaÃ±ada Flintridge city` instead of `La Cañada Flintridge city`. That's classic double-encoding: the real source bytes for this row are UTF-8 (0xC3 0xB1 for "ñ"), but `build_jurisdiction_data.py` (line ~92/94) blanket-decodes every raw Census source file as `latin-1`, so those two UTF-8 bytes get read as two separate Latin-1 characters and re-encoded wrong. Same corruption hit 22 more rows across `us_places.csv`, `us_counties.csv` (mostly Puerto Rico municipios — Bayamón, Mayagüez, Añasco, etc. — plus Doña Ana County, NM), and `us_school_districts.csv`. Re-confirmed 2026-09-11: the generator script is unchanged, still has this bug.
-  - **Impact**: a corrupted name can never validate against real page text or a subdomain hint, so every one of these 23 governments was permanently unmatchable by name regardless of URL-parsing quality — not a rare edge case, since Puerto Rico's entire county-equivalent table (78 municipios) is disproportionately exposed (17 of 78 already confirmed corrupted).
-  - **Next action**: the 23 already-corrupted rows were fixed directly in the checked-in CSVs (PR #855, 2026-09-10, `BACKLOG_DONE.md`) — this entry is about the generator itself, which will re-corrupt the same rows (and any other UTF-8-sourced row not yet noticed) on the next regeneration. Needs a per-row encoding detection (try UTF-8 first, fall back to `latin-1`, or an explicit list of known-UTF-8 source rows) rather than the current blanket decode — the fix must not touch the thousands of rows that genuinely are Latin-1 and decode correctly today.
-  - **Constraint**: don't blanket-switch the decode to `utf-8` either — that would break whichever rows are genuinely Latin-1 (the Census source files predate consistent UTF-8 encoding, hence the original choice). Needs verification against real source bytes, not a guess.
-  - **History**: gov-id enumeration audit, 2026-09-10; `BACKLOG_DONE.md`'s "Fixed double-encoded diacritics" entry. This entry itself was silently dropped from `BACKLOG.md` by a later merge and restored 2026-09-11 from git history — see `BACKLOG_DONE.md`'s recovery note.
-
-- **[NEEDS-AUDIT] `finalize_jurisdiction()`'s table validation doesn't fold diacritics, so a real government's own page text (almost always spelled without the accent) can't match its own correctly-accented Census table entry.**
-  - **Issue**: confirmed live 2026-09-10 on La Cañada Flintridge, CA — even after fixing the table's own encoding corruption (see the sibling entry above), the government's real Granicus page spells its name "La Canada Flintridge" (no tilde, confirmed via the page's own meta description). `finalize_jurisdiction("City of La Canada Flintridge", ...)` returns `confidence="unverified"`, while the identical string WITH the accent returns `confidence="validated"` — a byte-for-byte match is required, so the overwhelmingly common real-world spelling never validates against the table's official one. (Separately, `_table_lookup()`'s own subdomain-tier matching for `validated_subdomain_extract()` appears to fold accents already — `canoncityco` → `Canon City` succeeded post-fix without the accent — so the inconsistency is specifically in `finalize_jurisdiction()`'s own validation path, not universal across this file.) Re-confirmed 2026-09-11: `finalize_jurisdiction()` is unchanged, still returns `unverified` for the accent-free spelling.
-  - **Impact**: every government with a diacritic in its official Census name (not just the 23 rows the sibling entry fixed — this is the more general, ongoing gap) will keep failing to auto-resolve from real page text, landing as "Unknown Jurisdiction" or requiring a manual pin, purely because real-world text drops accents and the validator doesn't account for that.
-  - **Next action**: add accent-folding (e.g. NFKD-normalize and strip combining marks) to whichever comparison `finalize_jurisdiction()`'s table-validation step uses, so an accent-free candidate can still validate against an accented table row — mirroring whatever `_table_lookup()` already does for the subdomain tier. Needs care: `finalize_jurisdiction()` is heavily tuned (see this file's own tournament-testing comments), so verify against the existing test suite and the tournament data before changing it, not just the one confirmed case.
-  - **Constraint**: don't fold accents in a way that creates a new collision (two distinctly-named real governments that only differ by a diacritic) — check for that before shipping.
-  - **History**: gov-id enumeration audit, 2026-09-10. This entry itself was silently dropped from `BACKLOG.md` by a later merge and restored 2026-09-11 from git history — see `BACKLOG_DONE.md`'s recovery note.
 
 - **[NEEDS-AUDIT] TelVue's `resolve()` can return a perpetual live-channel stream (no fixed start/end) indistinguishable from a specific completed meeting recording.**
   - **Issue**: found live, WO-338, 2026-09-13. Two governments' confirmed TelVue hub pages (Oshtemo Charter Township, MI's own "Watch Live & Recorded Meetings" page; Cranford, NJ's Calendar EID page) both resolved via `verify_hub()` to a titled "LIVE" stream (`PMN Three - LIVE`, `Cranford TV-35 Live Stream`) rather than one specific past meeting — `resolve()` returned a real `video_url` (an `.m3u8` playlist) with no signal distinguishing "this is a 24/7 public-access channel" from "this is one saved meeting."
@@ -2643,14 +2166,6 @@ actionability sections above.
 
 ## Trust, safety & data quality
 
-### Find Meeting's fingerprint comparison: 69 multi-government hosts and 4 YouTube aliases are outside `MULTI_GOV_HOSTS`, and one path is labeled two ways `[NEEDS-AUDIT]`
-
-- **Issue**: comparing this repo's recognizers with Find Meeting's new fingerprint table (2026-10-06) found 69 hosts whose pins name two or more governments but are not in `registry.MULTI_GOV_HOSTS` (62 Cablecast station hosts, 3 Granicus tenants, `www.utah.gov`, `video.isilive.ca`, `hamburgny.new.swagit.com`, `trms.northmetrotv.com`; 7 already mix blank and match pins), 4 YouTube aliases recognized in `base.py:1034-1038` but not protected, and `/Portal/MeetingInformation.aspx` labeled CivicWeb in `platform_signatures.csv` but CivicClerk in `host_recognition.py:241`.
-- **Impact**: a blank-match (whole-host) pin on any of those hosts would still load and file every page under one government; the path label sends a CivicWeb or Diligent page to the CivicClerk family (Find Meeting's data: 198 CivicWeb and 141 Diligent sites carry the path, no CivicClerk site).
-- **Next action**: read `docs/PLATFORM_FINGERPRINTS_FROM_FINDMEETING.md` (the host list, the contradictions, the missing hosts such as `goboarddocs.com`), then decide per group whether to add exact names or a shape rule (for example any `reflect-*.cablecast.tv`) to `MULTI_GOV_HOSTS`, and fix the path label.
-- **Constraint**: nothing was tested live; check a real page for each change. Counts are from origin/main of 2026-10-06 (commit 35db712).
-- **History**: the table and its sources are in rtr-findmeeting PR #42 (`analysis/platform_fingerprints/`).
-
 ### No endpoint can correct a wrong word or name in a stored transcript
 
 - **Issue**: the Archive can promote a version, drop segments, and fix a version's language or warning labels. It cannot edit a segment's text. Ryan wants wrong names fixed in the shown Whisper transcript rather than swapping in station captions (Standing decisions).
@@ -2666,14 +2181,6 @@ actionability sections above.
 - **Next action**: for each `wildcard_http_sweep_*` pin, compare the pinned government's state with the host's own landing page (title or footer), the check that caught all 7 on 2026-09-25; fix mismatches and add `landing_page` to the ones that hold. `reflect-townofwellfleet.cablecast.tv` stays unmarked on purpose: its channel also carries Barnstable County shows ("Assembly", "County Com").
 - **Constraint**: report before re-filing any existing page.
 - **History**: `BACKLOG_DONE.md` WO-1068, WO-1074, WO-1075; per-page table in `docs/investigations/whole_host_pin_mismatch_2026-09-25.md`.
-
-### ChampDS customers that carry a second government need per-meeting pins, and per-meeting ChampDS pins need an exact match first `[NEEDS-AUDIT]`
-
-- **Issue**: 9 ChampDS customers publish a second government's meetings under one `CustomerName` (Gillette WY carries Campbell County; Fond du Lac WI the county board; Falmouth ME, Gorham ME, Isle of Wight Co VA and Provincetown MA a school board; Brookfield CT the Candlewood Lake Authority; Mauston WI joint committees; Yonkers NY school segments). They are now in `MULTI_GOVERNMENT_TENANTS`, so their meetings are unknown until pinned. A pin for one meeting is a substring match, so `/fonddulacwi/event/77` would also claim events 770-779 and 7700+.
-- **Impact**: these customers' meetings get no government. One archived page is known: `/fonddulacwi/event/77`, Fond du Lac County's Board of Supervisors (`us:county:55039`).
-- **Next action**: make a ChampDS `/{customer}/event/{id}` pin match that exact event id (as WO-1059 did for `key=value` pins), then pin real meetings one at a time. Separately, confirm who `alamedacocaschools` ("Alameda Schools CA") is: its name resolves to Alameda City Unified, but the customer id's "co" matches county school customers (`fultoncoschoolsga`), so it may be the Alameda County Office of Education.
-- **Constraint**: Invintus's shared clients (CVTV `2917038973`, Pierce County TV `1872740071`, WisconsinEye `2789595964`) are deliberately not listed: their names come from each meeting's own category, and a 300-meeting live sample on 2026-09-25 resolved every one to the right government or to nothing. Since the same day, `invintus.py` also splits a body-only category ("DuPont City Council") into its place, so fewer land on nothing. Re-check before listing them.
-- **History**: `play.champds.com` joined `MULTI_GOV_HOSTS` in #1432; 29 whole-customer pins in #1450.
 
 ### Invintus meetings from a separate government (regional council, health department) get no government: the registry has no id for them `[NEEDS-AUDIT]`
 
@@ -2698,14 +2205,6 @@ actionability sections above.
 - **Next action**: decide where a "do not ingest this source URL" list lives and who reads it. The `/internal/ingest` route in `archive/main.py` is the one place every path passes. Not built in WO-913.
 - **Constraint**: don't solve it with a blanket title block: "executive session" also names real meetings that carry a public portion.
 - **History**: `BACKLOG_DONE.md`'s WO-913 entry (the Toledo delete and the narrow probe-sidecar reject).
-
-### The partial-transcript check reaches only some YouTube pages, and the non-YouTube backfill still needs Ryan's Render-shell run `[NEEDS-AUDIT]`
-
-- **Issue**: WO-923 (2026-09-20) added a resolve-time warning when a transcript stops early (under 90% of the video with 10+ minutes uncovered). Its measurement read only 574 pages. WO-935 carries yt-dlp's length on the resolver path (`youtube.py`), but eScribe and CivicClerk copy fields out of the YouTube result and drop the length, and the drip's captions lane (`scripts/fetch_youtube_transcripts.py`, `process_one()`) uses `youtube-transcript-api` and builds its own payload with no length. On Render YouTube is blocked, so a backfill from the resolver's shell cannot fill the length in. The live YouTube check of WO-935's change was not made.
-- **Impact**: most of the ~4,500 YouTube-sourced pages still cannot be checked. 17 of 527 measured non-YouTube pages (9 Town Hall Streams, 7 Cablecast, 1 CivicClerk) are partial by the rule; the ~5,200 unmeasured non-YouTube pages are unknown, not clean.
-- **Next action**: (1) have the drip's captions lane read `duration` (its `check_permanent_failure()` call already makes the yt-dlp call) and run the WO-923 rule before it pushes; copy the length through in eScribe and CivicClerk; the live check needs the drip Mac. (2) Ryan's half: after the resolver deploy, run `scripts/backfill_archived_pages.py` from the resolver's Render shell (it re-resolves every page and now carries the check), then read `/internal/transcript-quality-audit`'s `truncated_transcript` count. Also look at why 9 of 100 Town Hall Streams pages read 3% to 50%: the durations are round (120, 180, 240 minutes), which suggests fixed recording windows rather than captions that stopped.
-- **Constraint**: never fetch YouTube from this office machine. No bulk sweep of the production Archive from a laptop.
-- **History**: `BACKLOG_DONE.md` WO-923 and WO-935.
 
 ### 2 already-pinned YouTube channels still disagree with the Archive's own pages `[NEEDS-AUDIT]`
 
@@ -2812,17 +2311,6 @@ actionability sections above.
 - **Constraint**: never fill it from a title regex at read time; the report exists to count the real gap.
 - **History**: `BACKLOG_DONE.md` WO-904/905/906/907; report from WO-124 (`scripts/export_meeting_inventory.py`).
 
-### `[IMPROVEMENT-ROUND]` A low-trust review doesn't expire when the page is re-ingested
-
-- **Issue**: `reviewed_at` survives a later re-ingest, so a page reviewed
-  today and re-resolved tomorrow with different content still reads as
-  reviewed.
-- **Impact**: the review queue can silently mask a page whose content
-  changed after it was checked.
-- **Next action**: compare `reviewed_at` against `updated_at` to surface
-  pages that changed post-review; nothing does this yet.
-- **History**: WO-38 (2026-08-21) build in `BACKLOG_DONE.md`.
-
 ### `[HUMAN]` `[BIG]` Nothing verifies a submitted URL is a genuine government site
 
 - **Issue**: fake/spoofed "government" pages and non-government content
@@ -2909,21 +2397,6 @@ actionability sections above.
 - **Next action**: fill `speaker` where an adapter has a reliable label and leave the text unchanged; keep a short caption credit (such as Tampa's header) with the version. Skip room or account labels such as "El Cerrito Council Chamber".
 - **Constraint**: a new field on the ingest payload needs an Alembic migration (`archive/alembic/`). A label alone is not a person.
 - **History**: rtr-business `research/CAPTION_METHODOLOGY.md` (2026-10-09 to 10-12).
-
-### A hub with its own meetings still shows the site's generic share image until its thumbnail is warmed `[IMPROVEMENT-ROUND]`
-
-- **Issue**: hub pages (`/j/*`) with no warmed thumbnail of their own fall back to the site-wide generic card (`_GENERIC_CARD_SLUG` in `archive/main.py`, WO-90): a frame from Indianapolis's Property Tax Assessment Board of Appeals, 2026-08-28. That is deliberate for pages with no video. But a hub that does have its own meeting shows it too. Seen 2026-10-01: `/j/paulding-county-ga` (1 meeting) carries the Indianapolis frame as its `og:image`, so a shared Paulding link previews an Indianapolis meeting. A research agent read this as a mis-filed page; page 3652 is correctly filed under Indianapolis.
-- **Impact**: cosmetic, but misleading in link previews for small hubs.
-- **Next action**: when a hub has at least one meeting, use its newest meeting's card (`/m/{slug}/card.jpg`), or warm that thumbnail when the hub is built. Keep the generic card only for hubs with no meetings.
-- **Constraint**: never stock art (WO-90's rule: every og:image is a real frame).
-- **History**: found 2026-10-01 by the rtr-business CivicMedia uploader-rule pass; Ryan asked for it to be filed.
-
-**Architectural context:** anything about content/audience rather than
-resolving (permanent pages, search, accounts/billing, email alerts, the
-transcription crawler) grows in a **separate app** ("the Archive"), not
-this resolver — see `BACKLOG_DONE.md` for the full reasoning. The
-resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
-`app/db/crud.py` plus `archive_client.lookup()`/`.push()`.
 
 ### `[IMPROVEMENT-ROUND]` Pierce County TV: per-government YouTube leads for the drip Mac
 
@@ -3086,26 +2559,6 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 
 ### Search & metadata quality
 
-- **[IMPROVEMENT-ROUND] Transcript version picker: real option labels
-  still open.**
-  - **Issue**: the picker's option labels (`meeting_page.html`:
-    `{{ v.language|language_name }} ({{ v.source|source_label }})`)
-    distinguish versions only by language and provenance — two versions
-    sharing both a language and a source still render identically, even
-    after `source="deduped"` added one more axis.
-  - **Impact**: a reader can't always tell two listed versions apart
-    before picking one.
-  - **Next action**: add a date to each label — the cheapest real fix,
-    since `TranscriptVersion` already carries a timestamp and it needs no
-    schema change; a free-text label column would read better but needs
-    a migration.
-  - **Constraint**: Ryan's call 2026-08-22 — UI is "fine enough" for now,
-    ship transcripts first; not urgent.
-  - **History**: split out of the `source="deduped"` work. The analytics
-    half (`transcript_version_change`/`_available`/`_viewed` events,
-    including the `label_ambiguous` param this entry called for) shipped
-    2026-08-31 — see `BACKLOG_DONE.md` addition.
-
 - **`[IMPROVEMENT-ROUND]` Full Context entries drop `line`/`version` from the pasted share link — only `t` is kept.**
   - **Issue**: WO-943's editor form parses a pasted "Share video at M:SS"
     link's `slug` and `t`, but reads and discards any `line`/`version`
@@ -3162,33 +2615,6 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     length ceiling — a growing per-meeting names list needs care not to
     dilute or overflow it.
   - **History**: user idea, 2026-08-11. Not yet built.
-
-- **[IMPROVEMENT-ROUND] A signed-out visitor who hits the
-  transcription-request rate limit still isn't prompted to sign in.**
-  - **Issue**: a signed-out visitor who hits the 5/hour transcription
-    rate limit is just told to wait, with no path to the sign-in flow
-    that would exempt them.
-  - **Impact**: signed-out visitors who would benefit from signing in
-    (signed-in users are now exempt, see History) have no prompt to do
-    so at the point they hit the limit.
-  - **Next action**: add a plain link to the dedicated `/sign-in` page at
-    this UI spot.
-  - **Constraint**: this exact UI spot already tried an inline sign-in
-    shortcut (a Clerk modal button) and removed it entirely after three
-    rounds of Clerk's redirect options proved unreliable live — read the
-    full saga in `BACKLOG_DONE.md`'s accounts phase-1 entry before
-    reaching for the modal again. A plain link to `/sign-in` is probably
-    the safer default given that history.
-  - **History**: the rate limit itself no longer applies to signed-in
-    users, fixed 2026-08-31 — both `@limiter.limit("5/hour")` decorators
-    (`app/main.py`'s `transcription_check_feasibility`/
-    `transcription_submit`) now carry `exempt_when=lambda request:
-    bool(get_clerk_user_id(request))`, confirmed live that slowapi
-    0.1.10 genuinely supports this kwarg. The copy rewrite was already
-    fixed 2026-08-16. `transcription_submit`'s separate
-    `clerk_verified=bool(get_clerk_user_id(request))` plumbing
-    (2026-08-22) still only skips a newsletter-confirmation step,
-    unrelated to this rate limit. See `BACKLOG_DONE.md` addition.
 
 ### Email, ops tooling & internal reporting
 
