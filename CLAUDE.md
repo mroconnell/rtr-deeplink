@@ -20,7 +20,8 @@ Archive features were already built, tested, and live, and even then
 stayed deliberately narrow (accounts + saved items only, via Clerk rather
 than a hand-rolled session system, holding zero user PII in this app's
 own database). See `ACCOUNTS_PLAN.md` for what's still ahead (profiles,
-saved-search alert emails, billing) — split out of `BACKLOG.md`
+posts, billing; saved-search alert emails already shipped 2026-08-13,
+PR #30) — split out of `BACKLOG.md`
 2026-08-22, which keeps a stub entry under "Roadmap & strategy" — and
 `BACKLOG_DONE.md`'s "Clerk production cutover" entry for the real
 incidents hit switching from a Clerk development instance to production —

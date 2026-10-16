@@ -42,6 +42,12 @@ Within a section, group by theme. Tag every entry. When an item ships,
 move it to `BACKLOG_DONE.md` with a `[Done YYYY-MM-DD]` marker and split
 any residual back out here as its own live entry, per `CLAUDE.md`.
 
+**Claim tag (2026-10-16).** When work on an entry is under way or
+assigned out, its Next action starts with `**Claimed YYYY-MM-DD** (<who>,
+<WO or PR>):` and one short line on what is happening. Ryan or the
+conductor that assigned the work adds it. Remove the claim when the entry
+moves to `BACKLOG_DONE.md` or the work stops.
+
 **Entry format (adopted 2026-08-31, after a user review flagged entries
 reading like investigation journals; split rule and field-omission
 tightened the same day after a dry-run retrofit of the whole file showed
@@ -280,7 +286,7 @@ Trust, safety & data quality  (12)
   `[NEEDS-AUDIT]` One row in `jurisdiction_coverage.csv` has…
   `[NEEDS-AUDIT]` `rtr-business/research/jurisdiction_coverage.csv` has…
 
-Roadmap & strategy `[IMPROVEMENT-ROUND]`  (19)
+Roadmap & strategy `[IMPROVEMENT-ROUND]`  (20)
   Adapters drop signals that show a person captioned the meeting (found…
   `[IMPROVEMENT-ROUND]` Pierce County TV: per-government YouTube leads…
   `[IMPROVEMENT-ROUND]` Vendor slug guess ladder for governments whose…
@@ -296,7 +302,8 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (19)
     `[IMPROVEMENT-ROUND]` Auto-post each newly published Full Context…
   Search & metadata quality  (1)
     `[IMPROVEMENT-ROUND]` Full Context entries drop `line`/`version` from…
-  Transcription quality & cost  (2)
+  Transcription quality & cost  (3)
+    [IMPROVEMENT-ROUND] `[BIG]` Split speakers by voice (diarization) in…
     [IMPROVEMENT-ROUND] Hallucinated-transcript detection doesn't catch
     [IMPROVEMENT-ROUND] Per-meeting `initial_prompt` seeded with real
   Email, ops tooling & internal reporting  (2)
@@ -332,11 +339,10 @@ Dormant — needs a real example first `[LATER]`  (24)
   `[LATER]` `best_effort` is sticky — nothing at ingest distinguishes a…
   `[IMPROVEMENT-ROUND]` Social auto-posting only fires on page…
 
-Parked deliberately — allowed back `[PARK]`  (4)
+Parked deliberately — allowed back `[PARK]`  (3)
   Video-to-calendar join: match a government's video source to its own…
   SparQ Meetings adapter: agenda pages, six hosts and per-organization…
   `[LATER]` Mastodon auto-posting has made zero real posts
-  `[IMPROVEMENT-ROUND]` `[BIG]` "Feed cities" — should this app ever…
 ```
 
 <!-- TOC-END -->
@@ -865,6 +871,9 @@ sync. History: `BACKLOG_DONE.md` `[Done 2026-08-22]`.
 - **Ryan, 2026-10-16**: no age cutoff. Queue a real meeting of the right body at any age. (Was the entry "How stale is too stale for a tier-3 queue candidate? `[HUMAN]`"; see `BACKLOG_DONE.md`.)
 - **Ryan, 2026-10-16**: no, do not queue CITISTAT broadcasts. (Was the entry "[HUMAN] Atlantic City NJ's CITISTAT broadcasts (22.5 and 30.9 min, probed clean) -- queue"; see `BACKLOG_DONE.md`.)
 - **Ryan, 2026-10-16**: no do-not-ingest list for now. (Was the entry "Nothing records that a page was deliberately deleted, so a later sweep can put it straight"; see `BACKLOG_DONE.md`.)
+- **Ryan, 2026-10-16**: do not auto-ingest every new meeting of the pinned tier-1 governments. It grows the Archive's depth too fast, and it shows observers which governments are well covered. rtr-discovery already covers most of the need. The hold, its trigger and its one exception are on the "Recurring crawler" entry.
+- **Ryan, 2026-10-16**: no public read-only API until a data product sells. (Was the `CLAUDE_BACKLOG.md` idea "Read-only public API with API keys".)
+- **Ryan, 2026-10-16**: no ChampDS streaming proxy. It would send every viewer's video bytes through our server, the same cost reason as "Don't proxy Granicus/CivicClerk video bytes". The cheaper test of showing ChampDS's own player is on the ChampDS VOD2 entry.
 - **Ryan, 2026-10-16**: keep re-keying old pages by hand (backfill_gov_id.py after each deploy) for now. (Was the entry "[NEEDS-AUDIT] A `tenant_overrides.csv` pin only affects future resolutions — nothing retro"; see `BACKLOG_DONE.md`.)
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
@@ -898,7 +907,7 @@ sync. History: `BACKLOG_DONE.md` `[Done 2026-08-22]`.
 
 - **Issue**: a bare Granicus host like `cityoftacoma.granicus.com` does not say which `view_id` lists its videos. Meeting Finder's live probe (`_granicus_discover_view_id()`) tries only ids 1-6. WO-1965 added the stored map `app/utils/jurisdiction_data/granicus_views.csv`, read first by that probe and by `granicus.py`'s `resolve()` for a pasted bare host, and the script that fills it. The map holds only 4 seed rows (feeds saved as test fixtures).
 - **Impact**: about 240 Granicus tenants, the largest pool. Until the map is filled, a bare hub, pasted in or swept, still finds no meeting unless its feed is at ids 1-6.
-- **Next action**: run `scripts/probe_granicus_view_ids.py` from the Mac (the cloud gets a 403 from granicus.com): first a dry run on the 274 no-feed hosts from the 2026-10-07 check, then again with `--write`, and commit the new rows.
+- **Next action**: **Claimed 2026-10-16** (office Mac, WO-1965 / PR #2083): the probe runs from the office Mac after the deploy. Run `scripts/probe_granicus_view_ids.py` from the Mac (the cloud gets a 403 from granicus.com): first a dry run on the 274 no-feed hosts from the 2026-10-07 check, then again with `--write`, and commit the new rows.
 - **Constraint**: ids 1-6 are not enough (11 of 25 feeds only at 44-50; Alexandria at 29 and 57), so the script probes 1-60. `ViewPublisher.php` without a view_id is gated on purpose. A row proves the host serves the feed, not who owns the host: confirm an owner by hand before pinning or subscribing.
 - **History**: WO-1965 (stored map, loader, probe script); `meeting_finder/listing.py` WO-1030 comment; `~/Documents/rtr-findmeeting/data/granicus_norss_rss_check_2026-10-07/`; findmeeting PR 73.
 
@@ -968,7 +977,7 @@ of human step they need.
 
 - **Issue**: WO-1065 makes the Invintus resolver spot captions carried inside the video, and the worker extract them. Pages ingested before that deploy still say "No captions found" and don't carry the note the worker looks for.
 - **Impact**: any archived Invintus page with no transcript and captions in its video (5 of 11 sampled meetings on 2026-09-25) waits in the ordinary oldest-first queue for a Whisper run instead of getting its own captions. Not yet counted.
-- **Next action**: after the resolver, Archive and both workers are deployed, count archived `platform='invintus'` pages with no good transcript, then re-resolve and re-ingest them one at a time (each probe reads about 1 MB). The workers take it from there.
+- **Next action**: after the resolver, Archive and both workers are deployed, count archived `platform='invintus'` pages with no good transcript, then re-resolve and re-ingest them one at a time (each probe reads about 1 MB). The workers take it from there. The same deploy carries the two new Invintus government ids from PR #2080 (Southwest Washington Regional Transportation Council, Tacoma-Pierce County Health Department). They are on `main` but not live. Their existing pages stay blank until `backfill_gov_id.py` runs after the deploy.
 - **Constraint**: Render shell only, never a laptop against production. One request at a time per host; stop on 403 or 429.
 - **History**: `BACKLOG_DONE.md` WO-1065.
 
@@ -1208,7 +1217,7 @@ of human step they need.
 - **[NEEDS-AUDIT] Some stored captions do not line up with their video, so deep links land at the wrong moment (found 2026-10-10, WO-1960).**
   - **Issue**: matching a meeting's audio to its stored captions with a speech model (`scripts/align_captions_to_audio.py`, 2-minute windows) found pages whose caption times differ from the video by far more than normal live-caption lag (1 to 6 seconds): Dunnellon FL 2026-07-15 (about 13 minutes, 0% agreement at three sampled points), Coral Gables FL 2023-06-01 (32.6 seconds off for the first half, 4.3 seconds after a step near the middle; the video is 7.46 hours and the captions cover 3.41), and Venice FL 2026-08-25 (99% agreement to the midpoint, about 20% in the last third). Frame rate was checked and is not the cause: drift was under 1 second an hour on most meetings.
   - **Impact**: on those pages transcript click-to-seek and `?t=` links go to the wrong moment and nothing flags it. How many of the roughly 7,000 sourced pages are affected is unknown: 24 meetings were checked, chosen for human captions, not at random.
-  - **Next action**: pick 100 sourced pages at random, run the aligner's window check on each (it needs the page's audio), and count pages with a median lag over 10 seconds or a step. If more than a few show up, store a per-page offset map and apply it when the page seeks.
+  - **Next action**: **Claimed 2026-10-16** (office Mac session, A4): 100-page non-YouTube audit; report `wo-a4_caption_audit_2026-10-16.md`. Pick 100 sourced pages at random, run the aligner's window check on each (it needs the page's audio), and count pages with a median lag over 10 seconds or a step. If more than a few show up, store a per-page offset map and apply it when the page seeks.
   - **Constraint**: needs audio from the city's own host (some serve about 150 KB a second; Granicus wants a normal Referer); the check runs about 12 times faster than real time on a laptop CPU. No YouTube pages from a machine other than the drip Mac. Do not bulk-fetch one host in one go.
   - **History**: results in rtr-business `research/CAPTION_METHODOLOGY.md` and `data-product/samples/E_annotated_speech/alignment/`.
 
@@ -1543,7 +1552,7 @@ of human step they need.
 - **[IMPROVEMENT-ROUND] `[BIG]` Zoom cloud recordings (`zoom.us/rec/share/...`) and Microsoft Teams have no adapter.**
   - **Issue**: some governments publish past meetings only as Zoom cloud-recording share links (Rockport MA's `rockportma.gov/598/Recorded-Zoom-Meetings`, Brookline MA's zoomgov links on CivicClerk, 4 `zoom.us` values in Utah PMN notices). No Teams past-recording example has been found; every Teams hit so far is a live join link.
   - **Impact**: governments whose only platform is Zoom are invisible to every discovery path.
-  - **Next action**: size it first. Search for `"zoom.us/rec/share"` together with governance phrases. If density is real, build a Zoom `rec/share` adapter from a live Rockport sample. Teams needs its own investigation.
+  - **Next action**: **Claimed 2026-10-16** (office Mac session, A7): a 5-link pilot. Size it first. Search for `"zoom.us/rec/share"` together with governance phrases. If density is real, build a Zoom `rec/share` adapter from a live Rockport sample. Teams needs its own investigation.
   - **Constraint**: confirm a share link plays without sign-in before building.
   - **History**: found 2026-09-01/02; Utah PMN pilot 2026-09-08.
 
@@ -1842,11 +1851,13 @@ actionability sections above.
     2026-09-06 CDX scan; Cobb and Gwinnett County GA, 2026-09-24) now
     get a transcript but show "ChampDS only streams it inside its own
     player" instead of a player, so transcript timestamps can't seek.
-  - **Next action**: a streaming reverse-proxy — fetch server-side with
-    the ChampDS Referer and rewrite the playlist's segment URLs to route
-    back through us. Understood and scoped, not attempted.
-  - **Constraint**: weigh the bandwidth cost against the same caution
-    already attached to the Granicus/azureedge video-proxy idea.
+  - **Next action**: **Claimed 2026-10-16** (office Mac session, A9):
+    embed test. From the office Mac, check whether a `play.champds.com`
+    event page allows framing on our page and accepts a start time. A
+    frame would send ChampDS's own Referer.
+  - **Constraint**: no streaming proxy (Ryan, 2026-10-16; see Standing
+    decisions). The cloud gets HTTP 403 from ChampDS, so the test runs
+    from the office Mac.
   - **History**: `BACKLOG_DONE.md` (video-indexing investigation; WO-1045
     for the live re-check and the transcription path).
 
@@ -2197,7 +2208,7 @@ actionability sections above.
 
 - **Issue**: about 4% of channel-listing hits are not government meetings (7 of 167 in WO-147 and WO-149). WO-933's word-boundary rule now rejects "Commissioners Tour Picatinny Arsenal's ...", "Larry J. Dix Boardroom" and "Senate Bill 152: ... Committees". Four still pass and are pinned as strict expected-fail tests in `tests/test_video_gate_wo933.py`: "HAIRitage 2026 CROWN Act Workshop: Advice from Our Commissioner Board", "Council Participation Instructions", "What Does a County Commissioner or Council Member Do?", "Pennsylvania Fish and Boat Commission Water Conservation Officer training: Boating Scenarios". Titles alone cannot decide, in either direction. In the local export of 2026-09-21, 145 of 4,072 YouTube and Vimeo page titles (3.6%) carry no meeting signal and many are real meetings ("LCBOC CM 8 25 26", "06 17 2026 CC Video"), while a title with a meeting word can be a non-meeting.
 - **Impact**: a wrong video can go live on a tier-1/2 page with no review. An unrelated video promoted in a hub looks ridiculous, and a channel-sourced or pasted video is a way to plant a spoofed or misleading page. Not measured on pages already live beyond the title scan above.
-- **Next action**: Ryan decided 2026-09-21 that a video is one of three outcomes, and that the rules below are a starting point. Edge cases are expected and can wait for a real exception on a larger user base.
+- **Next action**: on hold (Ryan, 2026-10-16). Meeting Finder already ends every find with a programmatic check, a JEV classifier pass and a human hand check (`rtr-findmeeting/findmeeting/handcheck/`). The design below stays as the plan if the hold lifts. Ryan decided 2026-09-21 that a video is one of three outcomes, and that the rules below are a starting point. Edge cases are expected and can wait for a real exception on a larger user base.
   - **A, meeting**: a normal page.
   - **B, government video that is not a meeting** (training, tour, explainer, ceremony, orientation, forum, a promo or "welcome" video that has speech): the page exists and a direct link works, but it is noindexed and left out of the sitemap, hubs, `/meetings`, the feed, search and topic chips.
   - **C, not related**: no page is created, and a live one is taken down. C means personal videos, TV clips, school sports and performances, children or minors as the primary speakers, and videos with little to no speech to transcribe (security camera footage, music videos).
@@ -2210,8 +2221,8 @@ actionability sections above.
 
 - **Issue**: `MeetingPage.meeting_body` ("City Council", "Planning Commission") was on 667 of 6,529 pages on 2026-09-09. Since then, CivicClerk, CivicPlus and Legistar extract it (WO-904/905/906). Cablecast, Granicus, eScribe and Swagit have no source field (Standing decision). iQM2 and PrimeGov have their own entries.
 - **Impact**: most pages can't be filtered or reported by body.
-- **Next action**: re-count with `GET /internal/meeting-inventory/summary`. For platforms with no field, build a reviewed title-phrase table applied at ingest, with its confidence recorded, then backfill. This replaces the "Audit per-adapter coverage of `meeting_body`" entry under Roadmap, which is out of date.
-- **Constraint**: never fill it from a title regex at read time; the report exists to count the real gap.
+- **Next action**: re-count with `GET /internal/meeting-inventory/summary` after the next deploy (the iQM2 calendar lookup from PR #2080 rides with it). The remaining real sources are iQM2's calendar and PrimeGov's `committeeId`, each on its own entry. New tier-3 lines already carry a body from Meeting Finder (WO-1176).
+- **Constraint**: no title-phrase table and no title guess, at ingest or at read time. The Standing decision "Cablecast, Granicus, eScribe, and Swagit have no real `meeting_body`" rules it out; the report exists to count the real gap.
 - **History**: `BACKLOG_DONE.md` WO-904/905/906/907; report from WO-124 (`scripts/export_meeting_inventory.py`).
 
 ### `[HUMAN]` `[BIG]` Nothing verifies a submitted URL is a genuine government site
@@ -2221,11 +2232,12 @@ actionability sections above.
   exists for a submitted URL's site.
 - **Impact**: wide open gap, threat-modeled in `TRUST_THREAT_MODEL.md`;
   affects trust in every page the product presents as official.
-- **Next action**: Ryan's call on what to build next. Two mitigations
-  already shipped: `noindex` on `generic_fallback`/`unknown` pages
-  (2026-08-11), and social auto-posting refusing `best_effort` /
-  `platform == "unknown"` pages (WO-21, 2026-08-21). The rest are
-  unsequenced.
+- **Next action**: on hold (Ryan, 2026-10-16). Meeting Finder already
+  ends with a programmatic check, a JEV classifier pass and a human hand
+  check before a find is ingested. Two mitigations also shipped:
+  `noindex` on `generic_fallback`/`unknown` pages (2026-08-11), and
+  social auto-posting refusing `best_effort` / `platform == "unknown"`
+  pages (WO-21, 2026-08-21).
 - **History**: threat-modeled 2026-08-10; see `TRUST_THREAT_MODEL.md`.
 
 ### `[NEEDS-AUDIT]` One row in `jurisdiction_coverage.csv` has shifted/corrupted columns (`domain` reads `'False'`, blank `gov_id`)
@@ -2388,8 +2400,10 @@ actionability sections above.
   framing) are proposed but not built.
 - **Impact**: nothing broken — this is forward roadmap, gated on Ryan's
   call on open questions before phase 2 starts.
-- **Next action**: read `ACCOUNTS_PLAN.md` for the full 6-phase sequence,
-  the proposed data model, and the open questions needing a decision.
+- **Next action**: wait until Ryan is back from France (Ryan,
+  2026-10-16). Then build it as part of the KQED trial on rtr-upcoming,
+  which needs its own logins. `ACCOUNTS_PLAN.md` has the 6-phase
+  sequence, the proposed data model and the open questions.
 - **History**: `README.md` (shipped phase-1 architecture), `BACKLOG_DONE.md`
   (phase-1 build history), `ACCOUNTS_PLAN.md` (phases 2-6 plan).
 
@@ -2404,8 +2418,16 @@ actionability sections above.
 - **`[IMPROVEMENT-ROUND]` `[BIG]` Recurring crawler: pull each covered government's new meetings automatically.**
   - **Issue**: the corpus now grows through Meeting Finder runs, hand-approved tier-3 queues and the drip Mac, all started by a person. Nothing checks pinned governments on a schedule for meetings newer than their latest Archive page.
   - **Impact**: coverage goes stale government by government; `/meetings` search is only as good as the corpus is fresh.
-  - **Next action**: Ryan decides whether to build it. If yes: a scheduled job that, for each pinned tenant, lists meetings newer than the government's newest page, ingests captioned ones, and queues uncaptioned ones by the tier-3 rules.
-  - **Constraint**: this is crawling, so it honors robots.txt (Standing: "The tier-3 queue is hand-approved meetings, not crawling"); YouTube only from the drip Mac; one meeting per government per run.
+  - **Next action**: hold (Ryan, 2026-10-16). rtr-discovery mostly covers this. Do not auto-ingest all new tier-1 meetings (Standing decisions). When the tier-3 queue is under 200 lines, start drawing in new tier-3 meetings. One part is worth doing now: find sources that keep video up only briefly (for example some Midwest state legislatures) and pull those before they go.
+  - **Constraint**: the trigger will not arrive on its own. Tier-3 queue lines (`scripts/tier3_auto_transcription_queue.txt`):
+
+    2026-09-20: 986 lines
+
+    2026-10-06: 992 lines
+
+    2026-10-16: 1,486 lines (about +49 a day since 2026-10-06)
+
+    This is crawling, so it honors robots.txt (Standing: "The tier-3 queue is hand-approved meetings, not crawling"); YouTube only from the drip Mac; one meeting per government per run.
   - **History**: held back 2026-08-10; `CORPUS_EXPANSION_PLAN.md` was closed as handled by rtr-discovery (#657).
 
 - **[IMPROVEMENT-ROUND] Batch lookup — accept multiple meeting URLs at
@@ -2414,7 +2436,8 @@ actionability sections above.
     only one at a time today.
   - **Impact**: the main friction point for a journalist working many
     jurisdictions at once.
-  - **Next action**: design the batch endpoint together with its
+  - **Next action**: not yet (Ryan, 2026-10-16); wait for a real user
+    to ask. When it starts, design the batch endpoint together with its
     abuse-prevention plan, not after — a batch endpoint is a natural
     abuse vector, and the transcription worker's real per-job compute
     cost means unmetered batch access could get expensive fast.
@@ -2479,6 +2502,13 @@ actionability sections above.
   - **History**: `BACKLOG_DONE.md`'s WO-943 entry.
 
 ### Transcription quality & cost
+
+- **[IMPROVEMENT-ROUND] `[BIG]` Split speakers by voice (diarization) in our own Whisper transcripts.**
+  - **Issue**: our own Whisper transcripts carry no speaker. Diarization means splitting the audio by voice into "Speaker 1", "Speaker 2". Since WO-1967 (PR #2086) the page and the `.txt` download show `TranscriptSegment.speaker` where it changes, but only source captions with WebVTT voice tags fill it.
+  - **Impact**: a quote with no speaker is weaker for a journalist than "Councilmember X said".
+  - **Next action**: **Claimed 2026-10-16** (conductor thread, A14): Ryan likes it. Next step is a one-meeting cost test on the office Mac (time and memory for one diarization pass). It follows A5, keeping station speaker names (WO-1967, merged 2026-10-16).
+  - **Constraint**: ship unnamed "Speaker 1 / Speaker 2" first; mapping to real names is the harder, later half. Size the compute before committing. WhisperX builds diarization on the same faster-whisper model through `pyannote.audio`. Any change to the worker must be checked against `scripts/transcribe_backlog_locally.py` too (two transcription paths).
+  - **History**: moved from `CLAUDE_BACKLOG.md` 2026-10-16 (proposed 2026-08-09); WO-1967 in `BACKLOG_DONE.md`.
 
 - **[IMPROVEMENT-ROUND] Hallucinated-transcript detection doesn't catch
   semantic-nonsense hallucination (coherent-looking but false text).**
@@ -2886,15 +2916,3 @@ actionability sections above.
 - **Next action**: create the account + token, then watch one real post go
   through — the same bar Bluesky already cleared.
 - **History**: Bluesky auto-posting build in `BACKLOG_DONE.md`.
-
-### `[IMPROVEMENT-ROUND]` `[BIG]` "Feed cities" — should this app ever synthesize coverage for jurisdictions that publish nothing?
-
-- **Issue**: open strategic question — whether the app should ever
-  synthesize coverage for jurisdictions with no published meeting data at
-  all.
-- **Impact**: undecided; determines how far coverage expansion can go
-  beyond jurisdictions that already publish something.
-- **Next action**: read [FEED_CITIES.md](FEED_CITIES.md) for the full
-  reasoning and the open questions it turns on. Not a plan and not
-  scheduled — needs Ryan's call before it becomes one.
-- **History**: [FEED_CITIES.md](FEED_CITIES.md).

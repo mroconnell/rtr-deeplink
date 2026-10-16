@@ -1,5 +1,10 @@
 # "Feed cities" — should this app ever synthesize its own meeting pages?
 
+**Closed 2026-10-16 (WO-1970).** Every city this file names is now
+handled by an adapter, and the Archive already builds pages from a video
+alone. See `BACKLOG_DONE.md`'s "Feed cities" entry for the evidence. The
+reasoning below is kept as the record.
+
 An open strategic question, not a plan. Moved out of `BACKLOG.md`
 2026-08-22 because it is a long piece of reasoning that belongs
 read whole, not skimmed in a list.
