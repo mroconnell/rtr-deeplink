@@ -1155,6 +1155,247 @@ async def test_completed_job_does_not_flag_a_real_clean_transcript():
     assert transcribed["transcript_warnings"] == []
 
 
+# --- Own-transcript early-end warning: what the Archive does with it -------
+#
+# The worker works the warning out (app/platforms/coverage_check.py's
+# own_transcript_early_end_warning(), which samples the tail -- tested in
+# tests/test_own_transcript_early_end.py) and hands it to
+# report_chunk_result() as `finished_transcript_warnings`. These tests run
+# the real finalize path. Real numbers: Leon Valley TX show 179 (page 1676)
+# -- own-Whisper last cue at 20,093.18 s of a 23,399.666 s video. The cue
+# TEXT is synthetic scaffolding (clean, non-repeating sentences, so the
+# hallucination check stays quiet).
+
+_CLEAN_LINES = [
+    "Good evening and welcome to the regular meeting of the city council.",
+    "The first item tonight is the approval of the minutes from last month.",
+    "Staff will now present the proposed budget amendment for the water fund.",
+    "Are there any comments from the public before the council votes on this?",
+]
+
+
+def _clean_cues(last_end: float) -> list[dict]:
+    return [
+        {"start": 10.0 + 30.0 * i, "end": 30.0 + 30.0 * i, "text": t, "speaker": None}
+        for i, t in enumerate(_CLEAN_LINES)
+    ] + [
+        {
+            "start": last_end - 8.0,
+            "end": last_end,
+            "text": "The meeting is adjourned. Thank you all for coming this evening.",
+            "speaker": None,
+        }
+    ]
+
+
+def _early_end_text():
+    from app.platforms.coverage_check import own_transcript_early_end_text
+
+    return own_transcript_early_end_text(20_093.18, 23_399.666)
+
+
+async def _finish_one_chunk_job(external_id: str, *, finished_warnings):
+    probed = 23_399.666
+    url = f"https://example.granicus.com/player/clip/{external_id}"
+    job = await crud.create_transcription_job(
+        payload=_payload(f"granicus:{external_id}", url),
+        input_url_normalized=url,
+        requester_email=f"{external_id}@example.com",
+        media_url="https://example.com/v.m3u8",
+        media_kind="video",
+        probed_duration_seconds=probed,
+        chunk_size_seconds=int(probed) + 1,  # one chunk: the whole meeting
+        skip_confirmation=True,
+    )
+    assert job["total_chunks"] == 1
+    claim = await crud.claim_next_chunk()
+    assert claim["job_id"] == job["job_id"]
+    result = await crud.report_chunk_result(
+        job["job_id"],
+        success=True,
+        shifted_segments=_clean_cues(20_093.18),
+        finished_transcript_warnings=finished_warnings,
+    )
+    assert result["status"] == "completed"
+    page = await crud.get_page_by_slug(job["meeting_page_slug"])
+    transcribed = next(v for v in page["versions"] if v["source"] == "transcribed")
+    return job, page, transcribed
+
+
+async def _page_id(slug: str) -> int:
+    from archive.db.engine import async_session
+    from archive.db.models import MeetingPage
+    from sqlalchemy import select
+
+    async with async_session() as session:
+        return (
+            await session.execute(
+                select(MeetingPage.id).where(MeetingPage.slug == slug)
+            )
+        ).scalar_one()
+
+
+async def test_completed_job_stores_the_early_end_warning_it_was_handed():
+    _job, page, version = await _finish_one_chunk_job(
+        "early-end-flagged", finished_warnings=[_early_end_text()]
+    )
+    (warning,) = version["transcript_warnings"]
+    assert crud._EARLY_TRUNCATION_MARKER in warning
+    assert "5 hours 35 minutes" in warning and "6 hour 30 minute recording" in warning
+    from archive.db.engine import async_session
+
+    async with async_session() as session:
+        page_id = await _page_id(page["slug"])
+        assert await crud._has_good_transcript(session, page_id) is False
+        # WO-45: the page's newest job COMPLETED, so it waits 30 days before
+        # the finder may pick it again. One repeat per 30 days, not a loop.
+        assert await crud._in_auto_transcription_cooldown(session, page_id) is True
+    assert crud.AUTO_TRANSCRIPTION_MAX_COOLDOWN.days == 30
+
+
+async def test_completed_job_with_no_early_end_warning_stays_clean():
+    # The silent-tail case (page 1676's real tail reads -83 dB): the worker
+    # hands over nothing, so the version is clean.
+    _job, _page, version = await _finish_one_chunk_job(
+        "early-end-silent-tail", finished_warnings=None
+    )
+    assert version["transcript_warnings"] == []
+
+
+async def test_finished_transcript_warnings_are_ignored_until_the_job_completes():
+    url = "https://example.granicus.com/player/clip/early-end-two-chunks"
+    job = await crud.create_transcription_job(
+        payload=_payload("granicus:early-end-two-chunks", url),
+        input_url_normalized=url,
+        requester_email="early-end-two-chunks@example.com",
+        media_url="https://example.com/v.m3u8",
+        media_kind="video",
+        probed_duration_seconds=1800,
+        chunk_size_seconds=900,
+        skip_confirmation=True,
+    )
+    assert job["total_chunks"] == 2
+    await crud.claim_next_chunk()
+    first = await crud.report_chunk_result(
+        job["job_id"],
+        success=True,
+        shifted_segments=_clean_cues(800.0),
+        finished_transcript_warnings=["should not be stored by an in-progress call"],
+    )
+    assert first["status"] == "in_progress"
+    await crud.claim_next_chunk()
+    done = await crud.report_chunk_result(
+        job["job_id"], success=True, shifted_segments=[]
+    )
+    assert done["status"] == "completed"
+    page = await crud.get_page_by_slug(job["meeting_page_slug"])
+    version = next(v for v in page["versions"] if v["source"] == "transcribed")
+    assert version["transcript_warnings"] == []
+
+
+async def _push_local_own_transcript(eid: str, warnings: list) -> str:
+    """What scripts/transcribe_backlog_locally.py does: an /internal/ingest
+    push with source "transcribed" and no TranscriptionJob row."""
+    url = f"https://example.granicus.com/player/clip/{eid}"
+    payload = _payload(f"granicus:{eid}", url)
+    payload.update(
+        segments=_clean_cues(20_093.18),
+        transcript_language="en",
+        transcript_warnings=warnings,
+        source="transcribed",
+    )
+    await crud.ingest_resolution(payload, url)
+    return (await crud.lookup_page_for_url(url))["slug"]
+
+
+async def test_has_good_transcript_treats_own_transcript_early_end_as_not_good():
+    # The marker rule (CLAUDE.md): the SQL predicate and the Python helper
+    # must agree. The own-transcript wording reuses _EARLY_TRUNCATION_MARKER,
+    # so no new marker was needed; this pins that it is caught on an own
+    # ("transcribed") version as well as on a sourced one.
+    from archive.db.engine import async_session
+    from archive.db.models import MeetingPage
+    from sqlalchemy import select
+
+    flagged = await _push_local_own_transcript("own-early-end", [_early_end_text()])
+    clean = await _push_local_own_transcript("own-early-end-clean", [])
+    async with async_session() as session:
+        rows = (
+            await session.execute(
+                select(MeetingPage.slug, crud._good_default_transcript_exists()).where(
+                    MeetingPage.slug.in_([flagged, clean])
+                )
+            )
+        ).all()
+        by_slug = {slug: bool(good) for slug, good in rows}
+        assert by_slug == {flagged: False, clean: True}
+        for slug, expected in by_slug.items():
+            page_id = await _page_id(slug)
+            assert await crud._has_good_transcript(session, page_id) is expected, slug
+
+
+async def test_a_locally_made_own_transcript_waits_30_days_like_a_job_one():
+    """The open question in the backlog entry, answered yes: a flagged own
+    transcript pushed by the local script has no job row, and used to be
+    picked by the cloud finder again at once. It now waits the same 30
+    days a completed job's page waits."""
+    from archive.db.engine import async_session
+    from archive.db.models import TranscriptVersion
+    from sqlalchemy import update
+
+    slug = await _push_local_own_transcript("own-local-wait", [_early_end_text()])
+    page_id = await _page_id(slug)
+    async with async_session() as session:
+        assert await crud._has_good_transcript(session, page_id) is False
+        assert await crud._in_auto_transcription_cooldown(session, page_id) is True
+        made = dict(
+            (
+                await session.execute(
+                    crud._jobless_own_transcripts_newest_query([page_id])
+                )
+            ).all()
+        )
+        assert page_id in made
+
+    # 31 days later the wait is over.
+    async with async_session() as session:
+        await session.execute(
+            update(TranscriptVersion)
+            .where(TranscriptVersion.meeting_page_id == page_id)
+            .values(created_at=datetime.now() - timedelta(days=31))
+        )
+        await session.commit()
+    async with async_session() as session:
+        assert await crud._in_auto_transcription_cooldown(session, page_id) is False
+
+
+async def test_a_job_made_own_transcript_is_not_counted_as_a_local_one():
+    # Its wait already comes from the job row (and a failed job's partial
+    # transcript keeps its shorter escalating backoff), so the jobless rule
+    # must not see it.
+    _job, page, _version = await _finish_one_chunk_job(
+        "early-end-job-not-local", finished_warnings=[_early_end_text()]
+    )
+    page_id = await _page_id(page["slug"])
+    from archive.db.engine import async_session
+
+    async with async_session() as session:
+        rows = (
+            await session.execute(crud._jobless_own_transcripts_newest_query([page_id]))
+        ).all()
+    assert rows == []
+
+
+def test_jobless_own_transcript_wait_rule():
+    now = datetime(2026, 10, 16, 12, 0, 0)
+    from datetime import timezone
+
+    now = now.replace(tzinfo=timezone.utc)
+    assert crud._jobless_own_transcript_waiting(None, now) is False
+    assert crud._jobless_own_transcript_waiting(now - timedelta(days=29), now) is True
+    assert crud._jobless_own_transcript_waiting(now - timedelta(days=31), now) is False
+
+
 async def test_chunk_failures_schedule_a_retry_for_priority_medium_job():
     # Real behavior change 2026-08-19 (see BACKLOG.md/BACKLOG_DONE.md): a
     # real user-submitted job (default priority == PRIORITY_MEDIUM) used to

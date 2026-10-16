@@ -274,11 +274,10 @@ Reliability, ops & cost  (6)
     [NEEDS-AUDIT] Search Console "Missing field" flags (Videos…
   `/coverage` as a QA surface
 
-Trust, safety & data quality  (14)
+Trust, safety & data quality  (13)
   No endpoint can correct a wrong word or name in a stored transcript
   Pinned hosts: machine-made pins with no Archive pages yet are…
   Invintus meetings from a separate government (regional council,…
-  Own transcription: a warning for a transcript that stops early needs…
   Nothing records that a page was deliberately deleted, so a later…
   2 already-pinned YouTube channels still disagree with the Archive's…
   27 real Quebec municipalities are marked `reject_reason=off-mission`,…
@@ -2189,14 +2188,6 @@ actionability sections above.
 - **Next action**: neither body is in `cog_units.csv`, so an id would have to be minted (Ryan's call, as for WO-916). Once one exists, add it to `CLIENT_BODY_GOVERNMENTS` in `invintus.py`. For the workshops, only file under Vancouver if the event itself starts naming the city.
 - **Constraint**: never file these under Vancouver, Clark County or Pierce County, and never add the channel's state to the raw name: that mints an id from the city's name, worse than blank. Programming rows ("Election Programs", "Clark County Close Up", "Community Events") are not meetings and should stay blank.
 - **History**: `BACKLOG_DONE.md` WO-1066 (Leon County pin, CVTV place prefixes) and WO-1067 (Port of Vancouver and C-TRAN registry ids).
-
-### Own transcription: a warning for a transcript that stops early needs a tail-silence check built with it; held by Ryan's decision `[NEEDS-AUDIT]`
-
-- **Issue**: WO-925 read page 1676 (Leon Valley TX show 179, our own Whisper, 4,541 cues, last cue 5:34:53 of a 6:29:59 video) as a partial transcript that no re-check could warn about. WO-935 built the warning (WO-923's rule and marker, called from `report_chunk_result()` and `transcribe_meeting()`) and Ryan held it on 2026-09-21. Sampled audio shows the last cue is followed by silence on both real pages checked: page 1676 speaks until about 20,050 s and reads about -83 dB from 20,500 s; Leon Valley show 185 reads about -71 dB from 12,500 s. Our own transcription covers the whole audio, so a short last cue mostly means trailing silence, and the WO-925 reading of page 1676 as "partial at 86%" looks wrong (two pages sampled at four points each, not proven). A real cut in a cloud job is already marked "the transcription was interrupted". Separately, WO-935's short-chunk check exempts the last chunk of a file, so a cut inside it is caught by nothing.
-- **Impact**: none is shown to readers today. If the warning were built as it was, complete transcripts would carry "may end before the meeting did". Each flagged page would be re-transcribed every 30 days with the same result (a page with a job row waits 30 days). A transcript the local script made has no job row, so the cloud finder picks it again at once, once, and after that 30 days. The cloud re-run promotes its own smaller-model version over the one shown. Three pages is not a rate: the Archive stores no video lengths, so the flagged count is unmeasured.
-- **Next action**: Ryan decides when. Then build the warning and a tail-silence check as one piece. When the last cue is under 90% of the video with 10+ minutes uncovered, sample 30 seconds of audio halfway between the last cue and the video's end (volume only), and skip the warning if it is silent (mean volume under about -60 dB; speech read -22 to -41 dB and dead air -71 to -83 dB on the two pages). Put it in one shared function called by both paths. The first version, with a 24-case test file, is in the first commit (`2cf4f49`) of PR #1301. Also decide whether a locally made transcript should wait before the cloud finder picks it again, and give `scripts/retranscribe_first_chunk.py` the same call: it splices a new first chunk onto an existing transcript, pushes only hallucination warnings, and so would drop an early-end flag from the transcript it started with. Then count how many own transcripts the rule flags, from the Render shell.
-- **Constraint**: Ryan's decision, 2026-09-21: hold until the tail-silence check is built with it. Do not change the 90% / 10-minute threshold or the marker text. Sampling audio changes the plan's rule 3 ("compare only the last cue"), so that change needs Ryan's yes. No bulk sweep of the production Archive from a laptop.
-- **History**: `BACKLOG_DONE.md` WO-925 (the 86% reading) and WO-935 (the measurements above). Replaces the entry "A partial transcript made by our own transcription cannot get the reader warning through a re-check" (rewritten by WO-931 after WO-935).
 
 ### Nothing records that a page was deliberately deleted, so a later sweep can put it straight back `[NEEDS-AUDIT]`
 

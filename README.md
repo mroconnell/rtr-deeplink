@@ -652,12 +652,25 @@ before the meeting did". That is the Archive's existing
 `_EARLY_TRUNCATION_MARKER`, so the page reports as `truncated_transcript`
 and stays eligible for re-transcription with no new plumbing. `RTR_PARTIAL_TRANSCRIPT_CHECK=0` switches the check off.
 
-This check reads source captions only. A transcript we made ourselves
-(the cloud worker or `scripts/transcribe_backlog_locally.py`) is not
-compared with the video's length. That was built for WO-935 and held: on the
-two real pages measured, the audio after the last cue was silent, so the
-warning would have been wrong. It is filed to come back together with a
-tail-silence check (see `BACKLOG_DONE.md`, WO-935).
+**The same warning on a transcript we made ourselves, with a tail-silence
+check (2026-10-16).** The cloud worker (before it reports a job's last
+chunk), `scripts/transcribe_backlog_locally.py` and
+`scripts/retranscribe_first_chunk.py` all call one shared function,
+`coverage_check.own_transcript_early_end_warning()`, on the finished
+transcript and the video's real probed length. Same threshold, same
+marker, only the last cue compared. Before warning, it samples 30 seconds
+of audio halfway between the last cue and the video's end (volume only,
+`media_probe.sample_mean_volume_db()`). A mean under -60 dB is silence:
+dead air after the meeting, so no warning. That rule comes from the two
+real pages WO-935 measured: their tails read -83 and -71 dB, while speech
+read -22 to -41 dB. No length, or no reading of the tail, means no
+warning. The same switch turns it off.
+
+A transcript the local scripts push has no job row. It now waits 30 days
+before the finders pick its page again, the same wait as a page whose
+newest job completed (`crud._jobless_own_transcript_waiting()`).
+`scripts/count_own_transcript_early_end_flags.py` counts flagged own
+transcripts, read-only, from the Archive's Render shell.
 
 **Superseded on the dedicated Mac by `scripts/youtube_drip.py` (2026-09-11)** —
 one always-on process that fetches captions for waiting pages, feeds the
@@ -1477,7 +1490,10 @@ number of concurrent worker processes.
    own real text the same way every scraped-caption adapter already does)
    and is promoted to the page's default (closing a real, previously-
    unaddressed gap: earlier, only a page's *very first* transcript version
-   ever became default — see `BACKLOG_DONE.md`). Nothing is deleted — the
+   ever became default — see `BACKLOG_DONE.md`). If its last cue stops
+   well short of the video and the audio after it is not silent, it
+   carries the "may end before the meeting did" warning (see the
+   partial-transcript paragraph above). Nothing is deleted — the
    original scraped version (if any) stays reachable through the existing
    version picker. An email goes out with an excerpt and a link to the
    permanent page.

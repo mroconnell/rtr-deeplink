@@ -92,7 +92,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.platforms import register_all_finders  # noqa: E402
 from app.platforms.base import UnsupportedPlatformError, detect_platform, get_finder  # noqa: E402
-from app.platforms.media_probe import extract_chunk_audio  # noqa: E402
+from app.platforms.coverage_check import own_transcript_early_end_warning  # noqa: E402
+from app.platforms.media_probe import extract_chunk_audio, probe_duration  # noqa: E402
 from app.utils.url_normalize import normalize_url  # noqa: E402
 from app.utils.vtt_parser import detect_language_from_texts  # noqa: E402
 from worker.segment_utils import (  # noqa: E402
@@ -156,6 +157,36 @@ def _base_url() -> str:
 def _headers() -> dict:
     token = os.environ.get("ARCHIVE_INGEST_TOKEN", "")
     return {"Authorization": f"Bearer {token}"} if token else {}
+
+
+async def finished_transcript_warnings(
+    merged: List[Dict[str, Any]],
+    *,
+    video_url: str,
+    video_format: str | None,
+    source_url: str,
+) -> List[str]:
+    """Every warning the spliced transcript carries: the hallucination check
+    and the own-transcript early-end check, the same shared function both
+    transcription paths call. Without the second, splicing a new first
+    chunk onto a transcript that stops early would push a version with no
+    early-end flag, quietly dropping the one the old version had.
+
+    The video's length comes from a header-only ffprobe of the source. A
+    YouTube source is never probed or sampled from here (CLAUDE.md: only
+    the drip Mac fetches YouTube), so it gets the hallucination check only.
+    """
+    warnings = list(detect_hallucination_warnings(merged))
+    if video_format == "youtube" or "youtube.com" in video_url:
+        logger.info("YouTube source: early-end check skipped (not fetched here).")
+        return warnings
+    duration = await probe_duration(video_url, source_page_url=source_url)
+    early_end = await own_transcript_early_end_warning(
+        merged, duration, media_url=video_url, source_page_url=source_url
+    )
+    if early_end:
+        warnings.append(early_end)
+    return warnings
 
 
 def _archive_slug(archive_url: str) -> str:
@@ -337,10 +368,13 @@ async def main() -> None:
         )
 
         language = detect_language_from_texts(s["text"] for s in merged)
-        warnings = detect_hallucination_warnings(merged)
-        logger.info(
-            "Language: %s. Hallucination warnings: %s", language, warnings or "none"
+        warnings = await finished_transcript_warnings(
+            merged,
+            video_url=result.video_url,
+            video_format=result.video_format,
+            source_url=args.source_url,
         )
+        logger.info("Language: %s. Warnings: %s", language, warnings or "none")
 
         logger.info("--- New chunk-0 segments (preview, first 15) ---")
         for seg in new_chunk_segments[:15]:

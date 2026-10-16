@@ -100,6 +100,7 @@ async def test_process_next_chunk_extracts_the_right_clip_and_shifts_by_its_own_
         drop_previous_tail=0,
         error=None,
         chunk_index=None,
+        finished_transcript_warnings=None,
     ):
         report_calls.update(
             job_id=job_id, success=success, shifted_segments=shifted_segments
@@ -378,6 +379,7 @@ async def test_process_next_chunk_extracts_a_sub_split_window_from_its_intra_cli
         drop_previous_tail=0,
         error=None,
         chunk_index=None,
+        finished_transcript_warnings=None,
     ):
         report_calls.update(shifted_segments=shifted_segments, success=success)
         return {"status": "completed", "transcript_version_id": 43}

@@ -797,6 +797,100 @@ async def test_a_failed_slice_of_a_youtube_meeting_has_nothing_to_fall_back_to(
     assert "isn't decodable" in result["reason"]
 
 
+# --- The finished transcript is compared with the video's length ----------
+#
+# The same shared check the cloud worker runs
+# (coverage_check.own_transcript_early_end_warning(), rules pinned in
+# tests/test_own_transcript_early_end.py). The length is the `duration` this
+# script already probed. Real figures: Leon Valley show 179's transcript
+# ends at 20,093.18 s of a 23,399.666 s video, and the audio after it reads
+# -83 dB (silence); another Leon Valley meeting's ends at 8,630.94 s of an
+# 8,632.648 s video. Cue text is synthetic scaffolding. ffmpeg is faked at
+# media_probe._run for the tail sample only (chunk extraction is faked at
+# the script's own import, as elsewhere in this file).
+
+from tests.test_own_transcript_early_end import _FakeFfmpeg  # noqa: E402
+
+
+class _EngineEndingAt:
+    """One chunk covering the whole meeting: two cues, the last ending at
+    `last_end` seconds."""
+
+    def __init__(self, last_end):
+        self.last_end = last_end
+
+    async def transcribe_chunk(self, audio_path):
+        return [
+            {
+                "start": 10.0,
+                "end": 30.0,
+                "text": "Good evening and welcome to the regular meeting of the city council.",
+            },
+            {
+                "start": self.last_end - 8.0,
+                "end": self.last_end,
+                "text": "The meeting is adjourned. Thank you all for coming this evening.",
+            },
+        ]
+
+
+async def _transcribe_one_chunk_meeting(local_media, *, probed, last_end, tail_db):
+    from app.platforms import media_probe
+
+    async def _probe(video_url, *, source_page_url):
+        return probed
+
+    async def _extract(*args, **kwargs):
+        return True, None
+
+    fake = _FakeFfmpeg(mono_db=tail_db)
+    local_media.setenv("RTR_PARTIAL_TRANSCRIPT_CHECK", "1")
+    local_media.setattr(media_probe, "_run", fake)
+    local_media.setattr(tbl, "probe_duration", _probe)
+    local_media.setattr(tbl, "get_finder", lambda platform: _AlwaysResolves())
+    local_media.setattr(tbl, "extract_chunk_audio", _extract)
+    result = await tbl.transcribe_meeting(
+        _EngineEndingAt(last_end),
+        _REAL_ESCRIBE_URL,
+        "escribe",
+        chunk_size_seconds=int(probed) + 1,
+    )
+    return result, fake
+
+
+async def test_transcribe_meeting_warns_when_speech_continues_past_its_last_cue(
+    local_media,
+):
+    result, fake = await _transcribe_one_chunk_meeting(
+        local_media, probed=23_399.666, last_end=20_093.18, tail_db=-38.0
+    )
+    assert result["ok"] is True
+    (warning,) = result["transcript_warnings"]
+    assert "may end before the meeting did" in warning
+    assert "5 hours 35 minutes" in warning and "6 hour 30 minute recording" in warning
+    # Sampled from the freshly resolved media URL (HLS: no whole-audio cache).
+    args = fake.extraction_calls()[0]
+    assert args[args.index("-i") + 1] == "https://example.org/meeting.m3u8"
+
+
+async def test_transcribe_meeting_does_not_warn_when_the_tail_is_silent(local_media):
+    # Page 1676's real tail: -83 dB, dead air after the meeting.
+    result, _fake = await _transcribe_one_chunk_meeting(
+        local_media, probed=23_399.666, last_end=20_093.18, tail_db=-83.0
+    )
+    assert result["ok"] is True
+    assert result["transcript_warnings"] == []
+
+
+async def test_transcribe_meeting_does_not_sample_when_it_reaches_the_end(local_media):
+    result, fake = await _transcribe_one_chunk_meeting(
+        local_media, probed=8_632.648, last_end=8_630.94, tail_db=-38.0
+    )
+    assert result["ok"] is True
+    assert result["transcript_warnings"] == []
+    assert fake.calls == []
+
+
 # --- WO-79 port: a real multi-clip Swagit meeting (2026-08-31) -------------
 #
 # BACKLOG.md's "Swagit multi-clip meetings" entry: worker/main.py's

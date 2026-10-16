@@ -10390,6 +10390,44 @@ def _cooldown_active(jobs_newest_first: list[tuple], now: datetime) -> bool:
     return now < _aware(most_recent_failed_at) + cooldown
 
 
+def _jobless_own_transcripts_newest_query(page_ids=None):
+    """Newest `created_at` of an own ("transcribed") TranscriptVersion that
+    no TranscriptionJob produced, per page -- i.e. one pushed by
+    scripts/transcribe_backlog_locally.py or scripts/retranscribe_first_
+    chunk.py through /internal/ingest. Selects ids and timestamps only,
+    never `segments`."""
+    produced_by_a_job = select(TranscriptionJob.transcript_version_id).where(
+        TranscriptionJob.transcript_version_id.is_not(None)
+    )
+    query = select(
+        TranscriptVersion.meeting_page_id, func.max(TranscriptVersion.created_at)
+    ).where(
+        TranscriptVersion.source == "transcribed",
+        TranscriptVersion.id.not_in(produced_by_a_job),
+    )
+    if page_ids is not None:
+        query = query.where(TranscriptVersion.meeting_page_id.in_(page_ids))
+    return query.group_by(TranscriptVersion.meeting_page_id)
+
+
+def _jobless_own_transcript_waiting(made_at, now: datetime) -> bool:
+    """A page whose newest own transcript was made outside a job (a local
+    run) waits AUTO_TRANSCRIPTION_MAX_COOLDOWN from that moment before the
+    finders pick it again -- the same 30 days a page whose newest job
+    COMPLETED waits (_cooldown_active(), WO-45).
+
+    Why (Ryan's own-transcript early-end work, 2026-10-16): a page whose
+    own transcript carries a "not good" marker -- now including the
+    early-end warning -- stays a candidate. A cloud-made one waits 30 days
+    on its job row. A locally made one has no job row, so before this the
+    cloud finder picked it again at once, re-transcribed it with a smaller
+    model, and promoted that over the one shown. Only the wait changes:
+    whether the transcript counts as good does not."""
+    return (
+        made_at is not None and now < _aware(made_at) + AUTO_TRANSCRIPTION_MAX_COOLDOWN
+    )
+
+
 async def _in_auto_transcription_cooldown(session, meeting_page_id: int) -> bool:
     """True if this page has failed auto/manual transcription recently
     enough that it shouldn't be tried again yet -- see
@@ -10405,7 +10443,13 @@ async def _in_auto_transcription_cooldown(session, meeting_page_id: int) -> bool
             .order_by(TranscriptionJob.created_at.desc())
         )
     ).all()
-    return _cooldown_active([tuple(j) for j in jobs], datetime.now(timezone.utc))
+    now = datetime.now(timezone.utc)
+    if _cooldown_active([tuple(j) for j in jobs], now):
+        return True
+    local_made = (
+        await session.execute(_jobless_own_transcripts_newest_query([meeting_page_id]))
+    ).first()
+    return _jobless_own_transcript_waiting(local_made[1] if local_made else None, now)
 
 
 async def find_auto_transcription_candidate() -> Optional[dict]:
@@ -10499,6 +10543,13 @@ async def find_auto_transcription_candidate() -> Optional[dict]:
                 .order_by(TranscriptionJob.created_at.desc())
             )
         ).all()
+        local_made_at = dict(
+            (
+                await session.execute(
+                    _jobless_own_transcripts_newest_query([c[0] for c in candidates])
+                )
+            ).all()
+        )
     jobs_by_page: dict[int, list[tuple]] = {}
     for page_id, status, updated_at in job_rows:
         jobs_by_page.setdefault(page_id, []).append((status, updated_at))
@@ -10514,6 +10565,8 @@ async def find_auto_transcription_candidate() -> Optional[dict]:
         _has_embedded_marker,
     ) in candidates:
         if _cooldown_active(jobs_by_page.get(page_id, []), now):
+            continue
+        if _jobless_own_transcript_waiting(local_made_at.get(page_id), now):
             continue
         return {
             "meeting_page_id": page_id,
@@ -10707,6 +10760,7 @@ async def report_chunk_result(
     drop_previous_tail: int = 0,
     error: Optional[str] = None,
     chunk_index: Optional[int] = None,
+    finished_transcript_warnings: Optional[list] = None,
 ) -> dict:
     """Called by the worker after attempting one chunk. On success, appends
     already-offset segments and advances progress; if that was the last
@@ -10745,6 +10799,15 @@ async def report_chunk_result(
     see that function's own docstring for the confirmed root cause. They're
     dropped here, right before the new segments are appended, so a fixed
     HLS chunk-boundary duplicate never reaches a real TranscriptVersion.
+
+    `finished_transcript_warnings` (default None, a no-op): warnings the
+    worker worked out for the FINISHED transcript before reporting its last
+    chunk, added to the new version's `transcript_warnings` only when this
+    call completes the job. Today that is the own-transcript early-end
+    warning (`app/platforms/coverage_check.own_transcript_early_end_
+    warning()`). It is computed in the worker, not here, because it samples
+    the tail of the audio with ffmpeg, which must not run inside this DB
+    session.
     """
     async with async_session() as session:
         job = await session.get(TranscriptionJob, job_id)
@@ -10836,7 +10899,10 @@ async def report_chunk_result(
                 source="transcribed",
                 is_default=False,  # promote_transcript_version sets the real default below
                 segments=sorted(job.partial_segments, key=lambda s: s["start"]),
-                transcript_warnings=hallucination_warnings,
+                transcript_warnings=[
+                    *hallucination_warnings,
+                    *(finished_transcript_warnings or []),
+                ],
                 content_hash=_content_hash(job.partial_segments),
             )
             session.add(version)
