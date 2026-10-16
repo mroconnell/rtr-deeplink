@@ -4363,3 +4363,23 @@ def test_champds_event_pin_matches_only_that_exact_event_id(monkeypatch, tmp_pat
         assert ids("/fonddulacwi/event/7712") == []
     finally:
         registry.clear_caches()
+
+
+@pytest.mark.parametrize(
+    "raw, gov_id",
+    [
+        ("Ulster Town, NY", "us:cousub:3611175935"),
+        ("Lincoln Town, ME", "us:cousub:2301939475"),
+        # A real name that ends in "Town" keeps its place.
+        ("Charles Town, WV", "us:place:5414610"),
+        ("Old Town, ME", "us:place:2355225"),
+        # "City" is not used this way: James City, VA is a county.
+        ("James City, VA", "us:county:51095"),
+    ],
+)
+def test_x_town_never_falls_back_to_the_same_named_county(raw, gov_id):
+    """Backlog triage 2026-10-16 (WO-215's dry run: page 8226 "Ulster
+    Town, NY" re-resolved to Ulster County). Rung 2 strips the trailing
+    "Town" as a type word; it is now carried as the type preference, which
+    gates the county fallback the same way a leading "Town of" does."""
+    assert resolver.resolve_government(raw).gov_id == gov_id

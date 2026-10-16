@@ -587,6 +587,26 @@ def _charter_township_last(name: str) -> str:
     return f"{m.group('name')} Charter Township{m.group('rest') or ''}"
 
 
+_TRAILING_TOWN_WORD_RE = re.compile(r"\s+(town|village)$", re.I)
+
+
+def _stripped_trailing_type_word(raw_name: str, cleaned: str) -> str:
+    """ "Ulster Town" cleaned to "Ulster" -> "town".
+
+    Only when rung 2 itself stripped the word as a type annotation, so a
+    name whose real spelling ends in it ("Charles Town", "Old Town")
+    keeps no preference. Without this, "Ulster Town, NY" fell through
+    to Ulster COUNTY (`us:county:36111`) instead of the town
+    (`us:cousub:3611175935`), because only a LEADING "Town of" gated the
+    county fallback (WO-215's dry run). "city" and "borough" are left
+    out: "James City, VA" and Alaska's boroughs are counties.
+    """
+    m = _TRAILING_TOWN_WORD_RE.search(raw_name or "")
+    if not m or tables.squash(raw_name[: m.start()]) != tables.squash(cleaned):
+        return ""
+    return m.group(1).lower()
+
+
 def _leading_type_word(name: str) -> str:
     """ "Town of Cottage Grove" -> "town".
 
@@ -2687,7 +2707,12 @@ def _resolve_government_ladder(
         # as a leading "Village of" phrase; tried second only because the
         # raw name is where a real page's own phrasing survives, per rung
         # 3's own comment above.
-        type_preference = _leading_type_word(raw_name) or raw_paren_type or paren_type
+        type_preference = (
+            _leading_type_word(raw_name)
+            or raw_paren_type
+            or paren_type
+            or _stripped_trailing_type_word(raw_name, name)
+        )
 
     # 3b. Recover the state from the tenant BEFORE looking anything up.
     #
