@@ -4383,3 +4383,25 @@ def test_x_town_never_falls_back_to_the_same_named_county(raw, gov_id):
     "Town" as a type word; it is now carried as the type preference, which
     gates the county fallback the same way a leading "Town of" does."""
     assert resolver.resolve_government(raw).gov_id == gov_id
+
+
+@pytest.mark.parametrize(
+    "raw, gov_id",
+    [
+        ("Groton, CT", "us:cousub:0918034250"),
+        ("Litchfield, CT", "us:cousub:0916043370"),
+        ("Newtown, CT", "us:cousub:0919052980"),
+        ("Stonington, CT", "us:cousub:0918073770"),
+        # With the type word, the smaller city/borough is still reachable.
+        ("City of Groton, CT", "us:place:0934180"),
+        ("Borough of Newtown, CT", "us:place:0952910"),
+        # Other states' same names are untouched.
+        ("Newtown, PA", "us:place:4254184"),
+    ],
+)
+def test_bare_ct_town_name_means_the_town_not_the_borough_inside_it(raw, gov_id):
+    """Backlog triage 2026-10-16. Each of these CT towns contains a much
+    smaller city/borough of the same name, and the place-first lookup gave
+    a bare name to the city/borough. Curated alias rows assert the town;
+    the Illinois-style place-wins default elsewhere is unchanged."""
+    assert resolver.resolve_government(raw).gov_id == gov_id
