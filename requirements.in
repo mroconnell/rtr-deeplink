@@ -30,6 +30,15 @@ svix>=2.5.0
 # degrade pattern as Clerk above -- see app/main.py's _init_sentry().
 sentry-sdk>=2.69.2
 
+# Agenda text (WO-1966, 2026-10-16): app/agenda_text.py reads agenda and
+# packet PDFs at ingest. pypdf first; pdfplumber only as a fallback when
+# pypdf's text looks mangled (ligature/space loss). The same two libraries
+# rtr-upcoming uses, where both were measured on real agendas. The parse
+# runs in a separate process under a memory ceiling
+# (app/agenda_extract_worker.py).
+pypdf>=6.19.0
+pdfplumber>=0.11.10
+
 # yt-dlp is deliberately NOT compiled/pinned here (WO-11, 2026-08-16) --
 # YouTube actively breaks scrapers and yt-dlp only works because it
 # chases them; pinning it is a bug, not hygiene (see CLAUDE.md:128-136).

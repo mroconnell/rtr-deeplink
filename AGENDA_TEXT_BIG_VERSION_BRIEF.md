@@ -1,5 +1,12 @@
 # Agenda text as a first-class, versioned asset — sequencing brief
 
+**Status 2026-10-16: Ryan chose "steps 1-2 together". Both shipped in
+WO-1966 for CivicPlus and CivicClerk, agendas and packets (see
+`BACKLOG_DONE.md`). `pypdf` and `pdfplumber` are now in the
+requirements. Steps 3 (other adapters) and 4 (display, diff, search) are
+open; BACKLOG.md's entry carries the next action. The text below is the
+original proposal, kept as written.**
+
 Written 2026-08-31, alongside the small version (PR #640 — see
 `BACKLOG_DONE.md`). This is discussion material, not a plan: a proposal to
 bring to Ryan, not a decision already made. The underlying ask is

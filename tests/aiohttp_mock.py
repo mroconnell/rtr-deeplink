@@ -25,6 +25,13 @@ class _FakeStream:
     async def read(self, n: int = -1) -> bytes:
         return self._raw if n < 0 else self._raw[:n]
 
+    async def iter_chunked(self, n: int):
+        """`response.content.iter_chunked(n)` -- the streamed download
+        app/agenda_text.py uses so a large packet never sits in memory
+        (WO-1966)."""
+        for i in range(0, len(self._raw), n):
+            yield self._raw[i : i + n]
+
 
 class FakeResponse:
     def __init__(

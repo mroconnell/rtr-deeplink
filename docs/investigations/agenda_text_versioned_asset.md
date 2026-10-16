@@ -1,6 +1,6 @@
 # Agenda text as a first-class, versioned asset — design reference and trap list
 
-**Status: undecided proposal, not started.** This is not an investigation
+**Status 2026-10-16: pieces 1 and 2 built for CivicPlus and CivicClerk (WO-1966, `agenda_versions` + `app/agenda_text.py`); piece 2 for other adapters and piece 3 are open.** Originally: undecided proposal, not started. This is not an investigation
 of a bug and not finished work — it's the design reasoning and
 real-world trap list for a large (`[BIG]`) roadmap item, moved out of the
 live `BACKLOG.md` Roadmap entry so that entry can stay scannable. Nothing

@@ -31,6 +31,27 @@ Entry as it stood in `BACKLOG.md` (Parked deliberately):
   scheduled — needs Ryan's call before it becomes one.
 - **History**: [FEED_CITIES.md](FEED_CITIES.md).
 
+## [Done 2026-10-16] WO-1966: agenda and packet text, steps 1 and 2 (versioned table, one extraction path, CivicPlus and CivicClerk)
+
+**Why this ran.** Ryan approved steps 1 and 2 of `AGENDA_TEXT_BIG_VERSION_BRIEF.md` on 2026-10-16 ("A2 would be wonderful right away"), then decided the same day to store packets as well as agendas, with no nightly re-read.
+
+**What was built.**
+
+- `agenda_versions` (Archive table, migration `059f7f323f16`): one row per distinct text per page and role (`agenda` or `packet`), unique on page + role + sha256 hash. It records the address requested, where it landed (signed query strings stripped), the format, the extractor name and version, the character count, and the first and last time that text was read.
+- `app/agenda_text.py`: a port of `rtr-upcoming`'s extractor and guards. It picks the parser from the bytes; reads PDFs with pypdf and falls back to pdfplumber at 5 or more mangled words; labels scans; refuses a body over 100 MB instead of truncating it; treats 0 bytes as "not published yet"; rejects login pages (`looks_like_shell`) and documents dated more than 300 days from the meeting (`wrong_document`, from `rtr-upcoming`'s `agenda_header.py`).
+- `app/agenda_extract_worker.py`: each PDF is parsed in a child process with a heap ceiling (1,000 MB default) and a 300-second limit, one at a time per instance (a file lock shared by both Archive workers). The download streams to a temp file, so the parent never holds a packet in memory.
+- `archive/utils/agenda_ingest.py`, queued by `/internal/ingest` as a BackgroundTask when a link is a CivicPlus or CivicClerk shape. It never raises. A page is not re-read within 24 hours. robots.txt is always honoured for this read.
+
+**Two choices worth knowing.**
+
+| Question | Choice | Why |
+|---|---|---|
+| CivicClerk: `plainText=true` or the file? | `GetMeetingFile(...,plainText=true)` first, then `GetMeetingFileStream(...,plainText=false)` | The first is confirmed live in this repo (Los Altos Hills, Moraine, Merrill). `rtr-upcoming` found `plainText=true` returns 0 bytes on the Stream endpoint, and the file on the Stream endpoint is confirmed there (Milpitas, Morgan Hill). They are different endpoints, so both findings hold |
+| CivicPlus: HTML or PDF copy? | The PDF first, then `?html=true` | `rtr-upcoming` measured the ViewFile PDF. The HTML copy has not been checked against a real body; a read of the real Durham HTML address through a text-fetch service returned only its title |
+
+**Tested on.** No real agenda file could be saved: the cloud session's network proxy refused every government host tried (nc-durham.civicplus.com, clovisca.api.civicclerk.com, a city site, and web.archive.org). Tests use the real Durham CivicPlus page and the real Emporia KS CivicClerk event for the links, and the one real CivicPlus-served PDF already in the repo (Richmond Hill GA's city charter, 81,801 characters, 0 mangled words) for extraction, in-process and through the child process. Agenda text in the guard tests is synthetic and says so.
+
+**Caution.** Steps 1 and 2 are built but not yet checked on a real agenda. That check is the first item of the open BACKLOG.md entry.
 ## [Done 2026-10-16] [PARK] `[BIG]` "Request Transcript from Audio" doesn't work for YouTube-hosted meetings. (WO-1969)
 
 **What was asked.** Ryan said yes on 2026-10-16 ("A8 sure"): a reader's request on a YouTube meeting goes to the drip Mac, and takes at most 1 of its 3 daily audio downloads, ahead of the backlog. The page promises no date.
