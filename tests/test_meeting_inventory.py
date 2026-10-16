@@ -261,3 +261,43 @@ async def test_inventory_summary_counts_missing_fields():
     assert before["no_video"] == sum(r["has_video"] == "no" for r in rows)
     assert before["no_transcript"] == sum(r["has_transcript"] == "no" for r in rows)
     assert before["missing_date"] >= 1
+
+
+def test_inventory_page_filter_supports_exclude_and_blank():
+    # Runs the page's own parseFilter()/matches() under node: "!text"
+    # excludes, "=" keeps blanks only, "!=" keeps non-blanks only.
+    import json
+    import re
+    import shutil
+    import subprocess
+
+    import pytest
+
+    from scripts.export_meeting_inventory import HTML_TEMPLATE
+
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node not installed")
+    parse_fn = re.search(r"function parseFilter\(raw\)\{.*?\n\}", HTML_TEMPLATE, re.S)
+    match_fn = re.search(r"function matches\(r\)\{.*?\n\}", HTML_TEMPLATE, re.S)
+    rows = [
+        {"gov_id": "us:place:1", "title": "City Council"},
+        {"gov_id": "", "title": "Planning Board"},
+        {"gov_id": None, "title": "Council Work Session"},
+    ]
+    cases = {"!council": [1], "=": [1, 2], "!=": [0], "council": [0, 2]}
+    script = (
+        "let filters={}, query='', KEYS=['gov_id','title'];\n"
+        + parse_fn.group(0)
+        + "\n"
+        + match_fn.group(0)
+        + f"\nconst rows={json.dumps(rows)}, cases={json.dumps(cases)}, out={{}};\n"
+        "for(const raw in cases){ const k = raw.startsWith('=')||raw==='!=' ? 'gov_id' : 'title';"
+        " filters={}; filters[k]=parseFilter(raw);"
+        " out[raw]=rows.map((r,i)=>matches(r)?i:-1).filter(i=>i>=0); }\n"
+        "console.log(JSON.stringify(out));"
+    )
+    result = subprocess.run(
+        [node, "-e", script], capture_output=True, text=True, check=True
+    )
+    assert json.loads(result.stdout) == cases
