@@ -323,15 +323,26 @@ async def test_resolve_real_fife_with_body_listed_first():
     assert result.meeting_body == "Fife City Council"
 
 
-async def test_resolve_real_board_of_health_gets_no_state():
-    # "Tac-PC Board of Health" names no place. With ", WA" added it
-    # would mint rtr:us:wa:tac-pc-board-of-health, so it stays as-is.
+async def test_resolve_real_board_of_health_files_under_the_health_department():
+    # "Tac-PC Board of Health" names no place; with ", WA" added to the raw
+    # name it would mint rtr:us:wa:tac-pc-board-of-health. Since
+    # 2026-10-16 (Ryan's yes) it maps to the Tacoma-Pierce County Health
+    # Department's own registry id, never Pierce County or Tacoma.
+    from app.utils.gov_registry.resolver import resolve_government
+
     result = await _resolve_fixture(
         "tacoma_pierce_board_of_health_getDetailed.json", PIERCE, "2026091032"
     )
 
-    assert result.jurisdiction == "Tac-PC Board of Health"
-    assert result.meeting_body is None
+    assert result.jurisdiction == "Tacoma-Pierce County Health Department, WA"
+    assert result.meeting_body == "Tac-PC Board of Health"
+    match = resolve_government(
+        result.jurisdiction,
+        tenant_host="player.invintus.com",
+        path=f"/?clientID={PIERCE}&eventID=2026091032",
+    )
+    assert match.gov_id == "rtr:us:wa:tacoma-pierce-county-health-department"
+    assert match.gov_id not in ("us:county:53053", "us:place:5370000")
 
 
 def test_county_council_with_committee_child():
@@ -422,8 +433,6 @@ def test_cvtv_body_under_a_place_prefix(category, place):
 @pytest.mark.parametrize(
     "category",
     [
-        # Its own government, with no registry id: stays blank.
-        "Regional Transportation Council",
         # Names no city, in its category or its description ("Complete
         # coverage of the September 21, 2026, City Council workshop
         # meeting."): stays blank rather than guessed as Vancouver.
@@ -483,6 +492,12 @@ def test_leon_county_channel_is_pinned_to_leon_county():
             "rtr:us:wa:port-of-vancouver",
         ),
         ("C-TRAN Board of Directors", "C-TRAN, WA", "rtr:us:wa:c-tran"),
+        # Not a Census unit; id minted 2026-10-16 on Ryan's yes.
+        (
+            "Regional Transportation Council",
+            "Southwest Washington Regional Transportation Council, WA",
+            "rtr:us:wa:southwest-washington-regional-transportation-council",
+        ),
     ],
 )
 def test_cvtv_body_that_is_its_own_government(category, government, gov_id):
