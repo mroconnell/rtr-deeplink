@@ -213,6 +213,7 @@ class EscribeAssetFinder(AssetFinder):
             video_link: Optional[str] = None
             video_link_recognized = False
             best_effort = False
+            video_duration_seconds: Optional[float] = None
             segments: List[TranscriptSegment] = []
             transcript_language: Optional[str] = None
 
@@ -254,6 +255,9 @@ class EscribeAssetFinder(AssetFinder):
                     )
                     segments = yt_resolved.segments
                     transcript_language = yt_resolved.transcript_language
+                    # The partial-transcript check (WO-923) needs the
+                    # video's length; YouTube's result carries it.
+                    video_duration_seconds = yt_resolved.video_duration_seconds
                     transcript_warnings.extend(yt_resolved.transcript_warnings)
                     video_warnings.extend(yt_resolved.video_warnings)
                     best_effort = True
@@ -320,6 +324,7 @@ class EscribeAssetFinder(AssetFinder):
             video_warnings=video_warnings,
             transcript_warnings=transcript_warnings,
             best_effort=best_effort,
+            video_duration_seconds=video_duration_seconds,
         )
 
     @staticmethod

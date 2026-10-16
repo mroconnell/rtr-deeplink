@@ -255,6 +255,7 @@ async def test_backstop_finds_youtube_embed_when_no_isi_player(monkeypatch):
             "title": "City of Example — YouTube channel upload",
             "uploader": "cityofexample",
             "upload_date": "20260102",
+            "duration": 5400,
             "_chosen_track": (
                 ("WEBVTT\n\n00:00:01.000 --> 00:00:03.000\nCall to order.\n").encode(
                     "utf-8"
@@ -292,6 +293,9 @@ async def test_backstop_finds_youtube_embed_when_no_isi_player(monkeypatch):
     # eScribe's own metadata is preferred over YouTube's channel-upload title.
     assert result.title == "Council Meeting"
     assert result.date == "2026-01-01"
+    # YouTube's video length is copied through for the partial-transcript
+    # check (WO-923).
+    assert result.video_duration_seconds == 5400.0
 
 
 async def test_backstop_youtube_falls_back_to_page_metadata_when_missing(monkeypatch):

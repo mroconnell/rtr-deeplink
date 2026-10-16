@@ -104,6 +104,7 @@ async def test_resolve_event_with_external_video_and_no_bookmarks(monkeypatch):
             "title": "Clovis City Council — YouTube live stream",
             "uploader": "cityofclovis",
             "upload_date": "20260107",
+            "duration": 7200,
             "_chosen_track": (
                 "WEBVTT\n\n00:00:01.000 --> 00:00:03.000\nCall to order.\n".encode(
                     "utf-8"
@@ -140,6 +141,9 @@ async def test_resolve_event_with_external_video_and_no_bookmarks(monkeypatch):
     # segments staying empty forever.
     assert len(result.segments) == 1
     assert result.segments[0].text == "Call to order."
+    # YouTube's video length is copied through for the partial-transcript
+    # check (WO-923).
+    assert result.video_duration_seconds == 7200.0
 
 
 async def test_resolve_surfaces_youtube_bot_block_video_warning(monkeypatch):
