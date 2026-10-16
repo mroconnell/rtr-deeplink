@@ -70,6 +70,8 @@ from urllib.parse import parse_qs, urljoin, urlparse
 
 from bs4 import BeautifulSoup
 
+from app.utils.video_titles import is_file_name_title
+
 # Kind A: the title/channel names a different, identifiable body -- never
 # this government's own meeting, regardless of gov_kind. Each phrase maps
 # to a short, generic description of the likely real owner, for a human
@@ -509,21 +511,15 @@ def looks_like_real_meeting(title: str, *, require_allowlist: bool = False) -> b
 # already on the blocklist for anywhere in a title.
 _TEST_TITLE_RE = re.compile(r"^\W*test\W*\d*\W*$", re.IGNORECASE)
 
-# A camera file name or bare number is not a title. Real: Oak Bluffs, MA's
-# Vimeo video "video1516165031" (page 10200, WO-925). The three patterns
-# are exactly the ones that entry named; do not add more without a real
-# example. A placeholder title carries no meeting evidence either way, so
-# the gate treats it as "no title", never as a reject.
-_PLACEHOLDER_TITLE_RES = (
-    re.compile(r"^video\d+$", re.IGNORECASE),
-    re.compile(r"^img_\d+", re.IGNORECASE),
-    re.compile(r"^\d+$"),
-)
 
-
+# A camera or file name is not a title. Real: Oak Bluffs, MA's Vimeo video
+# "video1516165031" (page 10200, WO-925). The one shared test lives in
+# `app/utils/video_titles.py` (the Archive's ingest uses it too, to swap in
+# "<government> archive video"); add a pattern there, with a real example.
+# A placeholder title carries no meeting evidence either way, so the gate
+# treats it as "no title", never as a reject.
 def is_placeholder_title(title: Optional[str]) -> bool:
-    t = (title or "").strip()
-    return bool(t) and any(r.search(t) for r in _PLACEHOLDER_TITLE_RES)
+    return is_file_name_title(title)
 
 
 # --- Decorative and not-a-video checks (no network, no page needed) -------

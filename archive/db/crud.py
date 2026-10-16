@@ -48,6 +48,7 @@ from app.utils.gov_registry import governments as registry_governments
 from app.utils.gov_registry import hub_slug as gov_hub_slug
 from app.utils.gov_registry import state_gov_id
 from app.utils.jurisdiction_enrich import finalize_jurisdiction
+from app.utils.video_titles import is_file_name_title, page_title_for_video
 from app.platforms.youtube_ids import extract_video_id as _extract_youtube_video_id
 
 # WO-1065: the substring app/platforms/embedded_captions.py's resolve-time
@@ -1166,6 +1167,18 @@ async def _find_or_create_page(
         raise GovernmentMismatch(page.id, page.slug, page.gov_id, caller_gov_id)
 
     created = page is None
+    # A video whose own title is a camera or file name ("video1516165031",
+    # "20251021", "CC20260908.mp4") gets "<government> archive video[,
+    # Month YYYY]" instead, on every platform (Ryan, 2026-09-21; WO-931).
+    # One shared rule in `app/utils/video_titles.py`; with no government
+    # name the source title is kept as it is.
+    source_title = payload.get("title")
+    title_is_file_name = is_file_name_title(source_title)
+    page_title = page_title_for_video(
+        source_title,
+        _display_jurisdiction(gov, jurisdiction),
+        payload.get("date"),
+    )
     if page is None:
         # The display name, so a new page's slug matches the government
         # its hub is filed under -- "fresno-county-ca-..." whichever
@@ -1173,7 +1186,7 @@ async def _find_or_create_page(
         base_slug = build_base_slug(
             _display_jurisdiction(gov, jurisdiction) or "",
             payload.get("date") or "",
-            payload.get("title") or "",
+            page_title or "",
         )
         slug = await _unique_slug(session, base_slug)
         page = MeetingPage(
@@ -1181,7 +1194,7 @@ async def _find_or_create_page(
             platform=platform,
             external_id=external_id,
             source_url_normalized=source_url_normalized,
-            title=payload.get("title"),
+            title=page_title,
             date=payload.get("date"),
             jurisdiction=_display_jurisdiction(gov, jurisdiction),
             jurisdiction_raw=payload.get("jurisdiction") or None,
@@ -1243,7 +1256,13 @@ async def _find_or_create_page(
         # than hardcoding something else, so this can't regress an
         # already-correct page.
         page.platform = payload.get("platform") or page.platform
-        page.title = payload.get("title") or page.title
+        # A file-name title never overwrites a page's existing title (a
+        # hand fix like page 10200's, WO-925, must survive a re-ingest);
+        # stored pages are not rewritten here either way.
+        if title_is_file_name and page.title:
+            pass
+        else:
+            page.title = page_title or page.title
         page.date = payload.get("date") or page.date
         # WO-215: rung 1b (WO-210, `MULTI_GOV_HOSTS`) answers `blank` --
         # gov_id `rtr:unknown:<host>` -- for EVERY re-ingest on a shared

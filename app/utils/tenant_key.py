@@ -43,11 +43,15 @@ from urllib.parse import parse_qs, urlparse
 # ---------------------------------------------------------------------------
 # Out of scope: no tenant defined (None).
 #
-# YouTube and Vimeo are out of scope by Ryan's decision. The rest are the
-# `MULTI_GOV_HOSTS` entries (app/utils/gov_registry/registry.py) that have
-# no adapter and no listing a walker could read -- a file-sharing or
-# social host is not one customer's meeting listing. Their pins, where
-# any exist, are per-file (drive.google.com has one).
+# YouTube and Vimeo are out of scope by Ryan's decision. The rest are
+# `MULTI_GOV_HOSTS` entries (app/utils/gov_registry/registry.py) with no
+# listing a walker could read -- a file-sharing or social host is not one
+# customer's meeting listing. Two kinds: facebook.com, fb.watch,
+# soundcloud.com and sharepoint.com have no adapter, and livestream.com is
+# dead (it redirects to Vimeo since 2026-10-13); dropbox.com and the two
+# Drive hosts have no listing, but a single file on them does resolve
+# through `direct_file.py`. Their pins, where any exist, are per-file
+# (drive.google.com has one).
 OUT_OF_SCOPE_HOSTS: FrozenSet[str] = frozenset(
     {
         "www.youtube.com",
