@@ -332,6 +332,17 @@ MEETING_ALLOWLIST = (
     # contains neither "board" nor "commission" as a substring and was
     # rejected as off-mission before this was added.
     "bocc",
+    # French (backlog triage 2026-10-16). Real: Val-d'Or QC's "569e séance
+    # ordinaire du 1 juin 2026" came back cannot_tell (WO-279), and a whole
+    # run of Quebec governments title real meetings in French ("Séance
+    # ordinaire du conseil municipal", "Assemblée du conseil"), which
+    # `scripts/youtube_leads_judge.py`'s BODY_WORDS already gained
+    # (#1486). Same word set, minus phrases a shorter word here covers.
+    "conseil",
+    "séance",
+    "assemblée",
+    "comité",
+    "audience publique",
 )
 PROMO_BLOCKLIST = (
     "promo",

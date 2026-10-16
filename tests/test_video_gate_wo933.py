@@ -219,14 +219,8 @@ def test_wo279_abbreviation_and_colon_shapes_already_pass(title):
     assert assess_video_candidate(title=title, platform="youtube").passed
 
 
-def test_wo279_french_title_is_still_a_miss_with_only_one_real_example():
-    # The fourth shape (Val-d'Or QC, one real example) is still a miss. The
-    # entry's own constraint is "confirm a second real example first", so the
-    # allowlist is NOT widened here.
-    verdict = assess_video_candidate(
-        title="569e séance ordinaire du 1 juin 2026", platform="youtube"
-    )
-    assert verdict.verdict == CANNOT_TELL
+# The fourth WO-279 shape (French, Val-d'Or QC) now passes: see the French
+# section at the end of this file.
 
 
 # --- Test uploads, placeholder titles ----------------------------------------
@@ -1096,3 +1090,28 @@ async def test_ranking_fix_does_not_prefer_an_unverified_extra_video(fake_regist
         "platform": "vimeo",
         "reason": "no_meeting_word_in_title",
     }
+
+
+# --- French meeting titles (backlog triage 2026-10-16) ----------------------
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        # Real: Val-d'Or QC (WO-279), cannot_tell before this.
+        "569e séance ordinaire du 1 juin 2026",
+        # Real shapes from the Quebec run behind #1486.
+        "Séance ordinaire du conseil municipal",
+        "Assemblée du conseil",
+    ],
+)
+def test_a_french_meeting_title_names_a_governing_body(title):
+    verdict = assess_video_candidate(title=title, platform="youtube")
+    assert verdict.verdict == PASS, verdict
+
+
+def test_a_french_promo_title_is_still_rejected():
+    verdict = assess_video_candidate(
+        title="Promo : séance d'information du conseil", platform="youtube"
+    )
+    assert verdict.verdict == REJECT and verdict.reason == "promo_title"
