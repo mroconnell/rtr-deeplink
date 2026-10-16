@@ -1492,3 +1492,7 @@ https://archive.org/download/fpatvny-Fredonia_Trustees_Work_Shop_and_Meeting_Oct
 https://becity.org/media/audios/2026/10/02/10.1.26-special-council-meeting.mp3	https://becity.org/index.php/government/council-meeting-audio-recordings	us:place:2706688	City Council Meeting Audio Recordings
 https://vimeo.com/321604076		rtr:us:ca:solano-transportation-authority	STA Board
 https://archive.org/download/cocorv-07_20_2026_Corvallis_City_Council_Meeting/07_20_2026_Corvallis_City_Council_Meeting.mp4	https://archive.org/details/cocorv-07_20_2026_Corvallis_City_Council_Meeting	us:place:4115800	07/20/2026 Corvallis City Council Meeting	2026-07-21
+https://sldg.ca/sldg/wp-content/uploads/2022/01/video1228943596.mp4	http://sldg.ca/services-aux-citoyens/greffe-et-administration/proces-verbaux/video1228943596/	ca:csd:2470035
+https://www.municipaliteeastbroughton.com/fichiersUpload/fichiers/20210305142817-seance-speciale-24-fevrier-2021.m4a	https://www.municipaliteeastbroughton.com/fr/municipalite/conseil-municipal/proces-verbaux/	ca:csd:2431122
+https://www.gracefield.ca/fichiersUpload/fichiers/20260319110503-seance-extraordinaire-du-16-decembre-2025.m4a	https://www.gracefield.ca/fr/hotel-de-ville/le-conseil/proces-verbaux/	ca:csd:2483032
+https://www.ghid.gov/files/75a0737c7/GMT20260120-220003_Recording.m4a	https://www.ghid.gov/board-meetings	rtr:us:ut:granger-hunter-improvement-district
