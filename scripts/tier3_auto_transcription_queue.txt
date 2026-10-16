@@ -1493,3 +1493,6 @@ https://ieua.granicus.com/MediaPlayer.php?view_id=1&clip_id=1483	meeting_finder_
 https://nctpa.granicus.com/MediaPlayer.php?view_id=1&clip_id=115	https://nctpa.granicus.com/ViewPublisher.php?view_id=1	rtr:us:ca:napa-valley-transportation-authority
 https://www.municipalitescott.com/wp-content/uploads/2021/05/GMT20210503-225851_Recording.mp3	https://www.municipalitescott.com/seances-du-conseil/gmt20210503-225851_recording/	ca:csd:2426048
 https://vplus-documents.s3.ca-central-1.amazonaws.com/entrelacs/_publication/fichiers/2022-01-12-budget.mp3	https://www.entrelacs.com/publication/seances-du-conseil-proces-verbaux-et-ordre-du-jour	ca:csd:2462053
+https://archive.org/download/G-DUX-BOS-100526/G-DUX-BOS-100526.mp4	https://archive.org/details/G-DUX-BOS-100526	us:cousub:2502317895	Duxbury Selectboard: 10/5/26	2026-10-05	select board
+https://archive.org/download/ED-PEM-PSC_061626LIVE/ED-PEM-PSC_061626LIVE.mp4	https://archive.org/details/ED-PEM-PSC_061626LIVE	us:sd:2509420	Pembroke School Committee: 6/16/26	2026-06-16	school committee
+https://archive.org/download/WSCS_SASD_Board_Meeting_2026-09-23/SASD_Board_Meeting_2026-09-23.mp4	https://archive.org/details/WSCS_SASD_Board_Meeting_2026-09-23	us:sd:5513650	SASD Board Meeting 2026-09-23	2026-09-23	board
