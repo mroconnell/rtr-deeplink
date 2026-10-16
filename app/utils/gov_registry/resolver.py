@@ -28,6 +28,7 @@ good. This module consumes its output; it does not second-guess it.
 Nothing here writes anything, touches a database, or performs a fetch.
 """
 
+import html
 import re
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
@@ -2336,6 +2337,12 @@ def _resolve_government_ladder(
     no matching pin; see that rung's own comment.
     """
     host = _tenant_host(tenant_host)
+    # A literal HTML entity is markup, never part of a name. Real:
+    # `kauai.granicus.com` stored "Kaua&apos;i County, HI" verbatim (a
+    # Granicus RSS title passed through), and the county lookup missed on
+    # the entity while "Kaua'i County, HI" keys to `us:county:15007`.
+    if raw_name:
+        raw_name = html.unescape(raw_name)
 
     # 1. Pinned, authoritative.
     if host:

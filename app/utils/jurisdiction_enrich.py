@@ -54,6 +54,7 @@ to close.
 """
 
 import csv
+from html import unescape as _html_unescape
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -2773,6 +2774,11 @@ def finalize_jurisdiction(
     A rejected override falls through to this function's own text-derived
     answer, exactly as it behaved before the cross-check existed.
     """
+    # An HTML entity left in the text ("Kaua&apos;i County, HI", from a
+    # Granicus RSS title) is markup, not part of the name: unescape it so
+    # the stored value and every lookup see the real apostrophe.
+    if raw_jurisdiction:
+        raw_jurisdiction = _html_unescape(raw_jurisdiction)
     known = lookup_by_domain(netloc) if netloc else None
 
     if known and known.strength == "authoritative":

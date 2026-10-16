@@ -4221,3 +4221,22 @@ def test_machine_guess_pin_to_a_minted_gov_is_dropped_even_with_a_registry_row(
         assert registry.tenant_overrides().get("pins.example.org", []) == []
     finally:
         registry.clear_caches()
+
+
+def test_html_entity_in_a_jurisdiction_is_unescaped_before_lookup():
+    """Backlog triage 2026-10-16. `kauai.granicus.com` stored
+    "Kaua&apos;i County, HI" verbatim (an entity-encoded Granicus RSS
+    title), and the county lookup missed on the entity. Real string, real
+    county: both the ladder and the ingest-time repair now unescape it."""
+    from app.utils.jurisdiction_enrich import finalize_jurisdiction
+
+    assert (
+        resolver.resolve_government("Kaua&apos;i County, HI").gov_id
+        == "us:county:15007"
+    )
+    assert (
+        resolver.resolve_government("Kaua&#39;i County, HI").gov_id == "us:county:15007"
+    )
+    assert finalize_jurisdiction("Kaua&apos;i County, HI").jurisdiction == (
+        "Kaua'i County, HI"
+    )
