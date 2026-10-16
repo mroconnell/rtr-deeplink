@@ -220,3 +220,63 @@ async def test_the_host_condition_does_not_match_a_lookalike_domain():
 async def _unkeyed_membership():
     async with async_session() as session:
         return await crud._unkeyed_membership(session)
+
+
+# --- a single page's own hub link agrees with the hub (backlog triage
+# 2026-10-16: WO-256 part 2's two leftover asymmetries) ---------------------
+
+
+async def test_an_adopted_page_with_no_text_links_back_to_the_hub_that_lists_it():
+    """Asymmetry 1: an un-keyed page adopted by host but with no
+    jurisdiction text of its own is on Orem's hub, so its own page must
+    link back to it -- by the cached membership, with no query."""
+    import archive.main
+    from fastapi.testclient import TestClient
+
+    await _seed_orem()
+    blank = await _seed(
+        "granicus:incl-orem-blank",
+        f"{OREM_HOST}/incl/blank",
+        jurisdiction="Orem, UT",
+        title="Orem Work Session (blank text)",
+    )
+    await _set_identity(blank, None, jurisdiction="")
+
+    data = await crud.get_jurisdiction_hub_data("orem-ut", bypass_cache=True)
+    assert blank in {p["slug"] for p in data["pages"]}
+
+    url = f"{OREM_HOST}/incl/blank"
+    assert crud.hub_slug_for_page(None, "", url) == "orem-ut"
+    assert crud.hub_link_for_page(None, "", url) == ("orem-ut", "Orem, UT")
+
+    html = TestClient(archive.main.app).get(f"/m/{blank}").text
+    assert 'href="/j/orem-ut">More Orem, UT meetings' in html
+
+
+async def test_an_excluded_page_no_longer_links_to_a_hub_that_does_not_list_it():
+    """Asymmetry 2: the unrelated YouTube page whose text reads "Orem, UT"
+    is NOT on Orem's hub, so it must not offer "More Orem, UT meetings"."""
+    from archive.db import hub_slugs
+
+    contaminant, _adoptable = await _seed_orem()
+    yt = "https://www.youtube.com/watch?v=wo256incl1"
+    data = await crud.get_jurisdiction_hub_data("orem-ut", bypass_cache=True)
+    assert contaminant not in {p["slug"] for p in data["pages"]}
+
+    assert crud.hub_slug_for_page("rtr:unknown:www.youtube.com", "Orem, UT", yt) is None
+
+    # A keyed page, and an un-keyed page whose text no government owns,
+    # are unchanged.
+    assert crud.hub_slug_for_page(OREM_GOV_ID, "Orem, UT", yt) == "orem-ut"
+
+    # Cold cache (a process that has not built the hub groups yet):
+    # decides exactly as before, so nothing breaks on a fresh start.
+    saved = hub_slugs.unkeyed_membership()
+    hub_slugs.set_unkeyed_membership(None, ())
+    try:
+        assert (
+            crud.hub_slug_for_page("rtr:unknown:www.youtube.com", "Orem, UT", yt)
+            == "orem-ut"
+        )
+    finally:
+        hub_slugs._state["unkeyed"] = saved

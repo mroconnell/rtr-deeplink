@@ -75,6 +75,11 @@ _state: dict = {
     # None = not checked yet; False = the migration has not run here.
     "available": None,
     "available_checked_at": None,
+    # The un-keyed half of hub membership, as `crud._hub_groups()` last
+    # worked it out: (host -> (slug, display) of the hub that adopts it, the set of
+    # slugs a real government owns). None = not computed in this process
+    # yet. See `set_unkeyed_membership()`.
+    "unkeyed": None,
 }
 
 
@@ -106,6 +111,34 @@ def reset_cache() -> None:
     _state["loaded_at"] = None
     _state["available"] = None
     _state["available_checked_at"] = None
+    _state["unkeyed"] = None
+
+
+def set_unkeyed_membership(adopted_hosts: Optional[dict], government_slugs) -> None:
+    """Store the host-based membership `crud._hub_groups()` just computed,
+    so a single `/m/` page's hub link can agree with it without a query.
+
+    `adopted_hosts` maps a tenant host to (slug, display name) of the hub
+    that adopts un-keyed pages on it (`crud._unkeyed_membership()`'s
+    adoption map, already resolved to its hub). `government_slugs` is every slug a real
+    government owns -- an un-keyed page whose own text lands on one of
+    those, without being adopted, is on no hub.
+
+    Same safety story as the frozen-slug cache above: it is written only
+    by the hub-groups computation (itself cached for its own TTL), read
+    with no I/O, and a cold cache means "decide exactly as before".
+    `None` makes it cold again.
+    """
+    if adopted_hosts is None:
+        _state["unkeyed"] = None
+        return
+    _state["unkeyed"] = (dict(adopted_hosts), frozenset(government_slugs))
+
+
+def unkeyed_membership():
+    """(adopted_hosts, government_slugs), or None when this process has
+    not computed the hub groups yet."""
+    return _state["unkeyed"]
 
 
 async def table_available(session) -> bool:
