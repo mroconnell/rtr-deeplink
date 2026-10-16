@@ -181,6 +181,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app.platforms import register_all_finders  # noqa: E402
 from app.platforms.base import UnsupportedPlatformError, detect_platform, get_finder  # noqa: E402
 from app.platforms.youtube import YouTubeAssetFinder  # noqa: E402
+from app.platforms.coverage_check import own_transcript_early_end_warning  # noqa: E402
 from app.platforms.queue_probe import (  # noqa: E402
     BARE_VIDEO_LINK_PLATFORMS,
     apply_queue_metadata,
@@ -1586,6 +1587,32 @@ async def transcribe_meeting(
                 # interrupt still stops the run).
                 _checkpoint(f"{type(e).__name__}: {str(e)[:200]}")
                 raise
+
+            # The own-transcript early-end check, the same shared function
+            # worker/main.py runs before its last chunk is reported (CLAUDE.md:
+            # a fix to one transcription path does not reach the other on its
+            # own). It may sample 30 seconds of the tail for volume, so it
+            # runs here, while this meeting's whole-audio cache (or the
+            # downloaded YouTube audio) is still on disk: a local read, no
+            # network. A YouTube meeting with no local audio is never sampled
+            # from its youtube.com URL (CLAUDE.md's drip-Mac rule).
+            if whole_audio_path.exists():
+                tail_sample_url: Optional[str] = str(whole_audio_path)
+            elif youtube_audio_path is not None:
+                tail_sample_url = None
+            else:
+                tail_sample_url = source_media_url
+            early_end_warning = (
+                await own_transcript_early_end_warning(
+                    all_segments,
+                    duration,
+                    media_url=tail_sample_url,
+                    source_page_url=source_url,
+                    chunk_plan=chunk_plan,
+                )
+                if all_segments
+                else None
+            )
     finally:
         if youtube_audio_tmpdir is not None:
             youtube_audio_tmpdir.cleanup()
@@ -1607,6 +1634,8 @@ async def transcribe_meeting(
     # script pushed it live, unlike the scraped-caption path's existing
     # is_likely_garbled() check.
     warnings = detect_hallucination_warnings(sorted_segments)
+    if early_end_warning:
+        warnings = [*warnings, early_end_warning]
     return {
         "ok": True,
         "segments": sorted_segments,
@@ -1803,9 +1832,18 @@ async def process_one(
     if not result["ok"]:
         return {"slug": slug, "status": "skipped", "detail": result["reason"]}
 
-    hallucinated_note = (
-        " -- LOOKS HALLUCINATED" if result["transcript_warnings"] else ""
-    )
+    # transcript_warnings can also carry the early-end warning, which is not
+    # a hallucination -- label each kind for what it is.
+    hallucinated_note = ""
+    if any(
+        "hallucinated by the transcription model" in w
+        for w in result["transcript_warnings"]
+    ):
+        hallucinated_note += " -- LOOKS HALLUCINATED"
+    if any(
+        "may end before the meeting did" in w for w in result["transcript_warnings"]
+    ):
+        hallucinated_note += " -- MAY END BEFORE THE MEETING DID"
 
     if dry_run:
         return {
