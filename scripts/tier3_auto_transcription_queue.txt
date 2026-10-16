@@ -1496,3 +1496,9 @@ https://vplus-documents.s3.ca-central-1.amazonaws.com/entrelacs/_publication/fic
 https://archive.org/download/G-DUX-BOS-100526/G-DUX-BOS-100526.mp4	https://archive.org/details/G-DUX-BOS-100526	us:cousub:2502317895	Duxbury Selectboard: 10/5/26	2026-10-05	select board
 https://archive.org/download/ED-PEM-PSC_061626LIVE/ED-PEM-PSC_061626LIVE.mp4	https://archive.org/details/ED-PEM-PSC_061626LIVE	us:sd:2509420	Pembroke School Committee: 6/16/26	2026-06-16	school committee
 https://archive.org/download/WSCS_SASD_Board_Meeting_2026-09-23/SASD_Board_Meeting_2026-09-23.mp4	https://archive.org/details/WSCS_SASD_Board_Meeting_2026-09-23	us:sd:5513650	SASD Board Meeting 2026-09-23	2026-09-23	board
+https://floodauthorityeast.new.swagit.com/videos/401340	http://floodauthority.org	rtr:us:la:southeast-louisiana-flood-protection-authority-east
+https://planetariumauthority.org/video/2026PlanetariumAuthorityAnnualMeeting.mp4	https://planetariumauthority.org/	rtr:us:ny:natural-history-planetarium-authority
+https://www.nychdc.com/sites/default/files/2026-06/NYCHDC%20Audit%20Committee%20Meeting-20260327%201500-1.mp3	https://www.nychdc.com/public-meetings	rtr:us:ny:new-york-city-housing-development-corporation
+https://wanorthshoreny.gov/wp-content/uploads/2026/01/a25cae61149023feb7eca4a2bb4825bdbcf0b8fa.mp4	https://wanorthshoreny.gov/public-information/	rtr:us:ny:water-authority-of-north-shore
+https://www.essexcountyida.com/wp-content/uploads/2026/09/GMT20260918-130720_Recording_640x360.mp4	https://www.essexcountyida.com/ida-board-minutes/	rtr:us:ny:essex-county-ida
+https://www.albanycountylandbank.org/s/GMT20200421-143328ACLB-April-202.mp3	https://www.albanycountylandbank.org/board-meetings	rtr:us:ny:albany-county-land-bank-corporation
