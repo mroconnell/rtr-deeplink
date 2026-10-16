@@ -264,6 +264,15 @@ def _key_value_pin_pairs(needle: str) -> Optional[List[Tuple[str, str]]]:
     return parse_qsl(needle, keep_blank_values=True)
 
 
+def _text_pin_in(needle: str, haystack: str) -> bool:
+    """A text pin found in the path. A pin ending in a digit must end on
+    a whole number: ChampDS's `/fonddulacwi/event/77` names event 77, and
+    a plain substring test also claimed events 770-779 and 7700+."""
+    if not needle[-1:].isdigit():
+        return needle in haystack
+    return re.search(re.escape(needle) + r"(?!\d)", haystack) is not None
+
+
 def _match_override(
     host: str, path: Optional[str], page_hints: Optional[Dict[str, str]]
 ) -> List[TenantOverride]:
@@ -305,7 +314,7 @@ def _match_override(
                 out.append(row)
                 continue
         else:
-            if needle in haystack:
+            if _text_pin_in(needle, haystack):
                 out.append(row)
                 continue
             if "=" in needle:

@@ -4333,3 +4333,33 @@ def test_district_of_x_never_keys_to_a_csd_that_is_not_a_district_municipality()
     assert resolver.resolve_government("District of Thunder Bay, ON").gov_id == (
         "rtr:ca:on:thunder-bay"
     )
+
+
+def test_champds_event_pin_matches_only_that_exact_event_id(monkeypatch, tmp_path):
+    """Backlog triage 2026-10-16. A path pin ending in a number names that
+    number: `/fonddulacwi/event/77` is Fond du Lac County's Board of
+    Supervisors meeting (us:county:55039, a real archived page), and a
+    substring test also claimed events 770-779 and 7700+. Synthetic CSV;
+    the pin and path shapes are ChampDS's real ones."""
+    overrides = tmp_path / "tenant_overrides.csv"
+    overrides.write_text(
+        "tenant_host,match,gov_id,strength,source,evidence\n"
+        "play.champds.com,/fonddulacwi/event/77,us:county:55039,fallback,t,one\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(registry, "DATA_DIR", tmp_path)
+    registry.clear_caches()
+    try:
+
+        def ids(path):
+            return [
+                r.gov_id for r in resolver._match_override("play.champds.com", path, {})
+            ]
+
+        assert ids("/fonddulacwi/event/77") == ["us:county:55039"]
+        assert ids("/fonddulacwi/event/77/media") == ["us:county:55039"]
+        assert ids("/fonddulacwi/event/77?x=1") == ["us:county:55039"]
+        assert ids("/fonddulacwi/event/770") == []
+        assert ids("/fonddulacwi/event/7712") == []
+    finally:
+        registry.clear_caches()
