@@ -320,7 +320,6 @@ CANARY_URLS: dict[str, list[str]] = {
     "boxcast": [
         "https://boxcast.tv/view/city-council-meeting-081926-kdhkjrwnostnrznx7yxy"
     ],
-    "youtube": ["https://www.youtube.com/watch?v=uNDJRR3ywVo"],
 }
 
 # Registered platforms that deliberately have no canary URL, each with the
@@ -333,6 +332,16 @@ CANARY_URLS: dict[str, list[str]] = {
 # every registered platform appears in exactly one of the two, so removing
 # a platform from here without adding a URL (or vice versa) fails CI.
 CANARY_EXCLUSIONS: dict[str, str] = {
+    "youtube": (
+        "Removed 2026-10-16 (backlog triage; found reading canary logs for "
+        "WO-1112). From a GitHub runner YouTube answers yt-dlp with 'Sign "
+        "in to confirm you're not a bot' on every run, yet the sample "
+        "still passed: has_real_content() is satisfied by a video_url "
+        "alone, so a real caption break could never turn it red. And "
+        "CLAUDE.md's rule is that YouTube is fetched only from the drip "
+        "Mac, not from these runners. Was "
+        "https://www.youtube.com/watch?v=uNDJRR3ywVo."
+    ),
     "swagit": (
         "No real Swagit meeting URL appears anywhere in this repo's text "
         "(tests/test_swagit.py's own header says so explicitly -- 'no real "
