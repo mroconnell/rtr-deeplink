@@ -2319,44 +2319,40 @@ actionability sections above.
 
 ### `[IMPROVEMENT-ROUND]` `[BIG]` Agenda text as a first-class, **versioned** asset — model, resolver, every adapter, and display
 
-- **Issue**: agendas have no first-class text representation. `MeetingPage`
-  has no agenda text field — `agenda_items` is video-timestamped chapter
-  markers, not agenda text, and `agenda_link`
-  ([archive/db/models.py:83](archive/db/models.py:83)) is a bare URL that's
-  never fetched. A small, non-versioned slice already shipped 2026-08-31
-  (PR #640): CivicPlus and CivicClerk now set a real `agenda_link`/
-  `packet_link` at resolve time from data they already fetch — no nightly
-  sweep, no versioning, no diffing, per Ryan's explicit call. Everything
-  else below (the versioned model, fetch-and-extract across ~23 adapters,
-  display/search) is still open.
-- **Impact**: agenda text isn't stored, searchable, versioned, or diffable
-  across the ~23 adapters that surface `agenda_link` at best today. It also
-  blocks the `rtr-upcoming` integration: that sister repo resolves agendas
-  across all 108 Bay Area jurisdictions but deliberately has no accounts,
-  saved searches, or email alerts of its own, while this repo has all four
-  — the ingest gate at [app/main.py:744](app/main.py:744) already accepts a
-  video-less page on `agenda_link` alone, so agenda **text** is the one
-  thing it can't yet carry.
-- **Next action**: get Ryan's call on scope/sequencing — see
-  `AGENDA_TEXT_BIG_VERSION_BRIEF.md` for the proposed step order (versioned
-  model + migration first, one shared extraction path second tested against
-  2-3 real documents, per-adapter rollout third cheapest-first, display/
-  diff/search last) and the three options put to him (start at step 1 only;
-  start at steps 1-2 together; hold entirely for the `rtr-upcoming`
-  forcing function). If greenlit, start with the versioned child table
-  (mirrors `TranscriptVersion`'s content-hash-dedupe shape — agendas get
-  amended, transcripts don't).
-- **Constraint**: this is a port of a working reference implementation
-  (`rtr-upcoming`, `app/agenda_text.py` + `app/agenda_diff.py` +
-  `UPCOMING_AGENDAS_FIELD_GUIDE.md`), not a from-scratch design. Read
-  `docs/investigations/agenda_text_versioned_asset.md` in full before
-  touching piece 2 (extraction) or piece 3 (display/search) — it holds a
-  trap list where skipping any single item cost a full day when first hit
-  in that repo.
-- **History**: not started (beyond PR #640, see `BACKLOG_DONE.md`). Full
-  design reasoning and trap list:
-  `docs/investigations/agenda_text_versioned_asset.md`. Sequencing options:
-  `AGENDA_TEXT_BIG_VERSION_BRIEF.md`.
+- **Issue**: steps 1 and 2 shipped in WO-1966 (2026-10-16, see
+  `BACKLOG_DONE.md`): an `agenda_versions` table and one shared
+  extraction path (`app/agenda_text.py`, ported from `rtr-upcoming`).
+  CivicPlus and CivicClerk agenda **and** packet text is read once at
+  ingest and stored per page, deduplicated by content hash. Still open:
+  nobody can see or search the text, and 11 other adapter files that set
+  `agenda_link` (13 in all; 4 set `packet_link`) are not read.
+- **Impact**: the stored text is invisible to readers until display and
+  search exist. It also still blocks the `rtr-upcoming` integration: the
+  ingest gate at [app/main.py](app/main.py) accepts a video-less page on
+  `agenda_link` alone, and text now has a place to land, but nothing
+  surfaces it.
+- **Next action**: (1) **Check WO-1966 against real agendas first**: no
+  real agenda file could be fetched from the cloud session that built it
+  (the network proxy refused every government host). After deploy, ingest
+  2-3 real CivicPlus and CivicClerk meetings and read their
+  `agenda_versions` rows. (2) **Display**: the newest agenda text on
+  `/m/{slug}`, loaded per page only, and a version list. (3) **Amendment
+  classification and diff**: port `rtr-upcoming`'s `agenda_diff.py` and
+  its `initial`/`amendment`/`reissued`/`alternate` kinds; compare an
+  agenda with an agenda and a packet with a packet; ignore changes that
+  only reflect a newer `extractor_version`. (4) **Search**: a separate
+  index over `agenda_versions`, never folded into `search_corpus` (packet
+  text runs to 1.8M characters). (5) **Other adapters**: Legistar and
+  Granicus next, each checked against a real sample first.
+- **Constraint**: port, don't reinvent. Read
+  `docs/investigations/agenda_text_versioned_asset.md` before touching
+  extraction or display. Ryan, 2026-10-16: store agendas and packets; no
+  nightly re-read (read at ingest only). Never load agenda text in a query
+  that spans every page. PDFs parse only in the child process
+  (`app/agenda_extract_worker.py`).
+- **History**: PR #640 (2026-08-31) added the links. WO-1966 (2026-10-16)
+  added the table, the extraction path and the CivicPlus/CivicClerk
+  ingest read. Sequencing: `AGENDA_TEXT_BIG_VERSION_BRIEF.md`.
 
 ### Product direction & open strategic questions
 

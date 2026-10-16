@@ -11890,7 +11890,8 @@ async def delete_meeting_pages_by_slug(slugs: list[str], *, dry_run: bool) -> di
     row that references them (TranscriptionJob, TranscriptVersion,
     MeetingPageUrlAlias, SavedItem, MeetingPageThumbnail, SocialPost) --
     there's no DB-level ON DELETE CASCADE on any of those foreign keys
-    (MeetingHighlight is the one exception, and needs no handling here), so
+    (MeetingHighlight and AgendaVersion, WO-1966, are the exceptions, and
+    need no handling here), so
     a plain `session.delete(page)` would fail with a real FK violation, not
     silently cascade. TranscriptionJob is deleted before TranscriptVersion
     since a job can reference a version via `transcript_version_id`.
