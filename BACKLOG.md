@@ -896,11 +896,11 @@ sync. History: `BACKLOG_DONE.md` `[Done 2026-08-22]`.
 
 ### Granicus: discover a tenant's `view_id` so a bare tenant hub lists its video meetings `[IMPROVEMENT-ROUND]`
 
-- **Issue**: `granicus.py`'s `list_recent_video_meetings()` returns `[]` without a `view_id`, and nothing discovers one from a bare host like `cityoftacoma.granicus.com`. `wo134_confirmed_hits_ingest.granicus_locate_listing()` tries only `view_id=1..5` on its own session.
-- **Impact**: about 240 Granicus tenants, the largest pool. A bare hub, pasted in or swept, finds no meeting even when one exists.
-- **Next action**: build a bounded `view_id` probe on Meeting Finder's `Fetcher` and call it ahead of `list_recent_video_meetings()` in the listing path and in `granicus.py`'s `resolve()`. Use the 2026-10-07 measurement to choose which ids to probe.
-- **Constraint**: ids 1..5 are not enough (11 of 25 feeds only at 44-50; Alexandria at 29 and 57). `ViewPublisher.php` without a view_id is gated on purpose. Probe bounded numeric ids only, with a hard delay and no redirects followed.
-- **History**: `meeting_finder/listing.py` WO-1030 comment; `~/Documents/rtr-findmeeting/data/granicus_norss_rss_check_2026-10-07/`; findmeeting PR 73.
+- **Issue**: a bare Granicus host like `cityoftacoma.granicus.com` does not say which `view_id` lists its videos. Meeting Finder's live probe (`_granicus_discover_view_id()`) tries only ids 1-6. WO-1965 added the stored map `app/utils/jurisdiction_data/granicus_views.csv`, read first by that probe and by `granicus.py`'s `resolve()` for a pasted bare host, and the script that fills it. The map holds only 4 seed rows (feeds saved as test fixtures).
+- **Impact**: about 240 Granicus tenants, the largest pool. Until the map is filled, a bare hub, pasted in or swept, still finds no meeting unless its feed is at ids 1-6.
+- **Next action**: run `scripts/probe_granicus_view_ids.py` from the Mac (the cloud gets a 403 from granicus.com): first a dry run on the 274 no-feed hosts from the 2026-10-07 check, then again with `--write`, and commit the new rows.
+- **Constraint**: ids 1-6 are not enough (11 of 25 feeds only at 44-50; Alexandria at 29 and 57), so the script probes 1-60. `ViewPublisher.php` without a view_id is gated on purpose. A row proves the host serves the feed, not who owns the host: confirm an owner by hand before pinning or subscribing.
+- **History**: WO-1965 (stored map, loader, probe script); `meeting_finder/listing.py` WO-1030 comment; `~/Documents/rtr-findmeeting/data/granicus_norss_rss_check_2026-10-07/`; findmeeting PR 73.
 
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
