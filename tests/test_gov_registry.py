@@ -2566,6 +2566,9 @@ def test_alaska_city_and_borough_displays_as_the_bare_name():
     assert display_name(government_for_id("us:place:0270540")) == "Sitka, AK"
     assert display_name(government_for_id("us:place:0236400")) == "Juneau, AK"
     assert display_name(government_for_id("us:place:0203000")) == "Anchorage, AK"
+    # Census LSAD "corporation" (one row nationally), backlog triage
+    # 2026-10-16: the hub read "Ranson corporation, WV".
+    assert display_name(government_for_id("us:place:5466988")) == "Ranson, WV"
 
 
 def test_a_channel_hint_fires_a_channel_rule_on_every_youtube_host(monkeypatch):
@@ -2707,6 +2710,8 @@ def test_a_subdomain_state_must_hold_a_government_of_that_name(
         ("Juneau, AK", "us:place:0236400"),
         ("City and Borough of Juneau, AK", "us:place:0236400"),
         ("Sitka, AK", "us:place:0270540"),
+        # Census "Ranson corporation" -- "Ranson, WV" minted before.
+        ("Ranson, WV", "us:place:5466988"),
         ("Lexington, KY", "us:place:2146027"),
         ("Lexington-Fayette Urban County Government, KY", "us:place:2146027"),
         ("Athens, GA", "us:place:1303440"),
@@ -4293,4 +4298,16 @@ def test_x_township_charter_fallback_never_picks_from_an_ambiguous_name():
     )
     assert resolver.resolve_government("Kalamazoo Township, MI").gov_id.startswith(
         "us:cousub:"
+    )
+
+
+def test_census_corporation_strip_leaves_indiana_school_corporations_alone():
+    """The "corporation" strip is case-sensitive: Indiana's capitalized
+    "School Corporation" is part of a real school-district name, and its
+    table key must not change."""
+    from app.utils.jurisdiction_enrich import _normalize_name
+
+    assert _normalize_name("Ranson corporation") == "ranson"
+    assert _normalize_name("Lebanon Community School Corporation") == (
+        "lebanon community school corporation"
     )

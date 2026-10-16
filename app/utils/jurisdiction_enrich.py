@@ -94,6 +94,12 @@ _GOVERNMENT_TYPE_RE = re.compile(
     r"city and borough|urban county)$",
     re.IGNORECASE,
 )
+# Census LSAD "CN" -- written as a lowercase trailing "corporation" on
+# exactly one row nationally, "Ranson corporation, WV" (us:place:5466988).
+# Without it "Ranson, WV" matched no key and minted `rtr:us:wv:ranson`.
+# Case-SENSITIVE on purpose: 167 Indiana school-district rows end in a
+# capitalized "School Corporation", which is part of their real name.
+_CENSUS_CORPORATION_RE = re.compile(r"\s+corporation$")
 
 # Query-side counterpart to `_GOVERNMENT_TYPE_RE` above -- a real archived
 # page names a consolidated government in a shorter, less formal shape
@@ -147,6 +153,8 @@ def _normalize_name(name: str) -> str:
     name = name.strip()
     name = _BALANCE_SUFFIX_RE.sub("", name)
     name, government_stripped = _GOVERNMENT_TYPE_RE.subn("", name)
+    if not government_stripped:
+        name, government_stripped = _CENSUS_CORPORATION_RE.subn("", name)
     if government_stripped:
         # The government-type phrase ("unified government" etc.) IS the
         # generic type annotation here -- stop, don't also run the plain
