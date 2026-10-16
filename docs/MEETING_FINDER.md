@@ -844,7 +844,11 @@ confirmed fixed against the live government afterward:
   `scripts/wo134_confirmed_hits_ingest.py`'s own
   `granicus_locate_listing()` already uses, ported to Meeting Finder's own
   `Fetcher` so it respects the budget/politeness) and hands the real
-  `ViewPublisher.php?view_id=N` URL to every other lister.
+  `ViewPublisher.php?view_id=N` URL to every other lister. Since WO-1965
+  it first reads `app/utils/jurisdiction_data/granicus_views.csv` (no
+  fetch): ids 1-60 probed once from the office Mac by
+  `scripts/probe_granicus_view_ids.py`, because many feeds sit at ids
+  44-50, out of reach of the live 1..6 probe.
 - **Breadth before depth, for real.** The phase loop now runs a cheap
   "shallow" pass (Identify -> List -> Resolve) across every fork FIRST,
   and only spends the more expensive Scan/Hop budget on a fork once none

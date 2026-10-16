@@ -10430,6 +10430,118 @@ async def correct_transcript_version_language(
         return {"slug": slug, "version_id": version.id, "language": version.language}
 
 
+async def correct_transcript_segment_text(
+    *,
+    slug: str,
+    segment_index: int,
+    old_text: str,
+    new_text: str,
+    version_id: Optional[int] = None,
+) -> Optional[dict]:
+    """Admin correction for a wrong word or name in one stored segment
+    (WO-1964). Same targeting as `correct_transcript_version_language()`
+    above: the page's current default version unless `version_id` is given.
+
+    Why it edits in place rather than adding a new version (the shape
+    `create_segment_drop_version()` uses): the search corpus is built from
+    *every* version of a page, so a new version would leave the wrong
+    word searchable through the old one. The history is kept anyway: each
+    change is appended to that segment's own `corrections` list
+    (`{"old", "new", "at"}`), inside the existing `segments` JSON, so no
+    migration is needed and a later drop-segments copy carries it along.
+
+    `content_hash` is left as it was on purpose. It is the hash of the
+    text as ingested, and ingest_resolution() dedups on it, so a re-push
+    of the same uncorrected transcript lands on this corrected version
+    instead of creating a new one that brings the wrong word back.
+
+    `old_text` must occur exactly once in the segment's text. That is the
+    guard against a stale or wrong edit: zero matches means the text is
+    not what the caller saw, more than one means the edit is ambiguous.
+
+    Returns None if the page or version does not exist, an
+    `{"error": ...}` dict for a refused edit, or the updated segment.
+    """
+    if not old_text:
+        return {"error": "empty_old_text", "message": "old_text must not be empty."}
+    if old_text == new_text:
+        return {
+            "error": "no_change",
+            "message": "new_text is the same as old_text.",
+        }
+
+    async with async_session() as session:
+        page = (
+            (await session.execute(select(MeetingPage).where(MeetingPage.slug == slug)))
+            .scalars()
+            .first()
+        )
+        if page is None:
+            return None
+
+        if version_id is not None:
+            version = await session.get(TranscriptVersion, version_id)
+            if version is None or version.meeting_page_id != page.id:
+                return None
+        else:
+            version = (
+                (
+                    await session.execute(
+                        select(TranscriptVersion).where(
+                            TranscriptVersion.meeting_page_id == page.id,
+                            TranscriptVersion.is_default.is_(True),
+                        )
+                    )
+                )
+                .scalars()
+                .first()
+            )
+            if version is None:
+                return None
+
+        segments = list(version.segments or [])
+        if segment_index < 0 or segment_index >= len(segments):
+            return {
+                "error": "bad_segment_index",
+                "message": f"segment_index must be 0 to {len(segments) - 1}.",
+            }
+
+        segment = dict(segments[segment_index])
+        text = segment.get("text") or ""
+        count = text.count(old_text)
+        if count != 1:
+            return {
+                "error": "old_text_not_unique" if count else "old_text_not_found",
+                "message": f"old_text occurs {count} times in that segment; "
+                "it must occur exactly once.",
+                "segment_text": text,
+            }
+
+        segment["text"] = text.replace(old_text, new_text, 1)
+        segment["corrections"] = [
+            *(segment.get("corrections") or []),
+            {
+                "old": old_text,
+                "new": new_text,
+                "at": datetime.now(timezone.utc).isoformat(),
+            },
+        ]
+        segments[segment_index] = segment
+        # A new list object, so SQLAlchemy sees the JSON column change.
+        version.segments = segments
+
+        await session.flush()
+        await _refresh_search_corpus(session, page)
+        await session.commit()
+        return {
+            "slug": slug,
+            "version_id": version.id,
+            "segment_index": segment_index,
+            "text": segment["text"],
+            "corrections": segment["corrections"],
+        }
+
+
 def _last_segment_end_seconds(segments: list) -> float:
     """Latest `end` (falling back to `start`) across all segments, 0.0 for
     an empty list. Segments aren't guaranteed sorted chronologically (see

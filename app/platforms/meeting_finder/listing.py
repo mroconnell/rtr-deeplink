@@ -168,6 +168,7 @@ from app.platforms.champds import list_archive_events as champds_list_archive_ev
 from app.platforms.champds import parse_account_url as champds_parse_account_url
 from app.platforms.civicmedia import is_civicmedia_category_url
 from app.platforms.direct_file import is_direct_file_url
+from app.platforms.granicus import known_granicus_views_for
 from app.platforms.swagit import known_views_for
 from app.platforms.vimeo import (
     VimeoOwnerListing,
@@ -1669,6 +1670,19 @@ async def _granicus_discover_view_id(
     if not netloc:
         return None
     name_words = _distinctive_words(gov_name)
+    # WO-1965: a view stored in `granicus_views.csv` (found once, ids
+    # 1-60, by `scripts/probe_granicus_view_ids.py`) is used without any
+    # fetch. Same pick rule as the live probe below: the channel title
+    # that names the government, else the first row.
+    stored = known_granicus_views_for(netloc)
+    if stored:
+        view_id = stored[0][0]
+        if name_words:
+            for stored_view, channel_title in stored:
+                if _distinctive_words(channel_title) & name_words:
+                    view_id = stored_view
+                    break
+        return f"https://{netloc}/ViewPublisher.php?view_id={view_id}"
     populated: List[Tuple[int, str]] = []
     for view_id in range(1, _GRANICUS_VIEW_ID_PROBE_MAX + 1):
         rss_url = f"https://{netloc}/ViewPublisherRSS.php?view_id={view_id}&mode=video"

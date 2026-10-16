@@ -1,0 +1,5 @@
+host,view_id,channel_title,evidence,checked
+pwcgov.granicus.com,23,"Prince William County, Virginia: Streaming Media Archive2",real video RSS saved as tests/fixtures/granicus/pwcva_view23_rss_video.xml (WO-333; 400 clip links),2026-09-13
+tulsa-ok.granicus.com,4,"City of Tulsa, OK: TGOV - Tulsa Government Access Television",real video RSS saved as tests/fixtures/granicus/tulsa_view4_rss_clip7694.xml (WO-47; 4 clip links),2026-08-23
+kansascity.granicus.com,2,City of Kansas City: Video on Demand: Meetings,real video RSS saved as tests/fixtures/granicus_channel/kansascity_viewpublisher_rss.xml (PR #538; 16 clip links),2026-08-29
+yonkersny.granicus.com,1,"Yonkers, NY: New View",real video RSS saved as tests/fixtures/granicus_channel/yonkersny_viewpublisher_rss.xml (WO-145; 20 clip links),2026-09-10

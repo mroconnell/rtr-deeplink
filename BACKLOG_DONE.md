@@ -22,6 +22,30 @@
 - Nothing reaches the drip until the Archive and resolver are deployed and the drip Mac's worktree (`~/rtr-deeplink-drip-worktree`) is brought to this `main`.
 - `daily_status.csv` has no new column. Request downloads count in `state.json`'s `today.audio_request_downloads`, and `drip.log` shows them as `audio-req`.
 - The resolver's own page for a fresh YouTube URL still resolves it with yt-dlp when a reader first pastes it. That is the core resolve, not this button, and it is unchanged.
+## [Done 2026-10-16] No endpoint can correct a wrong word or name in a stored transcript
+
+**WO-1964. Not live until the Archive is deployed.** The route is on `main` only once this PR merges.
+
+**What was built.** `POST /internal/transcript-version/correct-text` in `archive/main.py`, beside correct-language and correct-warnings. Same admin token. Input: `slug`, `segment_index` (0-based, as drop-segments counts), `old_text`, `new_text`, and an optional `version_id` (the page's default version when left out). The work is in `crud.correct_transcript_segment_text()`.
+
+**Refusals.** The route changes nothing and answers:
+
+| Case | Answer |
+| --- | --- |
+| No page, or the version belongs to another page | 404 |
+| `old_text` not in the segment | 409 `old_text_not_found` |
+| `old_text` in the segment more than once | 409 `old_text_not_unique` |
+| Segment index out of range, empty `old_text`, or `new_text` the same | 400 |
+
+**Record of each change.** Each fix is added to that segment's own `corrections` list as `{"old", "new", "at"}`, inside the existing `segments` JSON. No migration was needed. A later drop-segments copy carries the record along.
+
+**Why it edits in place, not as a new version.** The search text (`search_corpus`) is built from every version of a page. A new version would leave the wrong word searchable through the old one. The route rebuilds the page's search text (and its stored highlight) after each fix.
+
+**Why `content_hash` is not changed.** It is the hash of the text as ingested, and ingest dedups on it. So a re-push of the same uncorrected transcript lands on the corrected version instead of bringing the wrong word back as a new one.
+
+**Tests.** `tests/test_correct_text_endpoint.py`, 5 tests: token gate, unknown slug, a fix with its record and the search text updated, each refusal, and a version from another page.
+
+**Still open.** The real fixes (Groton Hill first) wait on the deploy; see BACKLOG.md's "Known wrong names in Whisper transcripts are not fixed yet".
 
 ## [Done 2026-10-16] The "no adapter" comment on `MULTI_GOV_HOSTS` is out of date: BoxCast has an adapter, and Dropbox and Drive single files resolve through `direct_file` `[JUST-DO-IT]` `[EASY]`
 
