@@ -4042,7 +4042,10 @@ def _multi_gov_match_for_video_url(
     `amsva.wistia.com`, ...) may never get a blank-match rule -- see
     `app/utils/gov_registry/registry.py`'s own comment for why (the Oak
     Bluffs incident). `match` shapes mirror the real committed rows:
-    a bare YouTube video id, `vimeo:<id>`, `external_id=wistia:<id>`.
+    a bare YouTube video id, a bare Vimeo id, `external_id=wistia:<id>`.
+    A `vimeo:<id>` draft would be refused by the loader since WO-924
+    (`registry.match_shape_problem()`): the id sits in the URL path as
+    `/<id>`, never with that prefix.
     """
     if not video_url or not host:
         return None
@@ -4050,7 +4053,7 @@ def _multi_gov_match_for_video_url(
         return _extract_youtube_video_id(video_url)
     if host in ("vimeo.com", "player.vimeo.com", "www.vimeo.com"):
         match = _VIMEO_VIDEO_ID_RE.search(video_url)
-        return f"vimeo:{match.group(1)}" if match else None
+        return match.group(1) if match else None
     if host == "amsva.wistia.com":
         match = _WISTIA_MEDIA_ID_RE.search(video_url)
         return f"external_id=wistia:{match.group(1)}" if match else None

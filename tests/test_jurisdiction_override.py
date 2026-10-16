@@ -585,3 +585,18 @@ def test_multi_gov_match_for_video_url_still_resolves_a_real_youtube_id():
         )
         == "aaaaaaaaaaa"
     )
+
+
+# --- Backlog triage 2026-10-16: the Vimeo draft must use the bare id,
+# the only shape the loader accepts since WO-924. A `vimeo:<id>` draft
+# fails CI if a human pastes it into tenant_overrides.csv.
+
+
+def test_multi_gov_match_for_video_url_drafts_a_bare_vimeo_id_the_loader_accepts():
+    from app.utils.gov_registry import registry
+
+    match = crud._multi_gov_match_for_video_url(
+        "vimeo.com", "https://vimeo.com/1199438213?share=copy"
+    )
+    assert match == "1199438213"
+    assert registry.match_shape_problem("vimeo.com", match) is None
