@@ -4405,3 +4405,26 @@ def test_bare_ct_town_name_means_the_town_not_the_borough_inside_it(raw, gov_id)
     a bare name to the city/borough. Curated alias rows assert the town;
     the Illinois-style place-wins default elsewhere is unchanged."""
     assert resolver.resolve_government(raw).gov_id == gov_id
+
+
+@pytest.mark.parametrize(
+    "raw, gov_id",
+    [
+        ("West Springfield, MA", "us:place:2577890"),
+        ("Agawam, MA", "us:place:2500840"),
+        ("Weymouth, MA", "us:place:2578972"),
+        # Bare names that fell through to the same-named county.
+        ("Franklin, MA", "us:place:2525172"),
+        ("Barnstable, MA", "us:place:2503690"),
+        # The counties themselves are unchanged.
+        ("Franklin County, MA", "us:county:25011"),
+        ("Barnstable County, MA", "us:county:25001"),
+        # Outside MA "Town" in "<X> Town city" is part of the name.
+        ("Old Town, ME", "us:place:2355225"),
+    ],
+)
+def test_ma_town_city_places_resolve_by_bare_name(raw, gov_id):
+    """Backlog triage 2026-10-16. Census names 13 MA towns "<Name> Town
+    city"; only "Town of <Name>" reached them, so a bare name minted
+    (westspringfieldma.granicus.com) or landed on the county."""
+    assert resolver.resolve_government(raw).gov_id == gov_id
