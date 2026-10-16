@@ -1,5 +1,11 @@
 # Backlog — done
 
+## [Done 2026-10-16] Resolver: governments minted by our Find Meeting jobs resolve at the registry tier
+
+**What was done and why.** `registry.curated_aliases()` only looked names up in rows whose `source` starts "curated", so a government we minted (`findmeeting-tx-spd-...`, `findmeeting-pn-mint-563-...`, `findmeeting-match381-mint-...`) was found by name only at tier `unverified`, and 14 Texas mints resolved to a different id (12 to a county or place row sharing the first words, 2 to a slug twin). `CURATED_SOURCE_PREFIX` is now `("curated", "findmeeting-")`. A mint row is indexed by its own name only, last, and never over a national or hand-written row of the same state and name.
+
+**Result.** All 817 mint rows now resolve to their own id at `registry`. The 5,245 other rows resolve exactly as before. Takes effect on redeploy.
+
 ## [Done 2026-10-15] GitHub issue: "hard-coded secret" in the tier-3 queue file, and the repo had no secret scanner
 
 **What was done and why.** Someone opened a GitHub issue saying `scripts/tier3_auto_transcription_queue.txt` held a hard-coded secret and that bots had already picked it up. We checked the file with every value masked, so no secret was echoed into the session.
