@@ -164,7 +164,6 @@ from app.platforms.cablecast import (
     list_gallery_shows,
 )
 from app.platforms.champds import MEDIA_CLASS_RECORDED
-from app.platforms.champds import event_has_download as champds_event_has_download
 from app.platforms.champds import list_archive_events as champds_list_archive_events
 from app.platforms.champds import parse_account_url as champds_parse_account_url
 from app.platforms.civicmedia import is_civicmedia_category_url
@@ -861,25 +860,25 @@ async def _list_via_wordpress(
 #   1. The walker needed a slash after the customer, so the bare account
 #      page listed nothing (fixed in passive_verify too).
 #   2. It handed Resolve the 10 newest events. On most accounts those
-#      recordings are VOD2-only (no download link, so no playable
-#      `video_url`) or have no recording at all, and they carry no agenda
-#      attachment -- so Resolve kept none of them, not even as a
-#      meeting-without-video. The few downloadable events sit far down the
-#      list (Thompson's Station's newest is the 29th newest recording;
-#      Signal Mountain's the 113th).
+#      recordings are VOD2-only (no download link) or have no recording
+#      at all, and they carry no agenda attachment -- so Resolve kept none
+#      of them, not even as a meeting-without-video.
 #
-# So this lister lists up to `_CHAMPDS_LIST_LIMIT` events, then checks
-# the newest recordings (`EventMediaClassID` 2) one event call each for a
-# download link, up to `_CHAMPDS_DOWNLOAD_CHECK_LIMIT` calls and stopping
-# after `_CHAMPDS_DOWNLOADS_WANTED` finds. Found downloads are the
-# candidates (`has_video_hint=True`). With none found, every listed event
-# is handed back as a real meeting row: `has_video_hint=False` when the
-# event has no recording or was checked and has no download, `None` for a
-# recording past the check limit -- Resolve then reports
+# Ryan, 2026-10-16: a VOD2-only recording counts as video. Our
+# transcription reads the stream (`server_media_url`, WO-1045), and a
+# transcript with no player that links back to ChampDS still lets a
+# reader find the moment before going to the source. So every recording
+# (`EventMediaClassID` 2) is a candidate (`has_video_hint=True`) and
+# Resolve accepts it as tier 3. The download-link search this lister ran
+# before (up to 40 event calls, about 100 s per account) is gone: it only
+# existed to decide "video", and a download link no longer does.
+#
+# The event page the walk was handed is always a candidate, whatever its
+# age (Yuba County CA's `/event/31`, 2023, sits behind 76 newer
+# recordings). With no recording at all, every listed event goes back as
+# a real meeting row (`has_video_hint=False`), and Resolve reports
 # meeting-without-video with that row's title and date.
 _CHAMPDS_LIST_LIMIT = 400
-_CHAMPDS_DOWNLOAD_CHECK_LIMIT = 40
-_CHAMPDS_DOWNLOADS_WANTED = 3
 _CHAMPDS_EVENT_ID_RE = re.compile(r"/event/(\d+)", re.I)
 
 
@@ -927,13 +926,9 @@ async def _list_via_champds(
             note=f"{where}: the archive search found no events",
         )
     recorded = [e for e in events if e.get("media_class_id") == MEDIA_CLASS_RECORDED]
-    checked_no_download: set = set()
-    downloads: List[dict] = []
-    checks = 0
-    # The event page the walk was handed is checked first, whatever its
-    # age: confirmed live, Yuba County CA's `/event/31` (2023, the
-    # account's only download) was otherwise never looked at -- 76 newer
-    # recordings sit ahead of it.
+    counts = f"{where}: {len(events)} events listed, {len(recorded)} with a recording"
+    # A recording is video; with none, every event is a no-video meeting row.
+    rows = recorded or events
     given = _CHAMPDS_EVENT_ID_RE.search(urlparse(account_url).path)
     if given:
         given_id = int(given.group(1))
@@ -947,46 +942,13 @@ async def _list_via_champds(
                 "media_class_id": None,
             },
         )
-        checks += 1
-        has_download = await champds_event_has_download(customer, given_id)
-        if has_download:
-            downloads.append(given_row)
-        elif has_download is False:
-            checked_no_download.add(given_id)
-    for event in recorded:
-        if checks >= _CHAMPDS_DOWNLOAD_CHECK_LIMIT:
-            break
-        if len(downloads) >= _CHAMPDS_DOWNLOADS_WANTED:
-            break
-        if event["event_id"] in checked_no_download or event in downloads:
-            continue
-        checks += 1
-        has_download = await champds_event_has_download(customer, event["event_id"])
-        if has_download:
-            downloads.append(event)
-        elif has_download is False:
-            checked_no_download.add(event["event_id"])
-    counts = (
-        f"{where}: {len(events)} events listed, {len(recorded)} with a "
-        f"recording; checked {checks} recordings (newest first) for a "
-        f"download link, found {len(downloads)}"
-    )
-    if downloads:
-        candidates = [
-            _champds_candidate(e, account_url=account_url, has_video_hint=True)
-            for e in downloads[:limit]
-        ]
-        return ListResult(
-            candidates=candidates, lister="champds_archive", outcome=None, note=counts
-        )
+        rows = [given_row] + [e for e in rows if e["event_id"] != given_id]
     candidates = []
-    for event in events[:limit]:
-        if event.get("media_class_id") != MEDIA_CLASS_RECORDED:
-            hint: Optional[bool] = False
-        elif event["event_id"] in checked_no_download:
-            hint = False
-        else:
-            hint = None
+    for event in rows[:limit]:
+        media_class = event.get("media_class_id")
+        # `None` only for a handed-in event the search did not list: its
+        # media class is unknown, so it is not called "no video".
+        hint = None if media_class is None else media_class == MEDIA_CLASS_RECORDED
         candidates.append(
             _champds_candidate(event, account_url=account_url, has_video_hint=hint)
         )

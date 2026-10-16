@@ -216,20 +216,29 @@ MULTI_GOV_HOSTS: FrozenSet[str] = frozenset(
         # path segment (`clerkshq.com/YellowSprings-OH`), never a
         # subdomain -- see `CORPORATE_HOSTS_BY_PLATFORM`'s own comment.
         "clerkshq.com",
-        # No adapter in `app/platforms/` resolves these yet (see
-        # `utah_pmn.py`'s own docstring for two of them, and BACKLOG.md),
-        # but a `tenant_overrides.csv` row could still name one today,
-        # and the same safeguard applies the moment it does.
+        # Truly unsupported: no adapter in `app/platforms/` resolves
+        # these (see `utah_pmn.py`'s own docstring for two of them, and
+        # BACKLOG.md). `livestream.com` is dead rather than unsupported:
+        # on 2026-10-13 its robots.txt and an event page both answered
+        # 302 to `vimeo.com/features/livestreaming` (rtr-business
+        # `research/UNSUPPORTED_PLATFORMS.md`). A `tenant_overrides.csv`
+        # row could still name one, and the same safeguard applies the
+        # moment it does.
         "facebook.com",
         "fb.watch",
-        "boxcast.tv",
         "livestream.com",
         "soundcloud.com",
+        "sharepoint.com",
+        # Something DOES resolve these, but they are still shared by many
+        # unrelated governments, so they stay listed for pin safety:
+        # `boxcast.tv` has its own adapter (`boxcast.py`), and a single
+        # Dropbox or Drive file with a real filename resolves through
+        # `direct_file.py`. A blank-match pin is still refused on them.
+        "boxcast.tv",
         "drive.google.com",
         # Google Drive's file download host; same shared shape as drive.google.com.
         "drive.usercontent.google.com",
         "dropbox.com",
-        "sharepoint.com",
         # Lake Minnetonka Communications Commission's shared Cablecast
         # PublicSite tenant -- confirmed live 2026-09-12 (WO-306): one
         # subdomain serves at least Shorewood, Minnetonka, Greenwood,

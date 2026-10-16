@@ -7,8 +7,10 @@ fixtures below are trimmed to just what the adapter reads, but every
 string is a real one pulled from a real page, not invented.
 """
 
+from pathlib import Path
+
 from app.platforms.base import detect_platform
-from app.platforms.iqm2 import IQM2AssetFinder
+from app.platforms.iqm2 import IQM2AssetFinder, _meeting_body_from_calendar
 
 from aiohttp_mock import FakeResponse, mock_session
 
@@ -414,3 +416,98 @@ def test_extract_caption_track_returns_none_when_no_tracks_entry():
     # both real captured pages with a populated video but no tracks array
     # at all in their SetupJWPlayer call.
     assert IQM2AssetFinder._extract_caption_track(SCC_BOS_SPLIT_HTML) is None
+
+
+# --- meeting body from the calendar list page (backlog triage 2026-10-16) ---
+
+_FIXTURES = Path(__file__).parent / "fixtures" / "iqm2"
+
+
+def test_meeting_body_reads_the_row_matching_the_meeting_id_on_a_real_calendar():
+    """Real calendar markup (Crow Wing County, MN, captured live
+    2026-09-29): three MeetingRows, two of them the same body. Each id
+    gets its own row's body, whatever position the row is in."""
+    html = (_FIXTURES / "crowwing_calendar_2025.html").read_text()
+    assert _meeting_body_from_calendar(html, "21834") == (
+        "Planning Commission/Board of Adjustment"
+    )
+    assert _meeting_body_from_calendar(html, "21831") == (
+        "County Board of Commissioners"
+    )
+    assert _meeting_body_from_calendar(html, "21877") == (
+        "County Board of Commissioners"
+    )
+    # An id with no row on the page gives nothing, never a neighbour's body.
+    assert _meeting_body_from_calendar(html, "99999") is None
+
+
+# SYNTHETIC calendar page for Santa Clara County's 2026-08-11 Board of
+# Supervisors meeting (ID 17601, the real meeting SCC_BOS_* above). The
+# MeetingRow / RowLink / RowDetails markup is copied from the real Crow
+# Wing fixture; the body and type ("Board of Supervisors", "Regular
+# Meeting") come from that meeting's real <title>. The first row is a
+# decoy -- SCC's real Personnel Board meeting (ID 17321, a different day
+# in reality) -- placed first so a position-based match would pick the
+# wrong body. Not yet checked: a live SCC or Atlanta calendar response
+# for this exact day.
+SCC_BOS_CALENDAR_URL = (
+    "https://sccgov.iqm2.com/citizens/calendar.aspx?View=List"
+    "&From=8/11/2026&To=8/11/2026"
+)
+SCC_BOS_CALENDAR_HTML = """
+<html><body>
+<div class="Row MeetingRow" id="divRow">
+<div class="RowTop">
+<div class="RowLink"><a href="/Citizens/Detail_Meeting.aspx?ID=17321">Aug 11, 2026 9:00 AM </a></div>
+</div>
+<div class="RowBottom"><div class="RowIcon"> </div><div class="MainScreenText RowDetails">Personnel Board - Business Meeting</div></div>
+</div>
+<div class="Row MeetingRow Alt">
+<div class="RowTop">
+<div class="RowLink"><a href="/Citizens/Detail_Meeting.aspx?ID=17601">Aug 11, 2026 9:30 AM </a></div>
+</div>
+<div class="RowBottom"><div class="RowIcon"> </div><div class="MainScreenText RowDetails">Board of Supervisors - Regular Meeting</div></div>
+</div>
+</body></html>
+"""
+
+
+async def test_resolve_takes_meeting_body_from_that_days_calendar_row():
+    routes = {
+        SCC_BOS_OUTLINE_URL: FakeResponse(
+            status=200, text=SCC_BOS_OUTLINE_HTML, url=SCC_BOS_OUTLINE_URL
+        ),
+        SCC_BOS_SPLIT_URL: FakeResponse(
+            status=200, text=SCC_BOS_SPLIT_HTML, url=SCC_BOS_SPLIT_URL
+        ),
+        SCC_BOS_CALENDAR_URL: FakeResponse(
+            status=200, text=SCC_BOS_CALENDAR_HTML, url=SCC_BOS_CALENDAR_URL
+        ),
+    }
+
+    with mock_session(routes):
+        result = await IQM2AssetFinder().resolve(SCC_BOS_URL)
+
+    assert result.meeting_body == "Board of Supervisors"
+    assert result.title == "Board of Supervisors Regular Meeting"
+
+
+async def test_resolve_keeps_the_page_when_the_calendar_fetch_fails():
+    routes = {
+        SCC_BOS_OUTLINE_URL: FakeResponse(
+            status=200, text=SCC_BOS_OUTLINE_HTML, url=SCC_BOS_OUTLINE_URL
+        ),
+        SCC_BOS_SPLIT_URL: FakeResponse(
+            status=200, text=SCC_BOS_SPLIT_HTML, url=SCC_BOS_SPLIT_URL
+        ),
+        SCC_BOS_CALENDAR_URL: FakeResponse(
+            status=500, text="error", url=SCC_BOS_CALENDAR_URL
+        ),
+    }
+
+    with mock_session(routes):
+        result = await IQM2AssetFinder().resolve(SCC_BOS_URL)
+
+    assert result.meeting_body is None
+    assert result.video_url is not None
+    assert result.title == "Board of Supervisors Regular Meeting"

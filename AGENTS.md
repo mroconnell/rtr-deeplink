@@ -91,8 +91,7 @@ under everything else. This repo extracts and fixes just that part.
   genuinely garbled at the source, language misdetected as Portuguese as
   a result; video was missing until the 2026-08-08 fix for
   MediaPlayer.php pages that only embed a legacy Flash/RTMP player — see
-  BACKLOG_DONE.md), Whitehall OH
-  (CivicClerk, agenda-only), Calgary AB (eScribe, video but no captions
+  BACKLOG_DONE.md), Calgary AB (eScribe, video but no captions
   yet). eScribe's populated-captions gap closed 2026-08-18: Peel Region,
   ON (`pub-peelregion.escribemeetings.com`, real "Regional Council"
   meeting, iSiLIVE video) resolves with 1101 real caption segments, zero

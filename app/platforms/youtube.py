@@ -81,6 +81,14 @@ _NUMERIC_SLASH_DATE_RE = re.compile(r"\b(\d{1,2})[/-](\d{1,2})[/-](\d{4})\b")
 # specific shape WO-277 found ("2020 3 16") that the two patterns above
 # don't match.
 _BARE_YMD_DATE_RE = re.compile(r"\b(\d{4})[\s-](\d{1,2})[\s-](\d{1,2})\b")
+# M/D/YY or M-D-YY, read as 20YY. Two real WO-226 titles use it: Harvey IL
+# "Finance committee meeting 8-24-26", Dallas OR "8/17/26 City Council
+# Meeting". Tried last, with one separator used throughout and no letter,
+# digit, colon, dot or other separator touching either end, so a video id,
+# a time or a longer number never reads as a date.
+_TWO_DIGIT_YEAR_DATE_RE = re.compile(
+    r"(?<![\w:./-])(\d{1,2})([/-])(\d{1,2})\2(\d{2})(?![\w:./-])"
+)
 
 # Real dates only -- reject a plausible-looking but nonsensical year
 # (e.g. a stray "2024" budget-ordinance number that happens to sit next
@@ -128,6 +136,16 @@ def _parse_meeting_date_from_title(title: Optional[str]) -> Optional[str]:
         year, month, day = int(m.group(1)), int(m.group(2)), int(m.group(3))
         if 1 <= month <= 12 and 1 <= day <= 31:
             parsed = _valid(year, month, day)
+            if parsed:
+                return parsed
+
+    m = _TWO_DIGIT_YEAR_DATE_RE.search(title)
+    if m:
+        a, b, year = int(m.group(1)), int(m.group(3)), 2000 + int(m.group(4))
+        # A 2-digit year is a weaker signal: also refuse one past next year
+        # ("12-12-99" is not 2099).
+        if 1 <= a <= 12 and 1 <= b <= 31 and year <= datetime.date.today().year + 1:
+            parsed = _valid(year, a, b)
             if parsed:
                 return parsed
 
