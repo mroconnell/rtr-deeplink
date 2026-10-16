@@ -301,50 +301,37 @@ def test_leading_type_word_recognizes_the_newly_widened_words():
     assert resolver._leading_type_word("Cottage Grove") == ""
 
 
-def test_regional_municipality_of_durham_type_word_widened_but_resolution_unchanged():
-    # Honest, current-state test -- NOT what was originally expected here.
-    # "Region of Peel, ON" (parametrized above) resolves correctly to
-    # `ca:cd`. "Regional Municipality of Durham, ON" does not, and this
-    # is a PRE-EXISTING `jurisdiction_enrich.finalize_jurisdiction()`
-    # behavior, unrelated to and unchanged by this pass's widening (this
-    # test never touches `_LEADING_TYPE_RE`/`_COMPARISON_PREFIX_RE`,
-    # confirmed by reproducing it directly against `finalize_jurisdiction()`
-    # alone): `_split_entity_prefix()` reads "Regional Municipality of
-    # Durham" as an "<Entity> of <Jurisdiction>" shape (the same pattern
-    # built for "Housing Authority of the County of Santa Clara") and
-    # splits it into meeting_body="Regional Municipality",
-    # jurisdiction="Durham, ON" -- but unlike a housing authority, "Regional
-    # Municipality of X" IS the government's own identity, not a body
-    # within "Durham". By the time rung 3 classifies, the entity prefix
-    # is already gone, so "Durham" alone classifies as `other` and mints
-    # `rtr:ca:on:durham` instead of reaching `ca:cd`. A new, separate
-    # BACKLOG.md entry logs this (out of scope for this pass -- fixing it
-    # means teaching `_split_entity_prefix()`/`_ENTITY_OF_PLACE_RE` to
-    # recognize "Regional Municipality"/"Region"/"County" as
-    # identity-carrying prefixes, not body prefixes, which is a
-    # `jurisdiction_enrich.py` change well beyond a regex word-list
-    # widening). Pinned here as found, not silently worked around.
-    match = resolve("Regional Municipality of Durham, ON")
-    assert match.tier == resolver.TIER_UNVERIFIED
-    assert match.gov_id == "rtr:ca:on:durham"
-    assert match.meeting_body == "Regional Municipality"
+@pytest.mark.parametrize(
+    "raw, gov_id",
+    [
+        ("Regional Municipality of Durham, ON", "ca:cd:3518"),
+        ("Regional Municipality of York, ON", "ca:cd:3519"),
+        ("Region of Peel, ON", "ca:cd:3521"),
+    ],
+)
+def test_regional_municipality_of_x_resolves_as_the_government(raw, gov_id):
+    # Was pinned as "resolution unchanged" (WO-105): rung 2's entity split
+    # made "Regional Municipality" a meeting body and "Durham" minted
+    # `rtr:ca:on:durham`. Fixed in the 2026-10-16 backlog triage: a raw
+    # Canadian upper-tier name keeps its full form at rung 3. The
+    # housing-authority split this mechanism exists for is unaffected
+    # (the "Housing Authority of the County of Santa Clara" test below).
+    match = resolve(raw)
+    assert match.tier == resolver.TIER_REGISTRY
+    assert match.gov_id == gov_id
+    assert not match.meeting_body
 
 
-def test_district_of_north_vancouver_type_word_extracted_but_not_yet_resolved():
-    # Honest, current-state test, not an aspirational one: "District of
-    # North Vancouver" is a real, current BC municipality, and the
-    # widened `_leading_type_word()` now correctly reads its type word as
-    # "district" (see above). It still does NOT resolve to its real
-    # `ca:csd` row today, because `classify.py`'s SPECIAL_DISTRICT rule
-    # matches the bare word "district" before the municipality rule ever
-    # runs -- a real, separate, already-logged gap (BACKLOG.md), out of
-    # scope for this pass. Pinned here so a future fix to that gap has a
-    # test that starts failing (a signal to update this test, not a
-    # silent behavior change) rather than one that was never written.
+def test_district_of_north_vancouver_type_word_extracted_and_resolved():
+    # Was pinned as "not yet resolved" (WO-105): classify's bare
+    # "district" filed it special_district. Fixed in the 2026-10-16
+    # backlog triage -- a Canadian "District of X" now classifies
+    # municipality, and the "district" type word picks the DM row. See
+    # test_bc_district_of_x_is_a_municipality_not_a_special_district.
     match = resolve("District of North Vancouver, BC")
-    assert match.tier == resolver.TIER_UNVERIFIED
-    assert match.gov_type == classify.SPECIAL_DISTRICT
-    assert match.gov_id == "rtr:ca:bc:north-vancouver"
+    assert match.tier == resolver.TIER_REGISTRY
+    assert match.gov_type == classify.MUNICIPALITY
+    assert match.gov_id == "ca:csd:5915046"
 
 
 # --- The namespaces, one test each -------------------------------------
@@ -2566,6 +2553,9 @@ def test_alaska_city_and_borough_displays_as_the_bare_name():
     assert display_name(government_for_id("us:place:0270540")) == "Sitka, AK"
     assert display_name(government_for_id("us:place:0236400")) == "Juneau, AK"
     assert display_name(government_for_id("us:place:0203000")) == "Anchorage, AK"
+    # Census LSAD "corporation" (one row nationally), backlog triage
+    # 2026-10-16: the hub read "Ranson corporation, WV".
+    assert display_name(government_for_id("us:place:5466988")) == "Ranson, WV"
 
 
 def test_a_channel_hint_fires_a_channel_rule_on_every_youtube_host(monkeypatch):
@@ -2707,6 +2697,8 @@ def test_a_subdomain_state_must_hold_a_government_of_that_name(
         ("Juneau, AK", "us:place:0236400"),
         ("City and Borough of Juneau, AK", "us:place:0236400"),
         ("Sitka, AK", "us:place:0270540"),
+        # Census "Ranson corporation" -- "Ranson, WV" minted before.
+        ("Ranson, WV", "us:place:5466988"),
         ("Lexington, KY", "us:place:2146027"),
         ("Lexington-Fayette Urban County Government, KY", "us:place:2146027"),
         ("Athens, GA", "us:place:1303440"),
@@ -4221,3 +4213,258 @@ def test_machine_guess_pin_to_a_minted_gov_is_dropped_even_with_a_registry_row(
         assert registry.tenant_overrides().get("pins.example.org", []) == []
     finally:
         registry.clear_caches()
+
+
+def test_html_entity_in_a_jurisdiction_is_unescaped_before_lookup():
+    """Backlog triage 2026-10-16. `kauai.granicus.com` stored
+    "Kaua&apos;i County, HI" verbatim (an entity-encoded Granicus RSS
+    title), and the county lookup missed on the entity. Real string, real
+    county: both the ladder and the ingest-time repair now unescape it."""
+    from app.utils.jurisdiction_enrich import finalize_jurisdiction
+
+    assert (
+        resolver.resolve_government("Kaua&apos;i County, HI").gov_id
+        == "us:county:15007"
+    )
+    assert (
+        resolver.resolve_government("Kaua&#39;i County, HI").gov_id == "us:county:15007"
+    )
+    assert finalize_jurisdiction("Kaua&apos;i County, HI").jurisdiction == (
+        "Kaua'i County, HI"
+    )
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "Charter Township of Shelby, MI",
+        "The Charter Township of Shelby, MI",
+        "Shelby Charter Township, MI",
+    ],
+)
+def test_charter_township_of_x_keys_to_the_charter_township(raw):
+    """Backlog triage 2026-10-16 (WO-125's landing-page check). "Charter
+    Township of Shelby, MI" (shelbytownmi.iqm2.com's own title) keyed to
+    Shelby VILLAGE (`us:place:2672840`). Treating "Charter Township of"
+    as a plain leading type word would not fix it either: bare "Shelby"
+    in MI's cousub table is Shelby township, Oceana County
+    (`us:cousub:2612772860`), a different government. The Macomb County
+    charter township is `us:cousub:2609972820`."""
+    match = resolver.resolve_government(raw)
+    assert match.gov_id == "us:cousub:2609972820"
+    assert not match.meeting_body
+
+
+@pytest.mark.parametrize(
+    "raw, gov_id",
+    [
+        ("Oshtemo Township, MI", "us:cousub:2607761400"),
+        ("Canton Township, MI", "us:cousub:2616313120"),
+        ("Kalamazoo Township, MI", "us:cousub:2607742180"),
+        ("Texas Township, MI", "us:cousub:2607779300"),
+        # A plain township still keys as itself.
+        ("Plainfield Township, MI", "us:cousub:2606964640"),
+    ],
+)
+def test_x_township_falls_back_to_the_census_charter_township(raw, gov_id):
+    """Backlog triage 2026-10-16 (found by WO-1100: Kalamazoo's TelVue
+    station writes "Oshtemo Township"). Census keys these as "<X> charter
+    township", so the plain spelling minted. The retry runs only when
+    the state has no township of the plain name at all."""
+    assert resolver.resolve_government(raw).gov_id == gov_id
+
+
+def test_x_township_charter_fallback_never_picks_from_an_ambiguous_name():
+    """MI has two plain "Bloomfield township" rows (us:cousub:2606309060,
+    2611309080) besides Bloomfield charter township (2612509110), so
+    "Bloomfield Township, MI" is genuinely ambiguous and still mints
+    rather than guessing the Oakland County one. And the fallback never
+    reaches the place table: Kalamazoo is also a city."""
+    assert resolver.resolve_government("Bloomfield Township, MI").tier == (
+        resolver.TIER_UNVERIFIED
+    )
+    assert resolver.resolve_government("Kalamazoo Township, MI").gov_id.startswith(
+        "us:cousub:"
+    )
+
+
+def test_census_corporation_strip_leaves_indiana_school_corporations_alone():
+    """The "corporation" strip is case-sensitive: Indiana's capitalized
+    "School Corporation" is part of a real school-district name, and its
+    table key must not change."""
+    from app.utils.jurisdiction_enrich import _normalize_name
+
+    assert _normalize_name("Ranson corporation") == "ranson"
+    assert _normalize_name("Lebanon Community School Corporation") == (
+        "lebanon community school corporation"
+    )
+
+
+@pytest.mark.parametrize(
+    "raw, gov_id",
+    [
+        ("District of North Vancouver, BC", "ca:csd:5915046"),
+        ("District of Squamish, BC", "ca:csd:5931006"),
+        ("District of Saanich, BC", "ca:csd:5917021"),
+        ("District of Sechelt, BC", "ca:csd:5929011"),
+        # The same city's own name still keys to the city (CY), not the DM.
+        ("City of North Vancouver, BC", "ca:csd:5915051"),
+    ],
+)
+def test_bc_district_of_x_is_a_municipality_not_a_special_district(raw, gov_id):
+    """Backlog triage 2026-10-16 (found WO-105). BC district
+    municipalities (StatCan CSD type DM) call themselves "District of X";
+    `_RULES`' bare "district" filed them special_district and every one
+    minted. North Vancouver is both a DM and a city, so only the raw
+    "District of" picks the DM."""
+    assert resolver.resolve_government(raw).gov_id == gov_id
+
+
+def test_district_of_x_never_keys_to_a_csd_that_is_not_a_district_municipality():
+    """ "District of Thunder Bay, ON" is the census district, not the
+    City of Thunder Bay (ca:csd:3558004, type CY). Still mints, as before."""
+    assert (
+        classify.classify_government_type("District of North Vancouver", country="ca")
+        == classify.MUNICIPALITY
+    )
+    assert classify.classify_government_type(
+        "Fraser Valley Regional District", country="ca"
+    ) == (classify.COUNTY)
+    assert resolver.resolve_government("District of Thunder Bay, ON").gov_id == (
+        "rtr:ca:on:thunder-bay"
+    )
+
+
+def test_champds_event_pin_matches_only_that_exact_event_id(monkeypatch, tmp_path):
+    """Backlog triage 2026-10-16. A path pin ending in a number names that
+    number: `/fonddulacwi/event/77` is Fond du Lac County's Board of
+    Supervisors meeting (us:county:55039, a real archived page), and a
+    substring test also claimed events 770-779 and 7700+. Synthetic CSV;
+    the pin and path shapes are ChampDS's real ones."""
+    overrides = tmp_path / "tenant_overrides.csv"
+    overrides.write_text(
+        "tenant_host,match,gov_id,strength,source,evidence\n"
+        "play.champds.com,/fonddulacwi/event/77,us:county:55039,fallback,t,one\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(registry, "DATA_DIR", tmp_path)
+    registry.clear_caches()
+    try:
+
+        def ids(path):
+            return [
+                r.gov_id for r in resolver._match_override("play.champds.com", path, {})
+            ]
+
+        assert ids("/fonddulacwi/event/77") == ["us:county:55039"]
+        assert ids("/fonddulacwi/event/77/media") == ["us:county:55039"]
+        assert ids("/fonddulacwi/event/77?x=1") == ["us:county:55039"]
+        assert ids("/fonddulacwi/event/770") == []
+        assert ids("/fonddulacwi/event/7712") == []
+    finally:
+        registry.clear_caches()
+
+
+@pytest.mark.parametrize(
+    "raw, gov_id",
+    [
+        ("Ulster Town, NY", "us:cousub:3611175935"),
+        ("Lincoln Town, ME", "us:cousub:2301939475"),
+        # A real name that ends in "Town" keeps its place.
+        ("Charles Town, WV", "us:place:5414610"),
+        ("Old Town, ME", "us:place:2355225"),
+        # "City" is not used this way: James City, VA is a county.
+        ("James City, VA", "us:county:51095"),
+    ],
+)
+def test_x_town_never_falls_back_to_the_same_named_county(raw, gov_id):
+    """Backlog triage 2026-10-16 (WO-215's dry run: page 8226 "Ulster
+    Town, NY" re-resolved to Ulster County). Rung 2 strips the trailing
+    "Town" as a type word; it is now carried as the type preference, which
+    gates the county fallback the same way a leading "Town of" does."""
+    assert resolver.resolve_government(raw).gov_id == gov_id
+
+
+@pytest.mark.parametrize(
+    "raw, gov_id",
+    [
+        ("Groton, CT", "us:cousub:0918034250"),
+        ("Litchfield, CT", "us:cousub:0916043370"),
+        ("Newtown, CT", "us:cousub:0919052980"),
+        ("Stonington, CT", "us:cousub:0918073770"),
+        # With the type word, the smaller city/borough is still reachable.
+        ("City of Groton, CT", "us:place:0934180"),
+        ("Borough of Newtown, CT", "us:place:0952910"),
+        # Other states' same names are untouched.
+        ("Newtown, PA", "us:place:4254184"),
+    ],
+)
+def test_bare_ct_town_name_means_the_town_not_the_borough_inside_it(raw, gov_id):
+    """Backlog triage 2026-10-16. Each of these CT towns contains a much
+    smaller city/borough of the same name, and the place-first lookup gave
+    a bare name to the city/borough. Curated alias rows assert the town;
+    the Illinois-style place-wins default elsewhere is unchanged."""
+    assert resolver.resolve_government(raw).gov_id == gov_id
+
+
+@pytest.mark.parametrize(
+    "raw, gov_id",
+    [
+        ("West Springfield, MA", "us:place:2577890"),
+        ("Agawam, MA", "us:place:2500840"),
+        ("Weymouth, MA", "us:place:2578972"),
+        # Bare names that fell through to the same-named county.
+        ("Franklin, MA", "us:place:2525172"),
+        ("Barnstable, MA", "us:place:2503690"),
+        # The counties themselves are unchanged.
+        ("Franklin County, MA", "us:county:25011"),
+        ("Barnstable County, MA", "us:county:25001"),
+        # Outside MA "Town" in "<X> Town city" is part of the name.
+        ("Old Town, ME", "us:place:2355225"),
+    ],
+)
+def test_ma_town_city_places_resolve_by_bare_name(raw, gov_id):
+    """Backlog triage 2026-10-16. Census names 13 MA towns "<Name> Town
+    city"; only "Town of <Name>" reached them, so a bare name minted
+    (westspringfieldma.granicus.com) or landed on the county."""
+    assert resolver.resolve_government(raw).gov_id == gov_id
+
+
+def test_county_followed_by_a_full_state_name_reads_the_state():
+    """Backlog triage 2026-10-16 (WO-198's scan). "Park Township, Ottawa
+    County Michigan" (a real channel name) was repaired to "Park, KS" and
+    filed as Park city, Kansas. The state word after "County" is now read
+    as the state. MI has two Park townships, so the name honestly stays
+    unresolved rather than landing in the wrong state."""
+    from app.utils.jurisdiction_enrich import finalize_jurisdiction
+
+    raw = "Park Township, Ottawa County Michigan"
+    assert finalize_jurisdiction(raw).jurisdiction == (
+        "Park Township, Ottawa County, MI"
+    )
+    assert resolver.resolve_government(raw).gov_id != "us:place:2054400"
+    assert resolver.resolve_government("Ottawa County Michigan").gov_id == (
+        "us:county:26139"
+    )
+    assert resolver.resolve_government("Washington County New York").gov_id == (
+        "us:county:36115"
+    )
+
+
+@pytest.mark.parametrize(
+    "raw, gov_id",
+    [
+        ("City of La Canada Flintridge, CA", "us:place:0639003"),
+        ("La Cañada Flintridge, CA", "us:place:0639003"),
+        ("Dona Ana County, NM", "us:county:35013"),
+    ],
+)
+def test_accent_free_spelling_matches_the_accented_census_name(raw, gov_id):
+    """Backlog triage 2026-10-16. La Cañada Flintridge's own Granicus page
+    writes "La Canada Flintridge"; finalize_jurisdiction() called that
+    unverified and the resolver minted. Accented table keys are now also
+    indexed with the accents folded."""
+    from app.utils.jurisdiction_enrich import finalize_jurisdiction
+
+    assert finalize_jurisdiction(raw).confidence == "validated"
+    assert resolver.resolve_government(raw).gov_id == gov_id

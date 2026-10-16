@@ -37,10 +37,11 @@ from .registry import Government
 # consolidated governments (Sitka, Juneau, Wrangell, Yakutat) carry that
 # two-word phrase, and matching only the trailing "borough" left
 # "Sitka city and, AK" on the hub (caught by the 2026-09-09 pin backfill
-# dry run).
+# dry run). "corporation" is Census LSAD "CN", on one row: "Ranson
+# corporation, WV" (the hub read "Ranson corporation, WV").
 _TRAILING_TYPE_RE = re.compile(
     r"\s+((?:charter\s+|urban\s+|unified\s+)?"
-    r"(?:city and borough|city|town|township|village|borough|municipality|plantation|"
+    r"(?:city and borough|corporation|city|town|township|village|borough|municipality|plantation|"
     r"gore|grant|location|purchase|reservation|district|precinct|"
     r"CDP|comunidad|zona urbana))$"
 )

@@ -303,8 +303,13 @@
             data-version-count="{{ page.versions|length }}"
             data-is-default="{{ 'true' if (active_version and active_version.is_default) else 'false' }}"
             onchange="trackEvent('transcript_version_change', {count: {{ page.versions|length }}, from_source: this.dataset.activeSource, to_source: this.options[this.selectedIndex].dataset.source}); this.form.submit()">
+      {#- Language + source alone can name two versions identically; add
+         each such version's date so a reader can tell them apart. #}
+      {% set version_labels = [] %}
+      {% for v in page.versions %}{% set _ = version_labels.append(v.language|language_name ~ ' (' ~ v.source|source_label ~ ')') %}{% endfor %}
       {% for v in page.versions %}
-      <option value="{{ v.id }}" data-source="{{ v.source }}" {% if active_version and v.id == active_version.id %}selected{% endif %}>{{ v.language|language_name }} ({{ v.source|source_label }})</option>
+      {% set version_label = version_labels[loop.index0] %}
+      <option value="{{ v.id }}" data-source="{{ v.source }}" {% if active_version and v.id == active_version.id %}selected{% endif %}>{{ version_label }}{% if v.created_date and version_labels.count(version_label) > 1 %}, {{ v.created_date }}{% endif %}</option>
       {% endfor %}
     </select>
     <noscript><button type="submit" class="cassette-btn cassette-btn-outline">Go</button></noscript>

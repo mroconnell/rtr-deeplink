@@ -177,6 +177,20 @@ _CA_UPPER_TIER_RE = re.compile(
     re.I,
 )
 
+# "District of North Vancouver" / "District of Squamish" / "District of
+# Saanich" / "District of Sechelt": British Columbia district
+# municipalities (StatCan CSD type DM), general-purpose governments that
+# `_RULES`' bare "district" would file as special districts. Canada only,
+# and only the leading "District of <Name>" form a DM uses for itself; a
+# trailing "<X> District" (a school or water district) is untouched.
+_CA_DISTRICT_MUNICIPALITY_RE = re.compile(r"^(?:the\s+)?district of\s+\S", re.I)
+
+
+def is_ca_upper_tier_name(name: Optional[str]) -> bool:
+    """ "Regional Municipality of Durham" / "Peel Region" -> True."""
+    return bool(name and _CA_UPPER_TIER_RE.search(name.strip()))
+
+
 # Consolidated city-county governments: San Francisco, Denver, Honolulu,
 # Juneau, Sitka, Nashville-Davidson, Louisville/Jefferson. One government,
 # and Census keys it as a *place* (`San Francisco city`, GEOID 0667000),
@@ -249,6 +263,8 @@ def classify_government_type(
         return None
     if country == "ca" and _CA_UPPER_TIER_RE.search(name.strip()):
         return COUNTY
+    if country == "ca" and _CA_DISTRICT_MUNICIPALITY_RE.match(name.strip()):
+        return MUNICIPALITY
     if CONSOLIDATED_RE.match(name.strip()) or CONSOLIDATED_SUFFIX_RE.search(name):
         return MUNICIPALITY
     entity_of_place = _ENTITY_OF_PLACE_RE.match(name.strip())

@@ -2618,7 +2618,7 @@ def test_validated_label_extract_tier7_beats_a_place_table_collision():
     # (cross-validated against the specific extracted state) sidesteps
     # that precedence entirely.
     assert je._table_lookup("Chester")[0] == "place"
-    assert "PA" in je._COUNTY_STATES.get("chester", [])
+    assert "PA" in je._county_states().get("chester", [])
     assert je.validated_label_extract_with_state("chestercopa") == (
         "Chester County",
         "PA",
@@ -2747,7 +2747,7 @@ def test_resolve_state_declines_to_append_a_state_to_a_bare_state_name():
     # own WO-16 subdivision fallback picked the Kansas township and
     # `resolve_state()` silently attached ", KS" to a name that already
     # names a top-level jurisdiction.
-    assert je._SUBDIVISION_STATES.get("colorado") == ["KS"]
+    assert je._subdivision_states().get("colorado") == ["KS"]
     assert je.resolve_state("Colorado", "city") is None
     assert je.resolve_state("Ontario", "city") is None  # a real province name too
     # Control: a genuinely different, real ambiguous city name (not a
@@ -2782,7 +2782,7 @@ def test_known_domains_lake_washington_school_district_beats_nd_township_collisi
     # general table of US school districts exists in this module, so this
     # is a targeted, evidence-backed registry override, not a structural
     # fix.
-    assert je._SUBDIVISION_STATES.get("lake washington") == ["ND"]
+    assert je._subdivision_states().get("lake washington") == ["ND"]
     assert je.validated_label_extract_with_state("lwsd") is None
     result = je.finalize_jurisdiction("Lake Washington", netloc="lwsd.granicus.com")
     assert result.jurisdiction == "Lake Washington School District, WA"

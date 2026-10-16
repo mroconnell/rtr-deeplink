@@ -283,3 +283,27 @@ async def test_resolve_strips_html_from_timestamp_titles(monkeypatch):
     assert [item.text for item in result.agenda_items] == [
         "Business, Housing & Zoning Committee"
     ]
+
+
+async def test_resolve_fails_outright_when_the_youtube_video_is_gone(monkeypatch):
+    # Backlog triage 2026-10-16: since WO-167, resolve_video_id() raises
+    # YouTubeUnavailableError for a gone, private or terminated video. This
+    # adapter does not catch it, so its own title, date and agenda are not
+    # returned either. That is the chosen behavior (no page pointing at a
+    # video nobody can play); this test pins it.
+    import yt_dlp
+
+    import pytest
+
+    from app.platforms.youtube import YouTubeUnavailableError
+
+    def _gone(video_id):
+        raise yt_dlp.utils.DownloadError("ERROR: [youtube] x: Video unavailable")
+
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _gone)
+    monkeypatch.setattr("app.platforms.lims.fetch_via_browser", _fake_fetch_via_browser)
+
+    with pytest.raises(YouTubeUnavailableError) as excinfo:
+        await LimsAssetFinder().resolve(MEETING_URL)
+
+    assert excinfo.value.reason == "gone"

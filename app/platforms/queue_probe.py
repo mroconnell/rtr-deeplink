@@ -1510,7 +1510,15 @@ async def probe_queue_entry(
         or YouTubeAssetFinder.extract_video_id(video_url or "")
     ):
         return await _probe_youtube(url, video_url, start)
-    if resolved_platform == "vimeo" or video_format == "vimeo":
+    # Same reasoning for Vimeo (backlog triage 2026-10-16, WO-349's
+    # Western Springs IL / Edgewood WA): a CivicPlus page resolves to a
+    # `vimeo.com/<id>?share=copy&fl=sv&fe=ci` URL, and with
+    # `resolved_platform == "civicplus"` it fell to "no probe recipe".
+    if (
+        resolved_platform == "vimeo"
+        or video_format == "vimeo"
+        or parse_vimeo_video(video_url or "")
+    ):
         return await _probe_vimeo(url, video_url, start)
     if resolved_platform == "telvue":
         return await _probe_telvue(url, video_url, source_page_url, start)

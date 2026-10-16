@@ -64,15 +64,11 @@ almost always is) -- and every real bleed case this was built to fix
 Revisit as a real, confirmed county-shaped Canadian case turns up, same
 "verify before generalizing" convention as every other table here.
 
-Real, confirmed, deliberately NOT solved by this pass: Canadian names
-with French diacritics (Québec, Montréal, Trois-Rivières, ...) are
-stored exactly as StatsCan spells them -- an English-language page that
-writes the unaccented "Quebec"/"Montreal" spelling will NOT match this
-table today. No real BACKLOG-confirmed bleed case needs this yet (every
-confirmed case is a plain-ASCII English city name), so left as a
-documented gap rather than adding untested accent-folding logic --
-same "don't fix what isn't confirmed broken yet" convention as this
-file's other narrow, evidence-driven choices.
+Canadian names with French diacritics (Québec, Montréal, Trois-Rivières,
+...) are stored exactly as StatsCan spells them. Since 2026-10-16 the
+loader (`jurisdiction_enrich._load_name_state_table()`) also indexes
+each accented key with its accents folded, so an English-language page's
+"Montreal" matches too (confirmed case: La Cañada Flintridge, CA).
 """
 
 import csv
@@ -84,14 +80,35 @@ from typing import List, Tuple
 OUT_DIR = Path(__file__).parent.parent / "app" / "utils" / "jurisdiction_data"
 
 
+def _decode_census_bytes(raw: bytes) -> str:
+    """Census/StatCan source bytes -> text, one LINE at a time: UTF-8 when
+    the line is valid UTF-8, else latin-1.
+
+    A blanket latin-1 decode turned the rows whose real bytes are UTF-8
+    into mojibake ("La CaÃ±ada Flintridge city", Bayamón, Mayagüez, Doña
+    Ana: 23 rows, hand-fixed in PR #855). A blanket UTF-8 decode would
+    break the genuinely latin-1 rows instead. Per line, a real latin-1
+    accent (a lone high byte) is never valid UTF-8, so each line decodes
+    as what it really is. Pure-ASCII lines read the same either way.
+    """
+    out = []
+    for line in raw.splitlines(keepends=True):
+        try:
+            out.append(line.decode("utf-8"))
+        except UnicodeDecodeError:
+            out.append(line.decode("latin-1"))
+    text = "".join(out)
+    return text[1:] if text.startswith("\ufeff") else text
+
+
 def _read_tsv_from_zip_or_dir(source_dir: Path, zip_name: str, txt_name: str):
     zip_path = source_dir / zip_name
     if zip_path.exists():
         with zipfile.ZipFile(zip_path) as zf:
             with zf.open(txt_name) as f:
-                text = f.read().decode("latin-1")
+                text = _decode_census_bytes(f.read())
     else:
-        text = (source_dir / txt_name).read_text(encoding="latin-1")
+        text = _decode_census_bytes((source_dir / txt_name).read_bytes())
     return list(csv.DictReader(text.splitlines(), delimiter="\t"))
 
 
@@ -245,8 +262,8 @@ def build_canada_places(canada_source_dir: Path) -> None:
     has (US rows, from a prior build_places() run in this same
     invocation) and adds Canada's rows on top, so re-running this alone
     doesn't require re-downloading the US Gazetteer files too."""
-    text = (canada_source_dir / "sgc-cgt-2021-structure-eng.csv").read_text(
-        encoding="latin-1"
+    text = _decode_census_bytes(
+        (canada_source_dir / "sgc-cgt-2021-structure-eng.csv").read_bytes()
     )
     rows = list(csv.DictReader(text.splitlines()))
 
@@ -382,8 +399,8 @@ def build_canada_counties(canada_source_dir: Path) -> None:
     has to equal a stored key of "bruce county", not "bruce", to match on
     that first (most common) try.
     """
-    text = (canada_source_dir / "sgc-cgt-2021-structure-eng.csv").read_text(
-        encoding="latin-1"
+    text = _decode_census_bytes(
+        (canada_source_dir / "sgc-cgt-2021-structure-eng.csv").read_bytes()
     )
     rows = list(csv.DictReader(text.splitlines()))
 

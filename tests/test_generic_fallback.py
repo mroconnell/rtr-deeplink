@@ -35,6 +35,27 @@ def _fake_public_dns(monkeypatch):
     )
 
 
+@pytest.fixture(autouse=True)
+def _no_real_direct_file_probe(monkeypatch):
+    """Backlog triage 2026-10-16: in a full run another test file has
+    registered the direct_file adapter, so a page's `.mp4`/`.m3u8` link is
+    delegated to it, and its `_probe_media()` sent a real HEAD request
+    (`mock_session` patches GET, and HEAD only when given `head_routes`).
+    That made real DNS lookups for this file's made-up hosts
+    (cdn.example.gov, cdn.city.gov, example-cdn.gov, example-cdn.pbc.gov).
+    Those hosts do not exist, so the real outcome was always a connection
+    error; this fails the same way without the lookup. Run alone, the
+    adapter is not registered and nothing changes."""
+    import aiohttp
+
+    from app.platforms.direct_file import DirectFileAssetFinder
+
+    async def _offline(media_url):
+        raise aiohttp.ClientConnectionError(f"no real network in tests: {media_url}")
+
+    monkeypatch.setattr(DirectFileAssetFinder, "_probe_media", staticmethod(_offline))
+
+
 # Real page shape confirmed live 2026-08-13 across 5 real CRRMA board
 # meeting URLs (crrma.org/information/meetings/board/{date}) -- see
 # BACKLOG.md's "generic_fallback.py's YouTube-embed branch" entry.

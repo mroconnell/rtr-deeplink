@@ -28,6 +28,7 @@ good. This module consumes its output; it does not second-guess it.
 Nothing here writes anything, touches a database, or performs a fetch.
 """
 
+import html
 import re
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
@@ -263,6 +264,15 @@ def _key_value_pin_pairs(needle: str) -> Optional[List[Tuple[str, str]]]:
     return parse_qsl(needle, keep_blank_values=True)
 
 
+def _text_pin_in(needle: str, haystack: str) -> bool:
+    """A text pin found in the path. A pin ending in a digit must end on
+    a whole number: ChampDS's `/fonddulacwi/event/77` names event 77, and
+    a plain substring test also claimed events 770-779 and 7700+."""
+    if not needle[-1:].isdigit():
+        return needle in haystack
+    return re.search(re.escape(needle) + r"(?!\d)", haystack) is not None
+
+
 def _match_override(
     host: str, path: Optional[str], page_hints: Optional[Dict[str, str]]
 ) -> List[TenantOverride]:
@@ -304,7 +314,7 @@ def _match_override(
                 out.append(row)
                 continue
         else:
-            if needle in haystack:
+            if _text_pin_in(needle, haystack):
                 out.append(row)
                 continue
             if "=" in needle:
@@ -556,6 +566,47 @@ def _strip_county_qualifier(name: str) -> Tuple[str, str]:
     return prefix, m.group("county").strip()
 
 
+# "Charter Township of Shelby, MI" -> "Shelby Charter Township, MI".
+# Census keys a Michigan charter township as "Shelby charter township", so
+# only the trailing form reaches it. Stripping "Charter Township of" as a
+# leading type word is not enough: the bare "Shelby" then keys to Shelby
+# *township* (Oceana County, `us:cousub:2612772860`), a different
+# government, and before this it keyed to Shelby *village*
+# (`us:place:2672840`). Michigan's ~130 charter townships title their
+# IQM2/CivicClerk portals this way (shelbytownmi.iqm2.com).
+_LEADING_CHARTER_TOWNSHIP_RE = re.compile(
+    r"^\s*(?:the\s+)?charter\s+township\s+of\s+(?P<name>[^,]+?)\s*(?P<rest>,.*)?$",
+    re.I,
+)
+
+
+def _charter_township_last(name: str) -> str:
+    m = _LEADING_CHARTER_TOWNSHIP_RE.match(name)
+    if not m:
+        return name
+    return f"{m.group('name')} Charter Township{m.group('rest') or ''}"
+
+
+_TRAILING_TOWN_WORD_RE = re.compile(r"\s+(town|village)$", re.I)
+
+
+def _stripped_trailing_type_word(raw_name: str, cleaned: str) -> str:
+    """ "Ulster Town" cleaned to "Ulster" -> "town".
+
+    Only when rung 2 itself stripped the word as a type annotation, so a
+    name whose real spelling ends in it ("Charles Town", "Old Town")
+    keeps no preference. Without this, "Ulster Town, NY" fell through
+    to Ulster COUNTY (`us:county:36111`) instead of the town
+    (`us:cousub:3611175935`), because only a LEADING "Town of" gated the
+    county fallback (WO-215's dry run). "city" and "borough" are left
+    out: "James City, VA" and Alaska's boroughs are counties.
+    """
+    m = _TRAILING_TOWN_WORD_RE.search(raw_name or "")
+    if not m or tables.squash(raw_name[: m.start()]) != tables.squash(cleaned):
+        return ""
+    return m.group(1).lower()
+
+
 def _leading_type_word(name: str) -> str:
     """ "Town of Cottage Grove" -> "town".
 
@@ -696,6 +747,13 @@ def _general_purpose_lookup(name: str, state: str, type_preference: str):
     return place, cousub
 
 
+def _not_a_district_municipality(row, type_preference: str) -> bool:
+    """A name that says "District of" may only key to a StatCan district
+    municipality (CSD type DM). "District of Thunder Bay, ON" is the
+    census district, not the City of Thunder Bay (CY)."""
+    return type_preference == "district" and row.type_word.upper() != "DM"
+
+
 def _ca_csd_disambiguate(name: str, state: str, type_preference: str):
     """The one CSD a name means when several share a normalized key --
     or None, which is still the default answer.
@@ -730,10 +788,15 @@ def _ca_csd_disambiguate(name: str, state: str, type_preference: str):
     candidates = exact if exact else rows
     if not type_preference:
         return None
+    # "District of North Vancouver": a BC district municipality (DM)
+    # writes "District", which `CSD_TYPE_WORDS` maps under the generic
+    # "municipality". North Vancouver is both a DM (5915046) and a city
+    # (5915051), so only the raw "District of" can pick the DM.
     matching = [
         r
         for r in candidates
         if tables.CSD_TYPE_WORDS.get(r.type_word.upper()) == type_preference
+        or (type_preference == "district" and r.type_word.upper() == "DM")
     ]
     return matching[0] if len(matching) == 1 else None
 
@@ -950,6 +1013,8 @@ def _national_lookup(
         hit = tables.ca_csd().lookup(name, state) or _ca_csd_disambiguate(
             name, state, type_preference
         )
+        if hit and _not_a_district_municipality(hit, type_preference):
+            hit = None
         if hit:
             return (
                 _as_government(
@@ -1088,6 +1153,17 @@ def _national_lookup(
         hit = tables.us_cousubs().lookup(name, state)
         if hit:
             return _cousub_result(hit)
+        # "Oshtemo Township, MI": Census keys it "Oshtemo charter township",
+        # so the plain spelling finds nothing and mints. Retry as a charter
+        # township only when the state has NO township of the plain name --
+        # an ambiguous one (MI has two plain Bloomfield townships besides
+        # the charter one) still declines. The cousub table only, so a
+        # village or city of the same name can never answer.
+        base = _TRAILING_TOWNSHIP_RE.sub("", name).strip()
+        if state and base != name and not tables.us_cousubs().lookup_all(name, state):
+            hit = tables.us_cousubs().lookup(f"{base} Charter Township", state)
+            if hit:
+                return _cousub_result(hit)
         return None
 
     # Unclassified or municipality: the general-purpose tables, in the
@@ -1183,6 +1259,10 @@ def _national_lookup(
     if cousub:
         return _cousub_result(cousub)
     return None
+
+
+# Only a plain "X Township" -- "X Charter Township" already keys directly.
+_TRAILING_TOWNSHIP_RE = re.compile(r"(?<!charter)\s+township$", re.I)
 
 
 def _cousub_result(hit) -> Tuple[Government, str, str]:
@@ -1909,6 +1989,8 @@ def _squashed_national_hit(
             # because spacing made it the only candidate -- see this
             # function's own WO-198 note above.
             continue
+        if namespace == "ca:csd" and _not_a_district_municipality(hit, type_preference):
+            continue
         return (
             _as_government(
                 f"{namespace}:{hit.row_id}",
@@ -2336,6 +2418,12 @@ def _resolve_government_ladder(
     no matching pin; see that rung's own comment.
     """
     host = _tenant_host(tenant_host)
+    # A literal HTML entity is markup, never part of a name. Real:
+    # `kauai.granicus.com` stored "Kaua&apos;i County, HI" verbatim (a
+    # Granicus RSS title passed through), and the county lookup missed on
+    # the entity while "Kaua'i County, HI" keys to `us:county:15007`.
+    if raw_name:
+        raw_name = _charter_township_last(html.unescape(raw_name))
 
     # 1. Pinned, authoritative.
     if host:
@@ -2599,6 +2687,19 @@ def _resolve_government_ladder(
         # double-counting the same name.
         name, gov_type, meeting_body = raw_name, raw_type, None
         type_preference = ""
+    elif (
+        country == "ca"
+        and raw_type == classify.COUNTY
+        and classify.is_ca_upper_tier_name(raw_name)
+    ):
+        # "Regional Municipality of Durham, ON": the phrase IS the
+        # government's identity. Rung 2's entity split read it like
+        # "Housing Authority of the County of Santa Clara" and left
+        # meeting_body="Regional Municipality", name="Durham", which
+        # classified nothing and minted `rtr:ca:on:durham` instead of
+        # reaching the census division `ca:cd:3518`.
+        name, gov_type, meeting_body = raw_name, raw_type, None
+        type_preference = ""
     else:
         gov_type = classify.classify_government_type(name, country=country)
         # A trailing "(word)" disambiguator (either side -- the cleaned
@@ -2606,7 +2707,12 @@ def _resolve_government_ladder(
         # as a leading "Village of" phrase; tried second only because the
         # raw name is where a real page's own phrasing survives, per rung
         # 3's own comment above.
-        type_preference = _leading_type_word(raw_name) or raw_paren_type or paren_type
+        type_preference = (
+            _leading_type_word(raw_name)
+            or raw_paren_type
+            or paren_type
+            or _stripped_trailing_type_word(raw_name, name)
+        )
 
     # 3b. Recover the state from the tenant BEFORE looking anything up.
     #

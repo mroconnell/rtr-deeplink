@@ -31,6 +31,7 @@ from ..jurisdiction_enrich import (
     _QUERY_GOVERNMENT_TYPE_RE,
     _contract_saints,
     _expand_abbreviations,
+    _fold_accents,
     _normalize_candidates,
     _normalize_name,
     _normalize_slash_spacing,
@@ -175,8 +176,21 @@ class NameStateTable:
         self._by_id: Dict[str, TableRow] = {}
         for row in rows:
             key = _normalize_name(row.name)
-            self._by_key[key][row.state.upper()].append(row)
-            self._by_squashed[squash(key)][row.state.upper()].append(row)
+            keys = [key]
+            if row.state.upper() == "MA" and key.endswith(" town"):
+                # 13 MA places are "<Name> Town city" ("West Springfield
+                # Town city"): the "Town" is the real type, not part of
+                # the name (see resolver._census_type_word()). Index the
+                # bare name too, or "West Springfield, MA" minted and
+                # "Franklin, MA" fell through to Franklin County.
+                keys.append(key[: -len(" town")])
+            folded = _fold_accents(key)
+            if folded != key:
+                # "La Canada Flintridge" for "La Cañada Flintridge city".
+                keys.append(folded)
+            for k in keys:
+                self._by_key[k][row.state.upper()].append(row)
+                self._by_squashed[squash(k)][row.state.upper()].append(row)
             self._by_id[row.row_id] = row
 
     def get(self, row_id: str) -> Optional[TableRow]:

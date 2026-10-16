@@ -178,12 +178,12 @@ def write_rows(rows: Iterable[Dict[str, str]], path: Optional[Path] = None) -> N
     """Write `rows` back to `path`, then drop the cached map so a reader
     in this same process (a script, a test) sees the update immediately.
 
-    **Byte-for-byte preserving for every row that did not change.** Row
-    `i` is compared against physical data line `i` already on disk; if
-    every field is identical, the ORIGINAL bytes are kept verbatim
+    **Byte-for-byte preserving for every row that did not change.** Each
+    row is matched to an original data line on disk with identical
+    fields; when one exists, the ORIGINAL bytes are kept verbatim
     (whatever line ending they already had); only a row whose values
-    actually differ, or one past the end of the file (newly appended),
-    is re-rendered. Two things this avoids, both measured while building
+    actually differ, or a new one, is re-rendered. Rows are written in
+    the order given, so a dropped row removes just its own line. Two things this avoids, both measured while building
     this (WO-293): (1) re-sorting the file -- it has never been in a
     single global sort order, it grew across several append/regen passes
     -- turned a 4-row fix into a 470-line diff; (2) even an
@@ -192,10 +192,9 @@ def write_rows(rows: Iterable[Dict[str, str]], path: Optional[Path] = None) -> N
     over from an earlier regen pass (16 of them, found this way, unrelated
     to any real change) because it normalizes every line ending to the
     writer's own. Either failure mode buries the real, reviewable change
-    in incidental noise. Callers must pass back the *original* row list
-    with only the actually-changed rows edited in place and any brand-new
-    ones appended at the end -- never a freshly built list, or every row
-    looks new to the position-based comparison this relies on.
+    in incidental noise. Callers should pass back the original row list
+    in its original order, with changed rows edited in place and new
+    ones appended at the end, so the file's order is kept too.
     """
     path = path if path is not None else ALIAS_FILE
     rows = list(rows)
@@ -219,18 +218,25 @@ def write_rows(rows: Iterable[Dict[str, str]], path: Optional[Path] = None) -> N
         csv.writer(buf, lineterminator="\n").writerow([row.get(k, "") for k in HEADER])
         return buf.getvalue().encode("utf-8")
 
+    # Unchanged rows are matched to their original line by content, not
+    # position, so dropping a row (write_retirements()'s live_slugs) does
+    # not shift and re-render every row after it.
+    unused: Dict[Tuple[str, ...], List[bytes]] = {}
+    for orig_line in original_data_lines:
+        parsed = _parse(orig_line)
+        if parsed is not None:
+            key = tuple(parsed.get(k, "") for k in HEADER)
+            unused.setdefault(key, []).append(orig_line)
+
     out_lines: List[bytes] = [header_line]
-    for i, row in enumerate(rows):
-        if i < len(original_data_lines):
-            orig_line = original_data_lines[i]
-            parsed = _parse(orig_line)
-            if parsed is not None and all(
-                parsed.get(k, "") == (row.get(k) or "") for k in HEADER
-            ):
-                if not orig_line.endswith(b"\n"):
-                    orig_line += b"\n"
-                out_lines.append(orig_line)
-                continue
+    for row in rows:
+        key = tuple(row.get(k) or "" for k in HEADER)
+        if unused.get(key):
+            orig_line = unused[key].pop(0)
+            if not orig_line.endswith(b"\n"):
+                orig_line += b"\n"
+            out_lines.append(orig_line)
+            continue
         out_lines.append(_render(row))
 
     with open(path, "wb") as fh:
@@ -239,7 +245,10 @@ def write_rows(rows: Iterable[Dict[str, str]], path: Optional[Path] = None) -> N
 
 
 def write_retirements(
-    entries: Iterable[Tuple[str, str, str, str]], *, path: Optional[Path] = None
+    entries: Iterable[Tuple[str, str, str, str]],
+    *,
+    path: Optional[Path] = None,
+    live_slugs: Iterable[str] = (),
 ) -> int:
     """Retire the given `(old_slug, gov_id, new_slug, evidence)` hubs into
     the alias file in one pass, then collapse the WHOLE file's chains --
@@ -253,7 +262,12 @@ def write_retirements(
     `collapse_chains()` guarantees.
 
     An entry whose `old_slug == new_slug` is skipped (nothing to
-    retire). Returns the number of rows added or changed. Safe to call
+    retire). Any row (old or new) whose `old_slug` is in `live_slugs` is
+    dropped before the chains are collapsed: that slug is a live hub
+    again, so the row is stale, and left in it can form a loop with a
+    newer row (2026-09-11 `baltimore-md -> baltimore-city-md`, then
+    2026-09-25 `baltimore-city-md -> baltimore-md`). Returns the number
+    of rows added, changed or dropped. Safe to call
     with an empty `entries` list -- it still re-collapses the file, which
     is how the one-time WO-293 repair also fixed the pre-existing chains
     that predate this function.
@@ -282,6 +296,12 @@ def write_retirements(
             existing["gov_id"] = gov_id or existing.get("gov_id", "")
             existing["evidence"] = evidence or existing.get("evidence", "")
             changed += 1
+
+    live = {(slug or "").strip().lower() for slug in live_slugs}
+    if live:
+        kept = [r for r in rows if r["old_slug"].strip().lower() not in live]
+        changed += len(rows) - len(kept)
+        rows = kept
 
     rows = collapse_chains(rows)
     write_rows(rows, path)

@@ -1149,6 +1149,34 @@ async def test_probe_queue_entry_resolves_first_when_no_video_url_given(monkeypa
     assert result.duration_seconds == 1200.0
 
 
+async def test_probe_queue_entry_routes_a_civicplus_vimeo_share_url_to_vimeo(
+    monkeypatch,
+):
+    """WO-349 (2026-09-13): a CivicPlus page resolved to a Vimeo URL with
+    `?share=copy&fl=sv&fe=ci` and was rejected "no probe recipe" because
+    the page's platform was civicplus, not vimeo."""
+    fake_result = _FakeResolvedMeeting(
+        video_url="https://vimeo.com/999999999?share=copy&fl=sv&fe=ci",
+        source_url="https://city.gov/AgendaCenter/1",
+    )
+    monkeypatch.setattr(queue_probe, "detect_platform", lambda url: "civicplus")
+    monkeypatch.setattr(
+        queue_probe, "get_finder", lambda platform: _FakeFinder(fake_result)
+    )
+
+    async def _fake_probe_vimeo(url, video_url, start):
+        assert queue_probe.parse_vimeo_video(video_url) == ("999999999", None)
+        return queue_probe._finish(
+            url, "vimeo", "vimeo-oembed", 1200.0, None, None, start
+        )
+
+    monkeypatch.setattr(queue_probe, "_probe_vimeo", _fake_probe_vimeo)
+
+    result = await probe_queue_entry("https://city.gov/AgendaCenter/1")
+    assert result.verdict == "accept"
+    assert result.probe_method == "vimeo-oembed"
+
+
 async def test_probe_queue_entry_resolve_with_no_video_url_is_reject_dead(monkeypatch):
     fake_result = _FakeResolvedMeeting(
         video_url=None, source_url="https://city.gov/agenda/2"

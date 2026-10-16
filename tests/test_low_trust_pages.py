@@ -575,3 +575,57 @@ def test_ingest_leaves_a_normal_source_url_alone():
         )
     )
     assert _row_for(result["slug"]) is None
+
+
+async def test_page_changed_after_review_counts_as_unreviewed_again():
+    """A review covers the content a human saw. Re-ingesting new content
+    afterwards (updated_at past reviewed_at) puts the page back in the
+    ?unreviewed=true queue, and marking it again re-stamps it."""
+    from datetime import datetime, timedelta, timezone
+
+    from sqlalchemy import update
+
+    from archive.db.engine import async_session
+    from archive.db.models import MeetingPage
+
+    url = "https://example.org/agendas/low-trust-review-expires"
+    result = _ingest(_payload(platform="unknown", source_url=url, best_effort=True))
+    slug = result["slug"]
+    page_id = _row_for(slug)["meeting_page_id"]
+
+    assert _mark(page_id, dry_run="false")["updated"] == 1
+    # Marking alone must not count as a change.
+    assert _row_for(slug, unreviewed="true") is None
+    assert _row_for(slug)["changed_since_review"] is False
+
+    # Backdate the page and its review so the re-ingest below lands
+    # clearly after them (SQLite's CURRENT_TIMESTAMP has one-second
+    # resolution).
+    now = datetime.now(timezone.utc)
+    async with async_session() as session:
+        await session.execute(
+            update(MeetingPage)
+            .where(MeetingPage.id == page_id)
+            .values(
+                reviewed_at=now - timedelta(days=1),
+                updated_at=now - timedelta(days=2),
+            )
+        )
+        await session.commit()
+    assert _row_for(slug, unreviewed="true") is None
+
+    _ingest(
+        _payload(
+            platform="unknown",
+            source_url=url,
+            best_effort=True,
+            title="City Council Regular Meeting (revised)",
+        )
+    )
+    row = _row_for(slug, unreviewed="true")
+    assert row is not None
+    assert row["changed_since_review"] is True
+
+    again = _mark(page_id, dry_run="false")
+    assert again["updated"] == 1
+    assert _row_for(slug, unreviewed="true") is None

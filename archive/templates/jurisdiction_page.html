@@ -27,11 +27,22 @@
      when one has a stored card (WO-90) -- see state_page.html's matching
      comment. Falls back to the shared no-video-of-its-own placeholder only
      when nothing in the pool has a card yet. #}
+  {#- Next, the hub's newest meeting with a servable card (hub_card_url),
+     so a hub never previews another government's meeting; the generic
+     card is left for a hub with no card of its own at all. #}
   {% set _card = (featured | selectattr("card_url") | first) %}
-  {% set page_image_url = (public_base_url ~ _card.card_url) if (public_base_url and _card) else generic_card_image_url %}
+  {% if public_base_url and _card %}
+  {% set page_image_url = public_base_url ~ _card.card_url %}
   {#- og:image:alt/twitter:image:alt (WO-91) -- see state_page.html's
      matching comment, including why snippet_text is truncated here. #}
-  {% set page_image_alt = ("A photo of a meeting in " ~ _card.jurisdiction_display ~ " where people are talking about " ~ (_card.snippet_text|truncate(200))) if (public_base_url and _card) else generic_card_image_alt %}
+  {% set page_image_alt = "A photo of a meeting in " ~ _card.jurisdiction_display ~ " where people are talking about " ~ (_card.snippet_text|truncate(200)) %}
+  {% elif public_base_url and hub_card_url %}
+  {% set page_image_url = public_base_url ~ hub_card_url %}
+  {% set page_image_alt = "A photo of a public meeting in " ~ display %}
+  {% else %}
+  {% set page_image_url = generic_card_image_url %}
+  {% set page_image_alt = generic_card_image_alt %}
+  {% endif %}
   {% if page_image_url %}
   <meta property="og:image" content="{{ page_image_url }}">
   <meta property="og:image:alt" content="{{ page_image_alt }}">

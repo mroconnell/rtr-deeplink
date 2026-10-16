@@ -1513,3 +1513,28 @@ async def test_meeting_url_is_not_treated_as_a_hub():
     assert not _is_primegov_hub_url(
         f"https://{HUB_HOST}/public/portal?meetingTemplateId=1"
     )
+
+
+async def test_resolve_fails_outright_when_the_youtube_video_is_gone(monkeypatch):
+    # Backlog triage 2026-10-16: since WO-167, resolve_video_id() raises
+    # YouTubeUnavailableError for a gone, private or terminated video. This
+    # adapter does not catch it, so its own title, date and agenda are not
+    # returned either. That is the chosen behavior (no page pointing at a
+    # video nobody can play); this test pins it.
+    import yt_dlp
+
+    import pytest
+
+    from app.platforms.youtube import YouTubeUnavailableError
+
+    def _gone(video_id):
+        raise yt_dlp.utils.DownloadError("ERROR: [youtube] x: Video unavailable")
+
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _gone)
+    with mock_session(
+        {PAGE_URL: FakeResponse(status=200, text=PAGE_HTML_WITH_VIDEO, url=PAGE_URL)}
+    ):
+        with pytest.raises(YouTubeUnavailableError) as excinfo:
+            await PrimeGovAssetFinder().resolve(PAGE_URL)
+
+    assert excinfo.value.reason == "gone"
