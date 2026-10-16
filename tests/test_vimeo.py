@@ -59,6 +59,7 @@ the full investigation:
 """
 
 from unittest import mock
+from urllib.parse import quote
 
 import aiohttp
 import pytest
@@ -76,6 +77,7 @@ from app.platforms.vimeo import (
 from app.platforms.vimeo import (
     _fetch_player_page_directly as _real_fetch_player_page_directly,
 )
+from app.platforms.vimeo import _title_from_video_page
 from app.utils import url_guard
 
 from aiohttp_mock import FakeResponse, mock_session
@@ -417,6 +419,48 @@ async def test_resolve_still_yields_a_playable_embed_when_oembed_is_unreachable(
     assert result.video_url == "https://player.vimeo.com/video/1212025580"
     assert result.title is None
     assert any("should still work" in w for w in result.video_warnings)
+
+
+async def test_resolve_reads_title_from_video_page_when_oembed_404s():
+    # Real case (WO-196): Beaufort County NC's vimeo.com/844049346 -- oEmbed
+    # 404s, but the plain page carries og:title and "<title> on Vimeo"
+    # (the same tags as the real channel_coscouncil.html fixture).
+    oembed_url = "https://vimeo.com/api/oembed.json?url=" + quote(
+        "https://vimeo.com/844049346", safe=""
+    )
+    page = (
+        "<html><head>"
+        '<meta property="og:title" content="Affordable Workforce Housing '
+        'Taskforce/Committee">'
+        "<title>Affordable Workforce Housing Taskforce/Committee on Vimeo</title>"
+        "</head><body></body></html>"
+    )
+    routes = {
+        oembed_url: FakeResponse(status=404, url=oembed_url),
+        "https://vimeo.com/844049346": FakeResponse(
+            status=200, text=page, url="https://vimeo.com/844049346"
+        ),
+    }
+    with mock_session(routes):
+        result = await VimeoAssetFinder().resolve("https://vimeo.com/844049346")
+
+    assert result.title == "Affordable Workforce Housing Taskforce/Committee"
+    assert result.video_url == "https://player.vimeo.com/video/844049346"
+
+
+def test_title_from_video_page_shapes():
+    assert (
+        _title_from_video_page("<title>7/21/2026 City Council Meeting on Vimeo</title>")
+        == "7/21/2026 City Council Meeting"
+    )
+    assert _title_from_video_page("<title>Vimeo / Forbidden</title>") is None
+    assert (
+        _title_from_video_page(
+            load_fixture("vimeo", "video_page_391007677_human_check.html")
+        )
+        is None
+    )
+    assert _title_from_video_page(None) is None
 
 
 async def test_resolve_fetches_real_captions_via_headless_browser():
