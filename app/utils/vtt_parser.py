@@ -136,6 +136,11 @@ def parse_vtt(content: str) -> List[Dict[str, Any]]:
     # live 2026-08-17: otv.ocfl.net's real VTT output for a July 2026 BCC
     # budget session has 1098 such tags). Reuses the same _TAG_RE already
     # defined below in this file for dedupe_rollup_cues().
+    #
+    # WO-1967: a WebVTT voice tag's annotation is the speaker's name (spec
+    # section 4.2.2), so it is read into cue["speaker"] first, before the
+    # tag goes. See extract_voice_speakers() for which labels are kept.
+    extract_voice_speakers(cues)
     for cue in cues:
         cue["text"] = _TAG_RE.sub("", cue["text"])
 
@@ -143,6 +148,79 @@ def parse_vtt(content: str) -> List[Dict[str, Any]]:
     normalize_speaker_change_marker(cues)
     unescape_caption_entities(cues)
     return cues
+
+
+# --- Speaker labels from WebVTT voice tags (WO-1967) ----------------------
+#
+# `<v Name>` or `<v.class.class Name>`: the annotation after the first
+# whitespace is the speaker. Real shapes in tests/fixtures (2026-10-16):
+#   - TelVue, Ashland OR planning (telvue/ashland_planning_1040134):
+#     `<v Speaker 1>...</v>`, sometimes two voices in one cue.
+#   - Orange County FL (generic_fallback/ocfl_bcc071626aa): `<v.Male.spk1
+#     Speaker1>`. The annotation does not always follow the class (spk3 is
+#     annotated "Speaker1"); the annotation is what the file says, so it
+#     is what we keep.
+#   - Castus (castus/captions.vtt): `<v.Male.spk1.Speaker1>`, classes only,
+#     no annotation. That is no name, so no speaker -- the class is not
+#     read as one.
+# No real fixture carries a person's name in a voice tag yet; the code
+# keeps one when it appears, it does not invent one.
+_VOICE_TAG_SPEAKER_RE = re.compile(r"<v(?:\.[^\s>]*)?\s+([^>]*?)\s*>")
+# Labels a machine assigns. They still mark a change of speaker, so they
+# are kept when they are all a file has.
+_GENERIC_SPEAKER_RE = re.compile(
+    r"^(?:speaker\s*\d+|s\d+|unknown(?: speaker)?|male|female)$", re.IGNORECASE
+)
+# A room or device, not a person. Video-call captions label a line with the
+# account that spoke, and a council chamber's account is a room: "El
+# Cerrito Council Chamber" (BACKLOG WO-1960, found 2026-10-09).
+_NON_PERSON_SPEAKER_RE = re.compile(
+    r"\b(?:chambers?|room|boardroom|auditorium|zoom|iphone|ipad|android)\b",
+    re.IGNORECASE,
+)
+
+
+def clean_speaker_label(label: Optional[str]) -> Optional[str]:
+    """The label with whitespace collapsed, or None when it is empty or
+    names a room or device rather than a person."""
+    if not label:
+        return None
+    label = " ".join(html.unescape(label).split())
+    if not label or _NON_PERSON_SPEAKER_RE.search(label):
+        return None
+    return label
+
+
+def extract_voice_speakers(cues: List[Dict[str, Any]]) -> None:
+    """Sets cue["speaker"] from the cue's first WebVTT voice tag that has
+    a usable annotation. Must run before the tags are stripped from text.
+
+    A cue without a voice tag gets no "speaker" key: the reader sees the
+    last label shown, and we do not copy it forward as if the file said
+    so. When a file has at least one real name, its generic "Speaker N"
+    labels are dropped, since a name and a number for the same person
+    would read as two people. When generic labels are all there is, they
+    stay: they still show where the speaker changes.
+    """
+    found = False
+    for cue in cues:
+        for match in _VOICE_TAG_SPEAKER_RE.finditer(cue["text"]):
+            label = clean_speaker_label(match.group(1))
+            if label:
+                cue["speaker"] = label
+                found = True
+                break
+    if not found:
+        return
+    has_name = any(
+        not _GENERIC_SPEAKER_RE.match(cue["speaker"])
+        for cue in cues
+        if "speaker" in cue
+    )
+    if has_name:
+        for cue in cues:
+            if "speaker" in cue and _GENERIC_SPEAKER_RE.match(cue["speaker"]):
+                del cue["speaker"]
 
 
 def parse_srt(content: str) -> List[Dict[str, Any]]:

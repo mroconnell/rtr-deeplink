@@ -49,9 +49,9 @@ TARGET_LANGUAGE = "en"
 #
 # Real captions confirmed present and high-quality on the one sample
 # checked -- a 2h40m meeting with real per-speaker dialogue
-# (`<v Speaker N>...</v>` WebVTT voice tags, which parse_vtt() doesn't
-# strip on its own -- stripped here via _VOICE_TAG_RE, a TelVue-specific
-# concern not yet seen elsewhere in this codebase). Real chapter/agenda
+# (`<v Speaker N>...</v>` WebVTT voice tags). parse_vtt() now strips these
+# itself and, since WO-1967, keeps the label as each cue's `speaker`;
+# _VOICE_TAG_RE below is a leftover belt-and-braces pass. Real chapter/agenda
 # timestamps also confirmed present via the separate chapters.vtt track,
 # a real start/end range per chapter (not point-in-time markers).
 #

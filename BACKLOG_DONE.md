@@ -22,6 +22,25 @@
 - Nothing reaches the drip until the Archive and resolver are deployed and the drip Mac's worktree (`~/rtr-deeplink-drip-worktree`) is brought to this `main`.
 - `daily_status.csv` has no new column. Request downloads count in `state.json`'s `today.audio_request_downloads`, and `drip.log` shows them as `audio-req`.
 - The resolver's own page for a fresh YouTube URL still resolves it with yt-dlp when a reader first pastes it. That is the core resolve, not this button, and it is unchanged.
+## [Done 2026-10-16] Keep the speaker labels station captions carry (WO-1967, from WO-1960) `[IMPROVEMENT-ROUND]`
+
+Ryan approved 2026-10-16 ("A5 is a great thing to do now"). Branch `claude/wo1967-speaker-labels`.
+
+**What was built.** `parse_vtt()` reads each cue's first WebVTT voice tag annotation (`<v Speaker 1>`, `<v.Male.spk1 Speaker1>`) into the cue's `speaker`, then strips the tag as before. Room or device labels ("El Cerrito Council Chamber") are dropped, and generic "Speaker N" labels are dropped when the same file names a person. A cue with no voice tag gets no label; nothing is carried forward. The meeting page shows a quiet label before a line whose speaker differs from the last label shown. The `.txt` download writes `[0:22] Speaker 1: ...` on the same rule. The `.srt` download is unchanged. No migration: `speaker` already rode in the segments JSON and the ingest model.
+
+**Real data it was tested on** (all already in `tests/fixtures`):
+
+| Fixture | Voice tag shape | Labels kept |
+|---|---|---|
+| TelVue, Ashland OR planning (media 1040134) | `<v Speaker 1>...</v>` | 8 of 30 cues |
+| Orange County FL BCC (generic_fallback) | `<v.Male.spk1 Speaker1>` | 12 of 12 cues |
+| Castus, Billings MT | `<v.Male.spk1.Speaker1>` (no annotation) | 0 of 30 cues |
+
+**Cautions.** No real fixture carries a person's name in a voice tag, so every label shipped today is a generic "Speaker N". Orange County's annotation does not always match its class (class `spk3` is annotated "Speaker1"); we keep what the annotation says. A cue with two voices takes the first. Castus's class-only tag is not read as a name.
+
+**Not built, and why.** Cablecast `S1:` and Tampa "NAME :" labels: no real fixture of either shape exists in `tests/fixtures`, so building them would break the real-data-first rule. The caption-credit field (Tampa's header) needs a migration. Both stay in the WO-1960 entry in `BACKLOG.md`.
+
+**Not backfilled.** Pages archived before this have no labels. A re-ingest with the same text matches the old version by content hash (text only) and keeps it, so old pages stay unlabelled until their captions change. Not live until merged and deployed.
 ## [Done 2026-10-16] No endpoint can correct a wrong word or name in a stored transcript
 
 **WO-1964. Not live until the Archive is deployed.** The route is on `main` only once this PR merges.
