@@ -12342,3 +12342,20 @@ https://archive.org/details/Mariemont_Village_Council_8_24_26,archiveorg,head+ff
 https://archive.org/details/factvmi-Fenton_Township_Board_Meeting_9-15-26-PkmX-EPuMvM,archiveorg,head+ffprobe,4295.07,2026-09-19,419492098,1,accept,,1.05,2026-10-16T15:28:27+00:00,bulk_ingest,0
 https://archive.org/details/nactvmb-North_Cypress-Langford_Council_Meeting_-_June_2026,archiveorg,head+ffprobe,9152.54,2026-07-25,897197571,1,accept,,0.84,2026-10-16T15:28:30+00:00,bulk_ingest,0
 https://archive.org/details/smcon-Terrace_Bay_council_meeting_for_October_7_2024,archiveorg,ranged-get+ffprobe,1708.32,2024-11-09,165845650,1,accept,,4.60,2026-10-16T15:28:37+00:00,bulk_ingest,0
+https://chesterheights.org/wp-content/uploads/2026/08/2026.08.17_16.48_01.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.41,2026-10-16T16:57:35+00:00,,0
+https://honesdaleborough.com/wp-content/uploads/2026/09/09-28-2026-Liquor-License-Hearing-Hearing-GMT20260928-213319_Recording.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.09,2026-10-16T16:57:37+00:00,,0
+https://tpcg.granicus.com/MediaPlayer.php?view_id=3&clip_id=4,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.14,2026-10-16T16:57:39+00:00,,0
+https://garlandisdtx.new.swagit.com/videos/400264,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-16T16:57:42+00:00,,0
+https://villageofeggharbor.granicus.com/MediaPlayer.php?view_id=1&clip_id=222,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-16T16:57:44+00:00,,0
+https://drive.usercontent.google.com/download?id=1ihL3lIhjtgxhc4jJ8aq487LGx9Q0QYV0&export=download&confirm=t,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.87,2026-10-16T16:57:47+00:00,,0
+https://townhallstreams.com/stream.php?location_id=62&id=76248,townhallstreams,hls-master+variant,1398.35,,,1,accept,,3.22,2026-10-16T16:57:53+00:00,,0
+https://townhallstreams.com/stream.php?location_id=62&id=76248,townhallstreams,hls-master+variant,1398.35,,,1,accept,,2.20,2026-10-16T16:57:55+00:00,feed_tier3_auto_transcription,0
+https://play.champds.com/falmouthme/event/3405,champds,hls-master+variant,2334.00,,,1,accept,,0.90,2026-10-16T16:57:58+00:00,,0
+https://play.champds.com/falmouthme/event/3405,champds,head+champds-vod2,2334.00,2026-09-14,254683570,1,accept,,1.05,2026-10-16T16:57:59+00:00,feed_tier3_auto_transcription,0
+https://play.champds.com/thompsonsstationtn/event/161,champds,hls-master+variant,839.63,,,1,accept,,0.88,2026-10-16T16:58:03+00:00,,0
+https://play.champds.com/thompsonsstationtn/event/161,champds,head+champds-vod2,839.63,2024-08-13,49557378,1,accept,,1.00,2026-10-16T16:58:04+00:00,feed_tier3_auto_transcription,0
+https://play.champds.com/signalmountaintn/event/13,champds,hls-master+variant,1896.57,,,1,accept,,0.89,2026-10-16T16:58:07+00:00,,0
+https://play.champds.com/signalmountaintn/event/13,champds,head+champds-vod2,1896.57,2023-01-23,270073464,1,accept,,0.97,2026-10-16T16:58:08+00:00,feed_tier3_auto_transcription,0
+https://play.champds.com/yubacoca/event/31,champds,hls-master+variant,16220.23,,,1,accept,,1.20,2026-10-16T16:58:11+00:00,,0
+https://play.champds.com/yubacoca/event/31,champds,head+champds-vod2,16220.23,2023-07-25,517532122,1,accept,,2.09,2026-10-16T16:58:13+00:00,feed_tier3_auto_transcription,0
+https://lonestargcd.new.swagit.com/videos/400293,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-16T16:58:17+00:00,,0
