@@ -527,9 +527,7 @@ class CablecastAssetFinder(AssetFinder):
             # CablecastPublicSite API serves it. Tried only when the direct
             # page fetch failed (404, block or network error), not when the
             # page loaded and simply had no such show.
-            api_result = await self._publicsite_api_fallback(
-                url, show_id, jurisdiction
-            )
+            api_result = await self._publicsite_api_fallback(url, show_id, jurisdiction)
             if api_result is not None:
                 return api_result
 
