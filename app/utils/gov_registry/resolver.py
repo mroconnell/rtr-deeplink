@@ -557,6 +557,27 @@ def _strip_county_qualifier(name: str) -> Tuple[str, str]:
     return prefix, m.group("county").strip()
 
 
+# "Charter Township of Shelby, MI" -> "Shelby Charter Township, MI".
+# Census keys a Michigan charter township as "Shelby charter township", so
+# only the trailing form reaches it. Stripping "Charter Township of" as a
+# leading type word is not enough: the bare "Shelby" then keys to Shelby
+# *township* (Oceana County, `us:cousub:2612772860`), a different
+# government, and before this it keyed to Shelby *village*
+# (`us:place:2672840`). Michigan's ~130 charter townships title their
+# IQM2/CivicClerk portals this way (shelbytownmi.iqm2.com).
+_LEADING_CHARTER_TOWNSHIP_RE = re.compile(
+    r"^\s*(?:the\s+)?charter\s+township\s+of\s+(?P<name>[^,]+?)\s*(?P<rest>,.*)?$",
+    re.I,
+)
+
+
+def _charter_township_last(name: str) -> str:
+    m = _LEADING_CHARTER_TOWNSHIP_RE.match(name)
+    if not m:
+        return name
+    return f"{m.group('name')} Charter Township{m.group('rest') or ''}"
+
+
 def _leading_type_word(name: str) -> str:
     """ "Town of Cottage Grove" -> "town".
 
@@ -2342,7 +2363,7 @@ def _resolve_government_ladder(
     # Granicus RSS title passed through), and the county lookup missed on
     # the entity while "Kaua'i County, HI" keys to `us:county:15007`.
     if raw_name:
-        raw_name = html.unescape(raw_name)
+        raw_name = _charter_township_last(html.unescape(raw_name))
 
     # 1. Pinned, authoritative.
     if host:

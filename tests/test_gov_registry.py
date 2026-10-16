@@ -4240,3 +4240,24 @@ def test_html_entity_in_a_jurisdiction_is_unescaped_before_lookup():
     assert finalize_jurisdiction("Kaua&apos;i County, HI").jurisdiction == (
         "Kaua'i County, HI"
     )
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "Charter Township of Shelby, MI",
+        "The Charter Township of Shelby, MI",
+        "Shelby Charter Township, MI",
+    ],
+)
+def test_charter_township_of_x_keys_to_the_charter_township(raw):
+    """Backlog triage 2026-10-16 (WO-125's landing-page check). "Charter
+    Township of Shelby, MI" (shelbytownmi.iqm2.com's own title) keyed to
+    Shelby VILLAGE (`us:place:2672840`). Treating "Charter Township of"
+    as a plain leading type word would not fix it either: bare "Shelby"
+    in MI's cousub table is Shelby township, Oceana County
+    (`us:cousub:2612772860`), a different government. The Macomb County
+    charter township is `us:cousub:2609972820`."""
+    match = resolver.resolve_government(raw)
+    assert match.gov_id == "us:cousub:2609972820"
+    assert not match.meeting_body
