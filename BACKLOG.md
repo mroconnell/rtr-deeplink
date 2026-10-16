@@ -333,8 +333,7 @@ Dormant — needs a real example first `[LATER]`  (24)
 
 Parked deliberately — allowed back `[PARK]`  (4)
   Video-to-calendar join: match a government's video source to its own…
-  SparQ Meetings adapter: agenda pages, six hosts and per-organization…  (1)
-    [PARK] `[BIG]` "Request Transcript from Audio" doesn't work for…
+  SparQ Meetings adapter: agenda pages, six hosts and per-organization…
   `[LATER]` Mastodon auto-posting has made zero real posts
   `[IMPROVEMENT-ROUND]` `[BIG]` "Feed cities" — should this app ever…
 ```
@@ -2867,24 +2866,6 @@ actionability sections above.
 - **Next action:** When picked up, read `ADAPTER_SCOPE.md` in rtr-business `research/boeconnect_2026-10-12/`: build the adapter, register the six hosts in `MULTI_GOV_HOSTS` and `tenant_key.py`, and add about 1,600 per-organization pin rows (skip the 307 duplicate org ids). Canonical host `meeting.sparqdata.com`. About 1.5 days.
 - **Constraint:** Parked by Ryan 2026-10-14: the coverage outcome (video leads in the drip, the rest marked `meeting-without-video`) is already done without it. Agenda list stays as a link only, no per-item times. Minutes are linked, not parsed.
 - **History:** `ENUMERATION_METHODS.md` §402 (rtr-business); 163 governments marked and 158 relabelled `meeting-without-video` on 2026-10-13/14.
-
-Parked by the user during the jurisdiction/title extraction planning
-conversation. Not rejected — explicitly allowed to return.
-
-- **[PARK] `[BIG]` "Request Transcript from Audio" doesn't work for YouTube-hosted meetings.**
-  - **Issue**: `app/main.py`'s `check-feasibility` route runs `ffprobe`
-    on `result.video_url` — for YouTube that's an HTML iframe-embed
-    *page*, never a real media file, so `ffprobe` can never read it.
-    Confirmed live 2026-08-10.
-  - **Impact**: real fix needs yt-dlp's own stream extraction, the same
-    pipeline already confirmed blocked by YouTube's anti-bot check —
-    building it without first solving that block would likely just trade
-    one failure message for another.
-  - **Next action**: none planned — cookies-based auth, a PO-token-
-    provider plugin, and a proxy were all surfaced as real options and
-    deliberately not attempted (cost/maintenance/risk not yet evaluated).
-  - **History**: coupled to the still-open YouTube IP-block investigation,
-    `docs/investigations/youtube_429_block.md`.
 
 ### `[LATER]` Mastodon auto-posting has made zero real posts
 

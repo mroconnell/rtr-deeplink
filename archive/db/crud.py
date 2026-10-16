@@ -131,6 +131,7 @@ from .models import (
     TranscriptionJob,
     TranscriptVersion,
     WorkerReportSnapshot,
+    YoutubeAudioRequest,
 )
 
 
@@ -2492,6 +2493,229 @@ async def list_youtube_pages_missing_transcripts(
                 }
             )
         return wanted
+
+
+# --- WO-1969: reader requests for audio transcripts of YouTube meetings ----
+
+
+async def _page_for_url(session, url_normalized: str) -> Optional[MeetingPage]:
+    """The page an input URL already landed on: alias first, then
+    source_url_normalized. Same two paths as lookup_page_for_url()."""
+    alias = (
+        (
+            await session.execute(
+                select(MeetingPageUrlAlias).where(
+                    MeetingPageUrlAlias.url_normalized == url_normalized
+                )
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if alias:
+        page = await session.get(MeetingPage, alias.meeting_page_id)
+        if page:
+            return page
+    return (
+        (
+            await session.execute(
+                select(MeetingPage).where(
+                    MeetingPage.source_url_normalized == url_normalized
+                )
+            )
+        )
+        .scalars()
+        .first()
+    )
+
+
+def _youtube_video_id_of_page(page: MeetingPage) -> Optional[str]:
+    vid = _extract_youtube_video_id(page.video_url or "")
+    if vid:
+        return vid
+    ext = page.external_id or ""
+    if ext.startswith("youtube:"):
+        return ext[len("youtube:") :] or None
+    return None
+
+
+async def _has_transcribed_default(session, meeting_page_id: int) -> bool:
+    """True when the page's default transcript is already our own audio
+    transcript (source "transcribed", with segments). That is exactly when
+    meeting_page.html stops showing the request button, so it is also when
+    a reader's request counts as answered."""
+    version = (
+        (
+            await session.execute(
+                select(TranscriptVersion).where(
+                    TranscriptVersion.meeting_page_id == meeting_page_id,
+                    TranscriptVersion.is_default.is_(True),
+                )
+            )
+        )
+        .scalars()
+        .first()
+    )
+    return bool(version and version.source == "transcribed" and version.segments)
+
+
+async def record_youtube_audio_request(
+    *, url_normalized: str, video_id: Optional[str] = None
+) -> dict:
+    """Record one reader's "Request Transcript from Audio" press, if the
+    meeting is on YouTube (WO-1969). Makes no YouTube request.
+
+    `url_normalized` is the URL the reader's page was built from. When the
+    Archive has a page for it, the page decides: a non-YouTube page is not
+    recorded (the caller goes on to its normal transcription check). When
+    it has no page, `video_id` (the caller's own reading of a YouTube URL)
+    is used, and the row is linked to a page later by
+    list_open_youtube_audio_requests().
+
+    Returns {"youtube": bool, "recorded": bool, "new": bool, "reason": str?}.
+    A repeat request for the same video only bumps request_count.
+    """
+    async with async_session() as session:
+        page = await _page_for_url(session, url_normalized)
+        if page is not None:
+            if page.video_format != "youtube":
+                return {"youtube": False, "recorded": False, "new": False}
+            video_id = _youtube_video_id_of_page(page) or video_id
+            if await _has_transcribed_default(session, page.id):
+                return {
+                    "youtube": True,
+                    "recorded": False,
+                    "new": False,
+                    "reason": "already_transcribed",
+                }
+        if not video_id:
+            return {"youtube": False, "recorded": False, "new": False}
+
+        for _attempt in range(2):
+            row = (
+                (
+                    await session.execute(
+                        select(YoutubeAudioRequest).where(
+                            YoutubeAudioRequest.video_id == video_id
+                        )
+                    )
+                )
+                .scalars()
+                .first()
+            )
+            now = datetime.now(timezone.utc)
+            if row is not None:
+                row.request_count = (row.request_count or 0) + 1
+                row.last_requested_at = now
+                if row.meeting_page_id is None and page is not None:
+                    row.meeting_page_id = page.id
+                await session.commit()
+                return {"youtube": True, "recorded": True, "new": False}
+            session.add(
+                YoutubeAudioRequest(
+                    video_id=video_id,
+                    meeting_page_id=page.id if page is not None else None,
+                    url_normalized=url_normalized,
+                    request_count=1,
+                    first_requested_at=now,
+                    last_requested_at=now,
+                )
+            )
+            try:
+                await session.commit()
+                return {"youtube": True, "recorded": True, "new": True}
+            except IntegrityError:
+                # Two presses for the same video at the same moment: the
+                # other one inserted first. Loop once and count this one
+                # as a repeat.
+                await session.rollback()
+        return {"youtube": True, "recorded": False, "new": False, "reason": "race"}
+
+
+async def list_open_youtube_audio_requests(limit: int = 50) -> list[dict]:
+    """Open reader requests, oldest first, for the drip Mac's audio lane
+    (WO-1969).
+
+    A request is open while its page exists, is YouTube-hosted, and has no
+    default audio transcript of our own yet (_has_transcribed_default). A
+    request with no page yet is linked here, by its URL or by the page's
+    YouTube video id; one that still has no page is left out, since the
+    drip can only transcribe onto a page.
+
+    Each item has the fields transcribe_backlog_locally.process_one()
+    needs, the same shape as list_youtube_pages_missing_transcripts().
+    """
+    async with async_session() as session:
+        rows = (
+            (
+                await session.execute(
+                    select(YoutubeAudioRequest).order_by(
+                        YoutubeAudioRequest.first_requested_at.asc(),
+                        YoutubeAudioRequest.id.asc(),
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        out: list[dict] = []
+        linked = False
+        for row in rows:
+            page = None
+            if row.meeting_page_id is not None:
+                page = await session.get(MeetingPage, row.meeting_page_id)
+            if page is None and row.url_normalized:
+                page = await _page_for_url(session, row.url_normalized)
+            if page is None:
+                page = (
+                    (
+                        await session.execute(
+                            select(MeetingPage).where(
+                                MeetingPage.video_format == "youtube",
+                                or_(
+                                    MeetingPage.external_id
+                                    == f"youtube:{row.video_id}",
+                                    MeetingPage.video_url
+                                    == f"https://www.youtube.com/embed/{row.video_id}",
+                                ),
+                            )
+                        )
+                    )
+                    .scalars()
+                    .first()
+                )
+            if page is None:
+                continue
+            if row.meeting_page_id != page.id:
+                row.meeting_page_id = page.id
+                linked = True
+            if page.video_format != "youtube":
+                continue
+            if await _has_transcribed_default(session, page.id):
+                continue
+            out.append(
+                {
+                    "slug": page.slug,
+                    "title": page.title,
+                    "platform": page.platform,
+                    "external_id": page.external_id,
+                    "source_url_normalized": page.source_url_normalized,
+                    "video_url": page.video_url,
+                    "video_format": "youtube",
+                    "video_id": row.video_id,
+                    "request_count": row.request_count,
+                    "first_requested_at": (
+                        row.first_requested_at.isoformat()
+                        if row.first_requested_at
+                        else None
+                    ),
+                }
+            )
+            if len(out) >= limit:
+                break
+        if linked:
+            await session.commit()
+        return out
 
 
 async def list_transcription_backlog_candidates(

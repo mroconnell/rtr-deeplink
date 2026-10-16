@@ -14,7 +14,7 @@ all three jobs, slowly and steadily, so YouTube never sees a burst:
 |---|---|---|---|
 | captions | pages on the site waiting for a transcript | asks YouTube for the video's captions and puts them on the page; if the channel disabled captions, marks the page so nobody asks again | one page every 3–4 minutes |
 | feed | the YouTube lines in `scripts/tier3_auto_transcription_queue.txt` (the GitHub feed leaves these alone, WO-1064) | turns each into a site page (same checks as the GitHub feed), then the captions lane fetches its captions next | same budget |
-| audio | pages marked "captions disabled" | downloads the audio and transcribes it with Whisper on this Mac | at most 3 downloads a day (raise only after a week without a block) |
+| audio | readers' "Request Transcript from Audio" presses on YouTube meetings first (WO-1969), then pages marked "captions disabled" | downloads the audio and transcribes it with Whisper on this Mac | at most 3 downloads a day (raise only after a week without a block); at most 1 of the 3 goes to reader requests |
 | vimeo | pages on the site waiting for a transcript, `video_format=vimeo` (WO-1147, 2026-09-27, **opt-in — not in the default `--lanes`**) | resolves the video locally through the Vimeo adapter, the same way a real browser would, and either puts the real captions on the page or records a permanent "no captions" marker | same shared spacing as the other lanes — **not** the same shared YouTube budget (see below) |
 | direct | the non-YouTube, non-Vimeo lines in `scripts/tier3_auto_transcription_queue.txt` (WO-1168, 2026-09-29, **opt-in — not in the default `--lanes`**) | turns each into a site page the same way the `feed` lane does, straight from this Mac's office connection — only while the cloud workers have fewer than `--direct-low-water` (default 10) non-YouTube, non-Vimeo pages still waiting for a transcript | same shared budget as captions/feed/audio (a fed page can itself embed YouTube) |
 
@@ -280,6 +280,15 @@ drip gives up waiting, strikes the page out (pushed back 4 hours, then
 longer) and moves on to the next lane. The Whisper thread itself cannot be
 killed from the drip, so it may still finish in the background and use the
 CPU; the page stays in the queue.
+
+**Reader requests come first in the audio lane (WO-1969).** When a reader
+presses "Request Transcript from Audio" on a YouTube meeting, the site only
+records it. The audio lane reads the open requests from the Archive
+(`GET /internal/youtube-audio-requests`, at most every 15 minutes) and takes
+one a day, oldest first, before the backlog. The other two downloads stay
+with the backlog, and the daily total is still 3. The page tells the reader
+no date. `drip.log` marks these jobs `audio-req`. If the Archive does not
+answer that list, the lane logs a warning and works the backlog as before.
 
 **The feed lane skips Vimeo queue lines when the `vimeo` lane is off (WO-1961).** Fed Vimeo pages can only get captions from the `vimeo` lane, so without it the feed lane leaves those queue lines alone instead of creating pages that sit waiting. Add `vimeo` to `--lanes` and the feed lane takes them again.
 
