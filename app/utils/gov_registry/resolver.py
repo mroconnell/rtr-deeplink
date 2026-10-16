@@ -293,6 +293,10 @@ def _match_override(
     # WO-1056: the page's own tenant key on a shared host (tenant_key.py),
     # e.g. `24263` for DestinyHosted's `/24263/agenda/...`.
     page_key = tenant_key(f"https://{host}{path}") if path else None
+    ext = hints.get("external_id", "")
+    youtube_hint_id = (
+        ext[len("youtube:") :] if ext.startswith("youtube:") and len(ext) == 19 else ""
+    )
     out = []
     for row in rows:
         if row.match is None:
@@ -323,6 +327,15 @@ def _match_override(
                     out.append(row)
                     continue
             elif needle in hints.values():
+                out.append(row)
+                continue
+            elif youtube_hint_id and needle == youtube_hint_id:
+                # A bare 11-character YouTube id pin also matches the
+                # page's own `external_id` (`youtube:<id>`) when the
+                # caller passes hints but no path. Before the 2026-10-16
+                # rewrite those pins were written `youtube:<id>` for this
+                # one caller shape, and `has_owner()` (path, no hints)
+                # missed them.
                 out.append(row)
                 continue
         # WO-1056: a pin naming a whole tenant matches every URL of that

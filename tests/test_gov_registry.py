@@ -3843,6 +3843,39 @@ def test_match_shape_problem(host, match, ok):
     assert (registry.match_shape_problem(host, match) is None) is ok
 
 
+# Backlog triage 2026-10-16: 1,374 committed `youtube:<id>` rows matched only
+# through ingest's `external_id` hint, so `queue_probe.has_owner()` (no
+# hints) missed 1,054 of them. They now use the bare 11-character id. The
+# two left are pins that disagree with an existing bare pin for the same
+# video (Clinton town vs village NY; Millinocket school district vs town
+# ME) and wait for a human decision. Once they are settled,
+# `match_shape_problem()` can refuse the prefixed YouTube shape outright.
+_YOUTUBE_PREFIX_PINS_AWAITING_DECISION = {"youtube:lNJoncQNJbM", "youtube:s2TTtUcnzag"}
+
+
+def test_no_new_youtube_prefixed_pin_rows():
+    path = registry.DATA_DIR / "tenant_overrides.csv"
+    with path.open(newline="", encoding="utf-8") as f:
+        prefixed = {
+            r["match"]
+            for r in csv.DictReader(f)
+            if (r["match"] or "").lower().startswith("youtube:")
+        }
+    assert prefixed <= _YOUTUBE_PREFIX_PINS_AWAITING_DECISION, sorted(
+        prefixed - _YOUTUBE_PREFIX_PINS_AWAITING_DECISION
+    )[:10]
+
+
+def test_has_owner_finds_a_rewritten_bare_youtube_pin():
+    """`-AnHmoaZJ3E` was `youtube:-AnHmoaZJ3E` (Anderson County SC, WO-184)
+    and `has_owner()` refused it as "no owner"."""
+    from app.platforms.queue_probe import has_owner
+
+    registry.clear_caches()
+    owned, gov_id, _ = has_owner("https://www.youtube.com/watch?v=-AnHmoaZJ3E")
+    assert (owned, gov_id) == (True, "us:county:45007")
+
+
 def test_loader_rejects_dead_vimeo_shape_and_keeps_working_ones(monkeypatch, tmp_path):
     overrides = tmp_path / "tenant_overrides.csv"
     overrides.write_text(
