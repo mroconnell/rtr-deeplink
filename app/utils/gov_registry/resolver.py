@@ -2658,6 +2658,19 @@ def _resolve_government_ladder(
         # double-counting the same name.
         name, gov_type, meeting_body = raw_name, raw_type, None
         type_preference = ""
+    elif (
+        country == "ca"
+        and raw_type == classify.COUNTY
+        and classify.is_ca_upper_tier_name(raw_name)
+    ):
+        # "Regional Municipality of Durham, ON": the phrase IS the
+        # government's identity. Rung 2's entity split read it like
+        # "Housing Authority of the County of Santa Clara" and left
+        # meeting_body="Regional Municipality", name="Durham", which
+        # classified nothing and minted `rtr:ca:on:durham` instead of
+        # reaching the census division `ca:cd:3518`.
+        name, gov_type, meeting_body = raw_name, raw_type, None
+        type_preference = ""
     else:
         gov_type = classify.classify_government_type(name, country=country)
         # A trailing "(word)" disambiguator (either side -- the cleaned

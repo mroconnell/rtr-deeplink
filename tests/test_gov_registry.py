@@ -301,33 +301,25 @@ def test_leading_type_word_recognizes_the_newly_widened_words():
     assert resolver._leading_type_word("Cottage Grove") == ""
 
 
-def test_regional_municipality_of_durham_type_word_widened_but_resolution_unchanged():
-    # Honest, current-state test -- NOT what was originally expected here.
-    # "Region of Peel, ON" (parametrized above) resolves correctly to
-    # `ca:cd`. "Regional Municipality of Durham, ON" does not, and this
-    # is a PRE-EXISTING `jurisdiction_enrich.finalize_jurisdiction()`
-    # behavior, unrelated to and unchanged by this pass's widening (this
-    # test never touches `_LEADING_TYPE_RE`/`_COMPARISON_PREFIX_RE`,
-    # confirmed by reproducing it directly against `finalize_jurisdiction()`
-    # alone): `_split_entity_prefix()` reads "Regional Municipality of
-    # Durham" as an "<Entity> of <Jurisdiction>" shape (the same pattern
-    # built for "Housing Authority of the County of Santa Clara") and
-    # splits it into meeting_body="Regional Municipality",
-    # jurisdiction="Durham, ON" -- but unlike a housing authority, "Regional
-    # Municipality of X" IS the government's own identity, not a body
-    # within "Durham". By the time rung 3 classifies, the entity prefix
-    # is already gone, so "Durham" alone classifies as `other` and mints
-    # `rtr:ca:on:durham` instead of reaching `ca:cd`. A new, separate
-    # BACKLOG.md entry logs this (out of scope for this pass -- fixing it
-    # means teaching `_split_entity_prefix()`/`_ENTITY_OF_PLACE_RE` to
-    # recognize "Regional Municipality"/"Region"/"County" as
-    # identity-carrying prefixes, not body prefixes, which is a
-    # `jurisdiction_enrich.py` change well beyond a regex word-list
-    # widening). Pinned here as found, not silently worked around.
-    match = resolve("Regional Municipality of Durham, ON")
-    assert match.tier == resolver.TIER_UNVERIFIED
-    assert match.gov_id == "rtr:ca:on:durham"
-    assert match.meeting_body == "Regional Municipality"
+@pytest.mark.parametrize(
+    "raw, gov_id",
+    [
+        ("Regional Municipality of Durham, ON", "ca:cd:3518"),
+        ("Regional Municipality of York, ON", "ca:cd:3519"),
+        ("Region of Peel, ON", "ca:cd:3521"),
+    ],
+)
+def test_regional_municipality_of_x_resolves_as_the_government(raw, gov_id):
+    # Was pinned as "resolution unchanged" (WO-105): rung 2's entity split
+    # made "Regional Municipality" a meeting body and "Durham" minted
+    # `rtr:ca:on:durham`. Fixed in the 2026-10-16 backlog triage: a raw
+    # Canadian upper-tier name keeps its full form at rung 3. The
+    # housing-authority split this mechanism exists for is unaffected
+    # (the "Housing Authority of the County of Santa Clara" test below).
+    match = resolve(raw)
+    assert match.tier == resolver.TIER_REGISTRY
+    assert match.gov_id == gov_id
+    assert not match.meeting_body
 
 
 def test_district_of_north_vancouver_type_word_extracted_and_resolved():

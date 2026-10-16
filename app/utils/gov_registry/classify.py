@@ -185,6 +185,12 @@ _CA_UPPER_TIER_RE = re.compile(
 # trailing "<X> District" (a school or water district) is untouched.
 _CA_DISTRICT_MUNICIPALITY_RE = re.compile(r"^(?:the\s+)?district of\s+\S", re.I)
 
+
+def is_ca_upper_tier_name(name: Optional[str]) -> bool:
+    """ "Regional Municipality of Durham" / "Peel Region" -> True."""
+    return bool(name and _CA_UPPER_TIER_RE.search(name.strip()))
+
+
 # Consolidated city-county governments: San Francisco, Denver, Honolulu,
 # Juneau, Sitka, Nashville-Davidson, Louisville/Jefferson. One government,
 # and Census keys it as a *place* (`San Francisco city`, GEOID 0667000),
