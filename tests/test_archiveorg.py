@@ -103,6 +103,19 @@ async def test_own_station_upload_is_tier_3_with_mp4_and_metadata_date():
     assert result.meeting_body is None
 
 
+async def test_title_html_entities_are_decoded():
+    meta = _own_meta()
+    meta["metadata"]["title"] = (
+        "Humboldt Bay Harbor, Recreation &amp; Conservation District Meeting &#39;19 &quot;Special&quot;"
+    )
+    with mock_session({OWN_META: FakeResponse(text=json.dumps(meta))}):
+        result = await ArchiveOrgAssetFinder().resolve(OWN_PAGE)
+    assert (
+        result.title
+        == 'Humboldt Bay Harbor, Recreation & Conservation District Meeting \'19 "Special"'
+    )
+
+
 async def test_own_station_upload_makes_exactly_one_request():
     seen = []
     original = aiohttp.ClientSession.get

@@ -17,7 +17,7 @@ How it reads an item (politeness: one metadata request, at most one caption requ
 
 Mapping:
 
-* `title` = metadata.title as given. `date` = metadata.date (first 10 characters, when they read as a date); else a `YYYY-MM-DD` / `YYYY_MM_DD` in the
+* `title` = metadata.title with HTML entities decoded (archive.org stores `&amp;` and `&#39;` in titles; the page shows plain text). `date` = metadata.date (first 10 characters, when they read as a date); else a `YYYY-MM-DD` / `YYYY_MM_DD` in the
   title or the file name; else blank. A blank date gets a plain note.
 * `video_url` = the .mp4 (file format h.264 or MPEG4 first), else the .mp3 (audio counts). Never fetched. `video_duration_seconds` = the file's `length`,
   which the Archive writes as seconds (`4271.3`) or `HH:MM:SS` (`01:24:18`); both are read.
@@ -33,6 +33,7 @@ Mapping:
 Identity: `archive.org` is in `MULTI_GOV_HOSTS`, so a page from here is never filed under a guessed government. Callers pass an explicit `gov_id`.
 """
 
+import html
 import logging
 import re
 from typing import Optional
@@ -188,7 +189,7 @@ class ArchiveOrgAssetFinder(AssetFinder):
                 resolved.video_warnings = [
                     "This Internet Archive item is restricted and its files are not available."
                 ]
-                resolved.title = _as_text(meta.get("title"))
+                resolved.title = _title_text(meta.get("title"))
                 return resolved
 
             youtube_id = _as_text(meta.get("youtube-id"))
@@ -196,7 +197,7 @@ class ArchiveOrgAssetFinder(AssetFinder):
                 resolved.external_id = f"youtube:{youtube_id}"
                 resolved.transcript_warnings.append(COPY_WARNING)
 
-            resolved.title = _as_text(meta.get("title"))
+            resolved.title = _title_text(meta.get("title"))
             media = _pick_media(files)
             date = _iso_date(_as_text(meta.get("date")) or "")
             if not date:
@@ -275,6 +276,12 @@ class ArchiveOrgAssetFinder(AssetFinder):
             return None
         cues, _text = parse_captions_by_extension(caption_url, decode_vtt_bytes(raw))
         return cues or None
+
+
+def _title_text(value) -> Optional[str]:
+    """`_as_text` plus HTML entity decoding: archive.org keeps `&amp;`, `&#39;` and `&quot;` in the title field (seen on Humboldt Bay Harbor, Recreation &amp; Conservation District items)."""
+    text = _as_text(value)
+    return html.unescape(text).strip() or None if text else None
 
 
 def _as_text(value) -> Optional[str]:
