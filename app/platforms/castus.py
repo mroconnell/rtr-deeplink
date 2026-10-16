@@ -231,7 +231,10 @@ TARGET_LANGUAGE = "en"
 # `resolve()` now names it as a separate platform instead of failing
 # with the generic "no tenant/video id" message. Building it is a real
 # second adapter (confirmed shapes above are enough to start from).
-_URL_RE = re.compile(r"/vod/([^/?#]+)/video/([^/?#]+)")
+# `private` is a real second path segment (Vero Beach, FL's
+# `/vod/vero-beach/private/{id}`, two videos, found 2026-09-07); every other
+# tenant seen uses `video`.
+_URL_RE = re.compile(r"/vod/([^/?#]+)/(?:video|private)/([^/?#]+)")
 _PLAYLIST_URL_RE = re.compile(r"/vod/([^/?#]+)/playlist/([^/?#]+)")
 _HUB_URL_RE = re.compile(r"/vod/([^/?#]+)/?(?:[?#]|$)")
 _TITLE_DATE_RE = re.compile(r"^(.*?)\s*-\s*([A-Za-z]+ \d{1,2},? \d{4})$")
