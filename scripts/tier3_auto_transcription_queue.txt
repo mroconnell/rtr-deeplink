@@ -253,18 +253,6 @@ https://liveoakcity.primegov.com/Portal/Meeting?meetingTemplateId=1764	https://l
 https://www.youtube.com/watch?v=1XoLzWJF3Tc	https://www.youtube.com/live/1XoLzWJF3Tc	us:county:06031
 https://www.youtube.com/watch?v=YwhP9Y8Mq9M	https://www.youtube.com/watch?v=YwhP9Y8Mq9M	us:county:34039
 https://vimeo.com/568976671	https://vimeo.com/568976671	us:place:4163650
-https://delriotx.new.swagit.com/videos/402013		us:place:4819792
-https://play.champds.com/auburnny/event/739		us:place:3603078
-https://pub-cityofbaraboo.escribemeetings.com/Meeting.aspx?Id=33a3c81e-312f-4e93-a0f4-93b99e0ba699		us:place:5504625
-https://scottsbluffne.portal.civicclerk.com/event/915/media		us:place:3144245
-https://flowerybranchga.portal.civicclerk.com/event/266/media		us:place:1330340
-https://charlestownwv.granicus.com/MediaPlayer.php?view_id=1&clip_id=2174		us:place:5414610
-https://townofnashville.granicus.com/MediaPlayer.php?view_id=1&clip_id=191		us:place:3746000
-https://rockymountva.portal.civicclerk.com/event/639/media		us:place:5168496
-https://www.townoflaurel.net/pdfs/M&C_Meeting_9-21-26.m4a	https	us:place:1041310
-https://gibsonburgohio.org/wp-content/uploads/2026/09/9.3.26-COUNCIL-MTG.mp3	https	us:place:3930072
-https://townoflakeview.org/wp-content/uploads/2026/04/4-26-2026-Town-Hall-Meeting-Marc-test.mp4	https	us:place:4140700
-https://trollway.tv/internetchannel/show/2786?site=1		us:place:5554725
 https://boxcast.tv/view/city-of-parma-budget-hearings-session-2-xlroiqjr7vdxxvbgmxev		us:place:3961000
 https://bellca.new.swagit.com/videos/401321		us:place:0604870
 https://cityofwalnut.granicus.com/MediaPlayer.php?view_id=2&clip_id=352		us:place:0683332
@@ -1474,3 +1462,6 @@ https://beaufort.granicus.com/MediaPlayer.php?view_id=3&clip_id=4774		us:place:4
 https://archivesvilledelaval.webtv.coop/assemblee-extraordinaire-de-la-ville-de-laval-du-27-avril-2026/		ca:csd:2465005	Assemblée extraordinaire de la Ville de Laval du 27 avril 2026	2026-04-27
 https://kirbytx.new.swagit.com/videos/402036		us:place:4839448
 https://greeceny.new.swagit.com/videos/401409		us:cousub:3605530290
+https://delriotx.new.swagit.com/videos/402013		us:place:4819792
+https://charlestownwv.granicus.com/MediaPlayer.php?view_id=1&clip_id=2174		us:place:5414610
+https://townofnashville.granicus.com/MediaPlayer.php?view_id=1&clip_id=191		us:place:3746000
