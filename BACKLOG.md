@@ -258,7 +258,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (77)
   Three Archive pages store a source address ending in a backslash, so…
   `repair_wrong_pages.py --apply` refuses on the Archive's own shell…
   16 pins in `tenant_overrides.csv` name a minted id with no registry…
-  Two TelVue pages for separate Vail-area bodies would be re-keyed to…
+  Four TelVue pages for special bodies would be re-keyed to a town or…
 
 Reliability, ops & cost  (6)
   `[BIG]` Make BACKLOG.md a generated doc: one file per entry
@@ -2014,13 +2014,13 @@ actionability sections above.
 - **Constraint**: never re-point a pin to a namesake; check each host's owner by hand.
 - **History**: `backfill_gov_id.py` dry run on the Archive shell, 2026-10-16.
 
-### Two TelVue pages for separate Vail-area bodies would be re-keyed to the Town of Vail by a whole-channel pin `[NEEDS-AUDIT]`
+### Four TelVue pages for special bodies would be re-keyed to a town or county by the backfill `[NEEDS-AUDIT]`
 
-- **Issue**: `tenant_overrides.csv` pins TelVue channel `player/YGktjFZCLukJd_8Fx53BkVRk4tAZafS4` (High Five Access Media) to Vail, CO (`us:place:0880040`). The 2026-10-16 `backfill_gov_id.py` dry run would move page 13056 ("Eagle Valley Transportation Authority") and page 13057 ("EagleVail Metropolitan District") to Vail. The same dry run shows page 11427 ("Cumberland, ME", pinned to the town, `us:cousub:2300515430`) displayed as "Cumberland County, ME".
-- **Impact**: two real special districts would be filed under the wrong government, and one town would show a county's name.
-- **Next action**: add per-video pins (or mint ids) for the two Vail-area bodies, as WO-1153 did for the Vail Housing Authority. Check why the Cumberland town id displays as the county. Then rerun the backfill for `videoplayer.telvue.com`.
-- **Constraint**: `videoplayer.telvue.com` was left out of the 2026-10-16 apply run for this reason, which also held back 5 TelVue moves that looked right (pages 11276, 11337, 11340, 11897, 12826).
-- **History**: `backfill_gov_id.py` dry run on the Archive shell, 2026-10-16.
+- **Issue**: `tenant_overrides.csv` pins TelVue channel `player/YGktjFZCLukJd_8Fx53BkVRk4tAZafS4` (High Five Access Media) to Vail, CO (`us:place:0880040`). The 2026-10-16 `backfill_gov_id.py` dry run would move page 13056 ("Eagle Valley Transportation Authority") and page 13057 ("EagleVail Metropolitan District") to Vail. The same dry run shows page 11427 ("Cumberland, ME", pinned to the town, `us:cousub:2300515430`) displayed as "Cumberland County, ME". The 2026-10-17 dry run adds two more wrong moves with a different cause: page 11897 ("Centre County Metropolitan Planning Organization, PA") to Centre County, and page 12826 ("Concord School District, NH") to Concord city. Both come from WO-1100's name match on the meeting's own name, which matched the place or county inside the body's name and dropped the body.
+- **Impact**: four real special bodies would be filed under the wrong government, and one town would show a county's name.
+- **Next action**: add per-video pins (or mint ids) for the two Vail-area bodies, as WO-1153 did for the Vail Housing Authority. Make WO-1100's name match refuse a name that carries a body word (school district, planning organization, authority, district) when it would land on the bare town or county. Check why the Cumberland town id displays as the county. Then rerun the backfill for `videoplayer.telvue.com`.
+- **Constraint**: `videoplayer.telvue.com` was left out of the 2026-10-16 apply run for this reason, and again from the 2026-10-17 apply, which covers only the 41 non-TelVue rows. Held back with it: 3 TelVue moves that look right (pages 11276, 11337, 11340).
+- **History**: `backfill_gov_id.py` dry runs on the Archive shell, 2026-10-16 and 2026-10-17.
 
 ## Reliability, ops & cost
 
