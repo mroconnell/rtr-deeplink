@@ -31,6 +31,19 @@ async def roles_checked_since(page_id: int, since: datetime) -> set[str]:
         return {r[0] for r in rows}
 
 
+async def has_text(page_id: int, doc_role: str, content_hash: str) -> bool:
+    """True when this page already stores this exact text for this role."""
+    async with async_session() as session:
+        row = await session.execute(
+            select(AgendaVersion.id)
+            .where(AgendaVersion.meeting_page_id == page_id)
+            .where(AgendaVersion.doc_role == doc_role)
+            .where(AgendaVersion.content_hash == content_hash)
+            .limit(1)
+        )
+        return row.first() is not None
+
+
 async def store_agenda_version(
     page_id: int,
     *,

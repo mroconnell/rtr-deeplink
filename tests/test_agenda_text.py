@@ -419,6 +419,31 @@ async def test_same_text_is_stored_once_and_a_change_is_a_new_version(monkeypatc
     assert "text" not in versions[0]
 
 
+async def test_packet_that_is_the_agenda_is_not_stored_twice(monkeypatch):
+    # Synthetic reads, real behaviour: CivicPlus answers `?packet=true` with
+    # the agenda itself when a meeting has no packet (Barron and Amityville,
+    # office-Mac A2 check, 2026-10-17).
+    page_id = await _page("packet-is-agenda")
+    _fake_reads(monkeypatch, {"agenda": SYNTHETIC_AGENDA, "packet": SYNTHETIC_AGENDA})
+    out = await real_read_and_store(
+        page_id, EMPORIA_AGENDA, EMPORIA_PACKET, "2026-06-18"
+    )
+    assert {s["doc_role"]: s["outcome"] for s in out} == {
+        "agenda": "created",
+        "packet": "same_as_agenda",
+    }
+
+    # Also when the agenda was read on an earlier ingest and skipped now.
+    _fake_reads(monkeypatch, {"packet": SYNTHETIC_AGENDA})
+    monkeypatch.setattr(agenda_ingest, "AGENDA_RECHECK_HOURS", 0)
+    again = await real_read_and_store(page_id, None, EMPORIA_PACKET, "2026-06-18")
+    assert [s["outcome"] for s in again if s.get("doc_role") == "packet"] == [
+        "same_as_agenda"
+    ]
+    versions = await agenda_versions.list_versions(page_id)
+    assert [v["doc_role"] for v in versions] == ["agenda"]
+
+
 async def test_read_and_store_never_raises(monkeypatch):
     async def _boom(*_a, **_k):
         raise RuntimeError("database down")

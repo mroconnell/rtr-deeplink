@@ -53,6 +53,13 @@ async def read_and_store(
         )
         for role in sorted(fresh):
             summary.append({"doc_role": role, "outcome": "recently_checked"})
+        # CivicPlus answers `?packet=true` with the agenda itself when a
+        # meeting has no packet (seen live on Barron and Amityville,
+        # 2026-10-17, office-Mac A2 check). A "packet" whose text is this
+        # page's agenda is not a packet, so it is not stored twice.
+        agenda_hashes = {
+            r.content_hash for r in results if r.doc_role == "agenda" and r.text
+        }
         for r in results:
             if not r.text:
                 outcome = "not_published" if r.not_published else "failed"
@@ -67,6 +74,17 @@ async def read_and_store(
                 summary.append(
                     {"doc_role": r.doc_role, "outcome": outcome, "error": r.error}
                 )
+                continue
+            if r.doc_role == "packet" and (
+                r.content_hash in agenda_hashes
+                or await agenda_versions.has_text(page_id, "agenda", r.content_hash)
+            ):
+                logger.info(
+                    "agenda text: page %s packet is the agenda itself (%s)",
+                    page_id,
+                    r.source_url,
+                )
+                summary.append({"doc_role": r.doc_role, "outcome": "same_as_agenda"})
                 continue
             outcome = await agenda_versions.store_agenda_version(
                 page_id,
