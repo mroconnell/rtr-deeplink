@@ -4,7 +4,11 @@ same rule, as the adapter. Event records are real captured fixtures."""
 import json
 from pathlib import Path
 
-from scripts.backfill_meeting_body_civicclerk import body_from_event, event_api_url
+from scripts.backfill_meeting_body_civicclerk import (
+    NON_INFORMATIVE_CATEGORY_NAMES,
+    body_from_event,
+    event_api_url,
+)
 
 FIX = Path(__file__).parent / "fixtures" / "civicclerk"
 
@@ -49,3 +53,17 @@ def test_body_skips_blank_and_general_category():
         None,
         "non_informative_category",
     )
+
+
+def test_skip_list_matches_the_adapter():
+    from app.platforms.civicclerk import _NON_INFORMATIVE_CATEGORY_NAMES
+
+    assert NON_INFORMATIVE_CATEGORY_NAMES == _NON_INFORMATIVE_CATEGORY_NAMES
+
+
+def test_script_does_not_import_the_adapter():
+    # The Archive service has no yt_dlp; the adapter imports it.
+    import scripts.backfill_meeting_body_civicclerk as mod
+
+    source = Path(mod.__file__).read_text()
+    assert "app.platforms" not in source

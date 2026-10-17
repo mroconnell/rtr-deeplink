@@ -50,6 +50,11 @@ USER_AGENT = (
 PAUSE_SECONDS = 1.0
 MAX_CONSECUTIVE_ERRORS = 10
 _EVENT_ID = re.compile(r"/event/(\d+)")
+# A copy of app/platforms/civicclerk.py's _NON_INFORMATIVE_CATEGORY_NAMES.
+# Importing that module pulls in yt_dlp (through the YouTube finder), which
+# the Archive service does not install, so the script crashed in the
+# Archive shell on 2026-10-17. A test keeps the two copies equal.
+NON_INFORMATIVE_CATEGORY_NAMES = frozenset({"general"})
 
 
 def event_api_url(source_url: str) -> str | None:
@@ -72,12 +77,10 @@ def event_api_url(source_url: str) -> str | None:
 
 def body_from_event(event: dict) -> tuple[str | None, str]:
     """(body, outcome) from an Events API record, by the adapter's own rule."""
-    from app.platforms.civicclerk import _NON_INFORMATIVE_CATEGORY_NAMES
-
     name = (event.get("categoryName") or "").strip()
     if not name:
         return None, "no_category"
-    if name.lower() in _NON_INFORMATIVE_CATEGORY_NAMES:
+    if name.lower() in NON_INFORMATIVE_CATEGORY_NAMES:
         return None, "non_informative_category"
     return name, "filled"
 
