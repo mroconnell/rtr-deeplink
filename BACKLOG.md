@@ -2343,7 +2343,7 @@ actionability sections above.
   ingest gate at [app/main.py](app/main.py) accepts a video-less page on
   `agenda_link` alone, and text now has a place to land, but nothing
   surfaces it.
-- **Next action**: (1) **CivicClerk links: fixed 2026-10-17** (see `BACKLOG_DONE.md`, "CivicClerk's API stopped giving `GetMeetingFile` links"). (1b) **CivicPlus duplicate packet** `[EASY]`: when a meeting has no packet, `?packet=true` returns the agenda itself, so the same text is stored twice, as "agenda" and as "packet" (Barron WI, Amityville NY, same content hash). Skip a packet whose hash matches the agenda's. (2) **Display**: the newest agenda text on
+- **Next action**: (1) **CivicClerk links: fixed 2026-10-17** (see `BACKLOG_DONE.md`, "CivicClerk's API stopped giving `GetMeetingFile` links"). (1b) **CivicPlus duplicate packet: fixed 2026-10-17** (WO-1971, PR #2092): a "packet" whose text matches the agenda is no longer stored. (2) **Display**: the newest agenda text on
   `/m/{slug}`, loaded per page only, and a version list. (3) **Amendment
   classification and diff**: port `rtr-upcoming`'s `agenda_diff.py` and
   its `initial`/`amendment`/`reissued`/`alternate` kinds; compare an
