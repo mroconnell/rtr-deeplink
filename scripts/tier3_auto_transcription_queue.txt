@@ -253,18 +253,6 @@ https://liveoakcity.primegov.com/Portal/Meeting?meetingTemplateId=1764	https://l
 https://www.youtube.com/watch?v=1XoLzWJF3Tc	https://www.youtube.com/live/1XoLzWJF3Tc	us:county:06031
 https://www.youtube.com/watch?v=YwhP9Y8Mq9M	https://www.youtube.com/watch?v=YwhP9Y8Mq9M	us:county:34039
 https://vimeo.com/568976671	https://vimeo.com/568976671	us:place:4163650
-https://boxcast.tv/view/city-of-parma-budget-hearings-session-2-xlroiqjr7vdxxvbgmxev		us:place:3961000
-https://bellca.new.swagit.com/videos/401321		us:place:0604870
-https://cityofwalnut.granicus.com/MediaPlayer.php?view_id=2&clip_id=352		us:place:0683332
-https://ennistx.new.swagit.com/videos/396054		us:place:4824348
-https://glennheightstx.new.swagit.com/videos/401002		us:place:4829840
-https://www.cityofbarberton.com/wp-content/uploads/2026/03/2-4-2026.mp3?_=2	https	us:place:3903828
-http://www.valleycity.us/wp-content/uploads/2025/03/3.18.2025-Commission-Meeting.mp4?_=1	https	us:place:3881180
-https://villageofnewhempstead.gov/wp-content/uploads/2026/09/BOT-7-30-2026.mp3	https	us:place:3650353
-https://la-habra-heights.granicus.com/MediaPlayer.php?view_id=4&clip_id=1172		us:place:0639304
-https://columbiacity.net/wp-content/uploads/2026/08/Board-of-Works-07-28-2026.mp3	https	us:place:1814716
-https://vantx.portal.civicclerk.com/event/720/media		us:place:4874912
-https://irvingtx.new.swagit.com/videos/349424		us:place:4837000
 https://conroetx.new.swagit.com/videos/402706		us:place:4816432
 https://applevalleymn.new.swagit.com/videos/325468		us:place:2701900
 https://cleburnetx.new.swagit.com/videos/400296		us:place:4815364
@@ -1468,3 +1456,8 @@ https://townofnashville.granicus.com/MediaPlayer.php?view_id=1&clip_id=191		us:p
 https://archive.org/download/cokinv-Common_Council_-_June_8_2026/Common_Council_-_June_8_2026.mp4	https://archive.org/details/cokinv-Common_Council_-_June_8_2026	us:place:1840392	Common Council - June 8, 2026	2026-06-09
 https://archive.org/download/Whitman_Select_Board_Budget_Subcommittee_-_August_12_2026_meeting/Whitman_Select_Board_Budget_Subcommittee_-_August_12_2026_meeting.mp4	https://archive.org/details/Whitman_Select_Board_Budget_Subcommittee_-_August_12_2026_meeting	us:cousub:2502379530	Whitman Select Board Budget Subcommittee - August 12, 2026 meeting	2026-08-18
 https://www.townofirmosc.com/Government/Council/2026/Feb 3 2026 Workshop Audio.mp3?t=202602051529520	https://www.townofirmosc.com/government/meetings___agendas.php	us:place:4535890
+https://bellca.new.swagit.com/videos/401321		us:place:0604870
+https://ennistx.new.swagit.com/videos/396054		us:place:4824348
+https://glennheightstx.new.swagit.com/videos/401002		us:place:4829840
+https://la-habra-heights.granicus.com/MediaPlayer.php?view_id=4&clip_id=1172		us:place:0639304
+https://irvingtx.new.swagit.com/videos/349424		us:place:4837000
