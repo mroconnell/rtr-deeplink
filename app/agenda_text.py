@@ -427,7 +427,7 @@ class Candidate:
 
 
 _CIVICPLUS_VIEWFILE = re.compile(r"/AgendaCenter/ViewFile/Agenda/", re.I)
-_CIVICCLERK_FILE = re.compile(r"/v1/Meetings/GetMeetingFile\(", re.I)
+_CIVICCLERK_FILE = re.compile(r"/v1/Meetings/GetMeetingFile(?:Stream)?\(", re.I)
 
 
 def _civicplus_candidates(doc_role: str, url: str) -> list[Candidate]:
@@ -461,7 +461,20 @@ def _civicclerk_candidates(doc_role: str, url: str) -> list[Candidate]:
        bytes. Confirmed in rtr-upcoming on Milpitas (39 KB PDF) and Morgan
        Hill (6.8 MB). rtr-upcoming found `plainText=true` returns 0 bytes
        on the Stream endpoint, which is why the two are not mixed here.
+
+    Since 2026-10-16 the API's `url` is null and the adapter stores
+    `streamUrl`, a `GetMeetingFileStream(...)` link: that is read as the
+    file, with no plain-text try (the old `GetMeetingFile(...)` route now
+    answers 404, and the Stream route has no plain-text form). A legacy
+    `GetMeetingFile(...)` link already stored on a page still gets both
+    tries; the first now 404s and the Stream read follows.
     """
+    if re.search(r"GetMeetingFileStream\(", url, re.I):
+        return [
+            Candidate(
+                doc_role, re.sub(r"plainText=true", "plainText=false", url, flags=re.I)
+            )
+        ]
     plain = re.sub(r"plainText=false", "plainText=true", url, flags=re.I)
     if "plaintext=true" not in plain.lower():
         plain = None

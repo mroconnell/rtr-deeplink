@@ -71777,3 +71777,18 @@ Ryan said yes on 2026-10-16 ("A6 Sure") to item 2 of the transcript-quality revi
 **Tests.** `tests/test_whisper_confidence.py`, 13 tests. They fake faster-whisper's segments (synthetic, field names checked against 1.2.1). They cover rounding, the gap split, `_transcribe_sync()`, chunk offsetting, the seam merge, the `/internal/ingest` route, the cloud worker's `report_chunk_result()` path, and the reader page and downloads. No real model was run.
 
 The display is the open `BACKLOG.md` entry "Shade the stretches of a Whisper transcript where Whisper itself was unsure".
+
+## [Done 2026-10-17] CivicClerk's API stopped giving `GetMeetingFile` links: the adapter and agenda text now use `streamUrl`
+
+**What was found.** The office-Mac A2 check (2026-10-16, report `reports/wo-a2_agenda_real_check.md`, 6 real meetings) found that CivicClerk's API now returns `"url": null` on every `publishedFiles` entry. Only `streamUrl` (`GetMeetingFileStream(fileId=N,plainText=false)`) is filled in. The old `GetMeetingFile(...)` address answers 404, for both `plainText=true` and `plainText=false` (Anacortes WA, fileId 4213). It was seen on all 5 live events read, including Kaysville UT 823 and Ingleside TX 597, whose saved fixtures still have `url`.
+
+**Effect before the fix.** `CivicClerkAssetFinder._published_file_url()` read only `url`, so every new resolve had no `agenda_link` or `packet_link`. `app/agenda_text.py` only recognised `GetMeetingFile(` links, so WO-1966 read nothing from CivicClerk. The agenda-text lookup used to guess the jurisdiction made one 404 request.
+
+**The fix.**
+- `_published_file_url()` uses `url` when present, otherwise `streamUrl`.
+- `_fetch_agenda_text()` only tries a legacy `url` (it has a plain-text form; a stream link does not), so a stream-only event makes no request there.
+- `agenda_text` accepts `GetMeetingFileStream(` links and reads them as the file, with no plain-text try. An older `GetMeetingFile(...)` link on a stored page still gets both tries.
+
+**Verification.** Fresh real fixtures captured 2026-10-17: `anacorteswa_event1452_2026-10-17.json` and `anacorteswa_media1452_2026-10-17.json` (agenda and packet), `kaysvilleut_event823_2026-10-17.json` and `kaysvilleut_media823_2026-10-17.json` (the same event as the 2026-08 fixture, now with `url` null), and `anacorteswa_agenda4213_2026-10-17.pdf` (that agenda's real PDF, 164 KB). Tests added in `tests/test_civicclerk.py` (both events resolve to stream links, and any other request fails as unmocked) and `tests/test_agenda_text.py` (stream links are one file read; the real Anacortes PDF extracts with "Fourth of July Fireworks" in it). The live A2 check had already read 3 CivicClerk agendas and 2 packets through the stream route, 3,296 to 605,945 characters each.
+
+**Correction.** The open entry said "CivicPlus read correctly on 3 of 3 (a 315-page Anacortes packet ...)". Anacortes is CivicClerk. CivicPlus read 2 of 3 (St. James Parish LA is a scanned PDF with no text layer). On 2 of 3 CivicPlus meetings, `?packet=true` returned the agenda itself; WO-1971 (PR #2092, merged 2026-10-17) stops storing that duplicate.

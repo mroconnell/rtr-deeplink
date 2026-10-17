@@ -49,6 +49,20 @@ EMPORIA_PACKET = (
     "https://emporiaks.api.civicclerk.com/v1/Meetings/"
     "GetMeetingFile(fileId=1621,plainText=false)"
 )
+# Real, captured live 2026-10-17 (tests/fixtures/civicclerk/
+# anacorteswa_event1452_2026-10-17.json): since 2026-10 the API's `url` is
+# null and `streamUrl` is the only link. The PDF is that agenda's own bytes.
+ANACORTES_AGENDA = (
+    "https://anacorteswa.api.civicclerk.com/v1/Meetings/"
+    "GetMeetingFileStream(fileId=4213,plainText=false)"
+)
+ANACORTES_PACKET = (
+    "https://anacorteswa.api.civicclerk.com/v1/Meetings/"
+    "GetMeetingFileStream(fileId=4219,plainText=false)"
+)
+ANACORTES_AGENDA_PDF = load_fixture_bytes(
+    "civicclerk", "anacorteswa_agenda4213_2026-10-17.pdf"
+)
 RICHMOND_HILL_PDF = load_fixture_bytes(
     "civicplus", "richmondhill_documentcenter_5032.bin"
 )
@@ -128,6 +142,18 @@ def test_civicclerk_real_links_try_plain_text_then_file_stream():
             EMPORIA_PACKET.replace("GetMeetingFile(", "GetMeetingFileStream("),
         ),
     ]
+
+
+def test_civicclerk_stream_links_are_read_as_the_file_only():
+    # The Stream route has no plain-text form, and the old GetMeetingFile
+    # route now 404s, so a stream link is one read, not two.
+    assert agenda_text.platform_of_link(ANACORTES_AGENDA) == "civicclerk"
+    cands = agenda_text.candidates_for(ANACORTES_AGENDA, ANACORTES_PACKET)
+    assert [(c.doc_role, c.mode, c.url) for c in cands] == [
+        ("agenda", "file", ANACORTES_AGENDA),
+        ("packet", "file", ANACORTES_PACKET),
+    ]
+    assert agenda_ingest.wanted(ANACORTES_AGENDA, None)
 
 
 @pytest.mark.parametrize(
@@ -294,6 +320,19 @@ async def test_civicplus_real_pdf_through_the_child_process():
     assert by_role["agenda"].format == "pdf"
     assert "Richmond Hill" in by_role["agenda"].text
     assert by_role["agenda"].source_url == pdf_url
+
+
+async def test_civicclerk_real_agenda_pdf_from_a_stream_link():
+    routes = {
+        ANACORTES_AGENDA: FakeResponse(
+            raw=ANACORTES_AGENDA_PDF, headers={"Content-Type": "application/pdf"}
+        ),
+    }
+    with mock_session(routes):  # any other request would fail as unmocked
+        (r,) = await agenda_text.read_documents(ANACORTES_AGENDA, None, "2026-09-08")
+    assert r.format == "pdf" and r.source_url == ANACORTES_AGENDA
+    assert "anacorteswa.gov" in r.text
+    assert "Fourth of July Fireworks" in r.text
 
 
 async def test_oversized_document_is_refused_not_truncated(monkeypatch):

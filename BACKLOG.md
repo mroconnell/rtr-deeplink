@@ -2343,7 +2343,7 @@ actionability sections above.
   ingest gate at [app/main.py](app/main.py) accepts a video-less page on
   `agenda_link` alone, and text now has a place to land, but nothing
   surfaces it.
-- **Next action**: (1) **Fix CivicClerk links first (claimed 2026-10-17, office Mac; needs that Mac's network and fresh real fixtures)**: the office-Mac A2 check (2026-10-17, 6 real meetings, report `wo-a2_agenda_real_check.md`) found CivicClerk's API now returns `"url": null` on every published file, and the old `GetMeetingFile(...)` address answers 404. Only `streamUrl` (`GetMeetingFileStream`) works. So the adapter gets no agenda or packet link on new resolves, and `app/agenda_text.py` does not recognise stream links. Fix: read `streamUrl`, accept `GetMeetingFileStream` links, refresh the fixtures. CivicPlus read correctly on 3 of 3 (a 315-page Anacortes packet: about 606,000 characters, 8 s, 111 MB peak), and the scanned-PDF and over-100 MB guards worked. Deploying WO-1966 is safe for CivicPlus; CivicClerk reads nothing until this lands. (2) **Display**: the newest agenda text on
+- **Next action**: (1) **CivicClerk links: fixed 2026-10-17** (see `BACKLOG_DONE.md`, "CivicClerk's API stopped giving `GetMeetingFile` links"). (1b) **CivicPlus duplicate packet: fixed 2026-10-17** (WO-1971, PR #2092): a "packet" whose text matches the agenda is no longer stored. (2) **Display**: the newest agenda text on
   `/m/{slug}`, loaded per page only, and a version list. (3) **Amendment
   classification and diff**: port `rtr-upcoming`'s `agenda_diff.py` and
   its `initial`/`amendment`/`reissued`/`alternate` kinds; compare an
