@@ -12417,3 +12417,10 @@ https://la-habra-heights.granicus.com/MediaPlayer.php?view_id=4&clip_id=1172,gra
 https://columbiacity.net/wp-content/uploads/2026/08/Board-of-Works-07-28-2026.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.28,2026-10-17T15:57:07+00:00,,0
 https://vantx.portal.civicclerk.com/event/720/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.18,2026-10-17T15:57:09+00:00,,0
 https://irvingtx.new.swagit.com/videos/349424,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-10-17T15:57:11+00:00,,0
+https://andersontownship48.in.gov/wp-content/uploads/2025/08/Township-Board-meeting-2025_08_21_205741UTC-Meeting-Recording.mp4,direct_file,head+ffprobe,1662.21,2025-08-26,223488789,1,accept,,0.45,2026-10-17T08:57:40+00:00
+https://gtm.milford.nh.gov/internetchannel/show/3194?channel=1,cablecast,cablecast-api,4592.00,2026-09-21,,1,accept,,1.24,2026-10-17T08:57:34+00:00
+https://pleasanttwp.com/index.php/2019/12/30/2019-december-special-meeting/,unknown,head+ffprobe,647.44,2021-12-31,7140224,1,accept,,0.90,2026-10-17T08:57:35+00:00
+"http://www.leecova.org/Audio/2020/November%2017,%202020%20Regular%20Meeting.mp3",direct_file,head+ffprobe,4884.63,2020-11-20,76100107,1,accept,,2.11,2026-10-17T08:57:35+00:00
+https://www.dextertownshipmi.gov/township-board/,unknown,head+ffprobe,7455.85,2023-12-18,119300487,1,accept,,3.66,2026-10-17T08:57:40+00:00
+https://franklintownshipindiana.org/meeting-videos/board-meeting-video-september-24-2026/,unknown,head+ffprobe,1008.83,2026-09-24,46552424,1,accept,,0.78,2026-10-17T08:57:37+00:00
+https://apps.lacrossecounty.org/CountyMeetingDocuments/MeetingDocuments/1County%20Board/2010/December/December%206%20Audio.mp3,direct_file,head+ffprobe,4185.71,2024-12-27,25114284,1,accept,,1.75,2026-10-17T08:57:39+00:00
