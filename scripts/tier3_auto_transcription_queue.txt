@@ -253,18 +253,6 @@ https://liveoakcity.primegov.com/Portal/Meeting?meetingTemplateId=1764	https://l
 https://www.youtube.com/watch?v=1XoLzWJF3Tc	https://www.youtube.com/live/1XoLzWJF3Tc	us:county:06031
 https://www.youtube.com/watch?v=YwhP9Y8Mq9M	https://www.youtube.com/watch?v=YwhP9Y8Mq9M	us:county:34039
 https://vimeo.com/568976671	https://vimeo.com/568976671	us:place:4163650
-https://conroetx.new.swagit.com/videos/402706		us:place:4816432
-https://applevalleymn.new.swagit.com/videos/325468		us:place:2701900
-https://cleburnetx.new.swagit.com/videos/400296		us:place:4815364
-https://bartlesvilleok.new.swagit.com/videos/237889		us:place:4004450
-https://raytownmo.new.swagit.com/videos/401217		us:place:2960788
-https://fatetx.new.swagit.com/videos/312091		us:place:4825572
-https://lodinj.new.swagit.com/videos/395922		us:place:3441100
-https://morrisville.granicus.com/MediaPlayer.php?view_id=5&clip_id=383		us:place:3744520
-http://108.20.229.83/CablecastPublicSite/show/2040?channel=2	https	us:place:2556000
-https://highlandvillagetx.new.swagit.com/videos/395828		us:place:4833848
-https://beachwoodoh.new.swagit.com/videos/391053		us:place:3904500
-https://belgrademt.new.swagit.com/videos/396395		us:place:3004975
 https://amherstoh.new.swagit.com/videos/402513		us:place:3901798
 https://thecolony.granicus.com/MediaPlayer.php?view_id=3&clip_id=1524		us:place:4872530
 https://elginvideo.cityofelgin.org/internetchannel/show/694?site=1		us:place:1723074
@@ -1469,3 +1457,14 @@ https://www.dextertownshipmi.gov/township-board/	https://www.dextertownshipmi.go
 https://franklintownshipindiana.org/meeting-videos/board-meeting-video-september-24-2026/	https://franklintownshipindiana.org/meeting-videos/board-meeting-video-september-24-2026/	us:cousub:1809725504
 https://apps.lacrossecounty.org/CountyMeetingDocuments/MeetingDocuments/1County%20Board/2010/December/December%206%20Audio.mp3	https://apps.lacrossecounty.org/countymeetingdocuments/	us:county:55063
 https://bristolbayboroughak.us/8.13.26 P&Z Meetinng.mp3?t=202608140004150	https://bristolbayboroughak.us/departments/planning___zoning/agendas___minutes.php	us:county:02060
+https://conroetx.new.swagit.com/videos/402706		us:place:4816432
+https://applevalleymn.new.swagit.com/videos/325468		us:place:2701900
+https://cleburnetx.new.swagit.com/videos/400296		us:place:4815364
+https://bartlesvilleok.new.swagit.com/videos/237889		us:place:4004450
+https://raytownmo.new.swagit.com/videos/401217		us:place:2960788
+https://fatetx.new.swagit.com/videos/312091		us:place:4825572
+https://lodinj.new.swagit.com/videos/395922		us:place:3441100
+https://morrisville.granicus.com/MediaPlayer.php?view_id=5&clip_id=383		us:place:3744520
+https://highlandvillagetx.new.swagit.com/videos/395828		us:place:4833848
+https://beachwoodoh.new.swagit.com/videos/391053		us:place:3904500
+https://belgrademt.new.swagit.com/videos/396395		us:place:3004975
