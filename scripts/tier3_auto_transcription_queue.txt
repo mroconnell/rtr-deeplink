@@ -1465,3 +1465,5 @@ https://greeceny.new.swagit.com/videos/401409		us:cousub:3605530290
 https://delriotx.new.swagit.com/videos/402013		us:place:4819792
 https://charlestownwv.granicus.com/MediaPlayer.php?view_id=1&clip_id=2174		us:place:5414610
 https://townofnashville.granicus.com/MediaPlayer.php?view_id=1&clip_id=191		us:place:3746000
+https://archive.org/download/cokinv-Common_Council_-_June_8_2026/Common_Council_-_June_8_2026.mp4	https://archive.org/details/cokinv-Common_Council_-_June_8_2026	us:place:1840392	Common Council - June 8, 2026	2026-06-09
+https://archive.org/download/Whitman_Select_Board_Budget_Subcommittee_-_August_12_2026_meeting/Whitman_Select_Board_Budget_Subcommittee_-_August_12_2026_meeting.mp4	https://archive.org/details/Whitman_Select_Board_Budget_Subcommittee_-_August_12_2026_meeting	us:cousub:2502379530	Whitman Select Board Budget Subcommittee - August 12, 2026 meeting	2026-08-18
