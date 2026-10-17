@@ -577,7 +577,9 @@ calls above — a down/misconfigured Archive degrades silently, never breaks
 
 **Agenda and packet text, read once at ingest (WO-1966, 2026-10-16)**:
 when an ingest carries a CivicPlus (`/AgendaCenter/ViewFile/Agenda/...`)
-or CivicClerk (`*.api.civicclerk.com/v1/Meetings/GetMeetingFile(...)`)
+or CivicClerk (`*.api.civicclerk.com/v1/Meetings/GetMeetingFileStream(...)`,
+the only link CivicClerk's API gives since 2026-10; an older stored
+`GetMeetingFile(...)` link is still accepted)
 `agenda_link` or `packet_link`, `/internal/ingest` queues
 `archive/utils/agenda_ingest.read_and_store()` as a BackgroundTask. It
 reads each document's text with `app/agenda_text.py` (ported from

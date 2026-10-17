@@ -82,6 +82,66 @@ async def test_resolve_real_event_with_video_and_agenda_bookmarks():
     )
 
 
+async def test_resolve_real_event_with_only_stream_links_2026_10():
+    # Real anacorteswa event 1452, captured live 2026-10-17. Since about
+    # 2026-10 every publishedFiles entry has "url": null and only a
+    # streamUrl; the old GetMeetingFile(...) address answers 404. Only the
+    # two routes below are mocked, so any plain-text lookup would fail.
+    url = "https://anacorteswa.portal.civicclerk.com/event/1452/media"
+    routes = {
+        "https://anacorteswa.api.civicclerk.com/v1/Events/1452": FakeResponse(
+            status=200,
+            text=load_fixture("civicclerk", "anacorteswa_event1452_2026-10-17.json"),
+        ),
+        "https://anacorteswa.api.civicclerk.com/v1/EventsMedia/1452": FakeResponse(
+            status=200,
+            text=load_fixture("civicclerk", "anacorteswa_media1452_2026-10-17.json"),
+        ),
+    }
+    with mock_session(routes):
+        result = await CivicClerkAssetFinder().resolve(url)
+    assert result.date == "2026-09-08"
+    assert (
+        result.video_url == "https://cpmedia.azureedge.net/anacorteswa/049387fecb.mp4"
+    )
+    assert result.agenda_link == (
+        "https://anacorteswa.api.civicclerk.com/v1/Meetings/"
+        "GetMeetingFileStream(fileId=4213,plainText=false)"
+    )
+    assert result.packet_link == (
+        "https://anacorteswa.api.civicclerk.com/v1/Meetings/"
+        "GetMeetingFileStream(fileId=4219,plainText=false)"
+    )
+
+
+async def test_same_event_recaptured_now_has_only_a_stream_link():
+    # Real kaysvilleut event 823 again, captured live 2026-10-17. Its
+    # 2026-08 fixture (kaysvilleut_event823.json) has a `url`; the same
+    # event now has none, which is the API change itself.
+    url = "https://kaysvilleut.portal.civicclerk.com/event/823/media"
+    routes = {
+        "https://kaysvilleut.api.civicclerk.com/v1/Events/823": FakeResponse(
+            status=200,
+            text=load_fixture("civicclerk", "kaysvilleut_event823_2026-10-17.json"),
+        ),
+        "https://kaysvilleut.api.civicclerk.com/v1/EventsMedia/823": FakeResponse(
+            status=200,
+            text=load_fixture("civicclerk", "kaysvilleut_media823_2026-10-17.json"),
+        ),
+    }
+    event = json.loads(
+        load_fixture("civicclerk", "kaysvilleut_event823_2026-10-17.json")
+    )
+    assert all(f["url"] is None for f in event["publishedFiles"])
+    with mock_session(routes):
+        result = await CivicClerkAssetFinder().resolve(url)
+    assert result.agenda_link == (
+        "https://kaysvilleut.api.civicclerk.com/v1/Meetings/"
+        "GetMeetingFileStream(fileId=1556,plainText=false)"
+    )
+    assert result.packet_link is None
+
+
 async def test_resolve_event_with_external_video_and_no_bookmarks(monkeypatch):
     # Real event 17 -- externalVideoUrl (a YouTube live link) instead of a
     # direct videoUrl, and zero eventBookmarks/caption tracks. Fetched live

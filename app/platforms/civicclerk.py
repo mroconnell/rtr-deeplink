@@ -739,7 +739,9 @@ class CivicClerkAssetFinder(AssetFinder):
         return parse_captions_by_extension(caption_url, content)
 
     @staticmethod
-    def _published_file_url(event: dict, file_type: str) -> Optional[str]:
+    def _published_file_url(
+        event: dict, file_type: str, *, legacy_only: bool = False
+    ) -> Optional[str]:
         """The direct, vendor-typed file URL for a `publishedFiles` entry
         of the given `type` ("Agenda", "Agenda Packet", "Minutes", ...),
         or None when no such entry exists. Vendor-typed, so it needs no
@@ -750,16 +752,23 @@ class CivicClerkAssetFinder(AssetFinder):
         bytes, a stale document, or another event's paperwork in real
         confirmed cases; `publishedFiles` never has that problem, since
         it's a direct file reference, not a derived id.
+
+        By 2026-10-16 CivicClerk's API sets `url` to null on every entry
+        and fills only `streamUrl` (`GetMeetingFileStream(...)`); the old
+        `GetMeetingFile(...)` address now answers 404 (checked on 5 tenants,
+        including Kaysville 823, whose 2026-08 fixture still has `url`; see
+        `kaysvilleut_event823_2026-10-17.json`). So `url` is used when
+        present and `streamUrl` otherwise. `legacy_only` returns only a
+        `url`, for the plain-text lookup that works on nothing else.
         """
-        entry = next(
-            (
-                f
-                for f in (event.get("publishedFiles") or [])
-                if f.get("type") == file_type and f.get("url")
-            ),
-            None,
-        )
-        return entry["url"] if entry else None
+        for f in event.get("publishedFiles") or []:
+            if f.get("type") != file_type:
+                continue
+            if f.get("url"):
+                return f["url"]
+            if not legacy_only and f.get("streamUrl"):
+                return f["streamUrl"]
+        return None
 
     @classmethod
     async def _fetch_agenda_text(
@@ -772,8 +781,10 @@ class CivicClerkAssetFinder(AssetFinder):
         `{"blobUri": ...}` pointing to a SAS-signed Azure blob `.txt`
         (confirmed live on Los Altos Hills, CA, event 4567, fileId 8983) --
         fetched here as a second request, since the blob itself isn't JSON.
+        Only a legacy `url` has a plain-text form; a `streamUrl`-only entry
+        (every one since 2026-10) makes no request here.
         """
-        agenda_url = cls._published_file_url(event, "Agenda")
+        agenda_url = cls._published_file_url(event, "Agenda", legacy_only=True)
         if not agenda_url:
             return None
         plaintext_url = agenda_url.replace("plainText=false", "plainText=true")
