@@ -12372,3 +12372,19 @@ https://ob.elkocitynv.gov/OnBaseAgendaOnline/Meetings/ViewMeeting?id=920&doctype
 https://ob.elkocitynv.gov/OnBaseAgendaOnline/Meetings/ViewMeeting?id=920&doctype=1,hyland,hls-master+variant,3471.21,,,1,accept,,0.08,2026-10-16T21:44:03+00:00,feed_tier3_auto_transcription,0
 https://s3.us-east-2.amazonaws.com/city-of-cheboygan/brownfield-redevelopment-20190812.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.12,2026-10-16T21:44:05+00:00,,0
 https://www.newhamptonia.com/wp-content/uploads/2026/08/City-council-8.27.26.m4a?_=2,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.09,2026-10-16T21:44:07+00:00,,0
+https://marshvillenc.portal.civicclerk.com/event/162/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.04,2026-10-17T05:00:04+00:00,,0
+https://neptunebeachfl.portal.civicclerk.com/event/2226/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.16,2026-10-17T05:00:06+00:00,,0
+https://play.champds.com/mentoroh/event/310,champds,hls-master+variant,1771.00,,,1,accept,,0.75,2026-10-17T05:00:09+00:00,,0
+https://play.champds.com/mentoroh/event/310,champds,head+champds-vod2,1771.00,2026-09-03,116487231,1,accept,,0.99,2026-10-17T05:00:10+00:00,feed_tier3_auto_transcription,0
+https://schedule.hanoverctv.org/internetchannel/show/4038?channel=3,cablecast,cablecast-api,3326.00,2026-09-10,,1,accept,,0.30,2026-10-17T05:00:13+00:00,,0
+https://schedule.hanoverctv.org/internetchannel/show/4038?channel=3,cablecast,cablecast-api,3326.00,2026-09-10,,1,accept,,0.29,2026-10-17T05:00:13+00:00,feed_tier3_auto_transcription,0
+https://kirbytx.new.swagit.com/videos/402036,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.18,2026-10-17T05:00:16+00:00,,0
+https://hollyhillfl.portal.civicclerk.com/event/157/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.19,2026-10-17T05:00:19+00:00,,0
+https://greenfieldin.portal.civicclerk.com/event/35/media,civicclerk,hls-master+variant,2293.35,,,1,accept,,0.36,2026-10-17T05:00:22+00:00,,0
+https://greenfieldin.portal.civicclerk.com/event/35/media,civicclerk,hls-master+variant,2293.35,,,1,accept,,0.33,2026-10-17T05:00:22+00:00,feed_tier3_auto_transcription,0
+https://greenfieldwi.portal.civicclerk.com/event/2114/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.17,2026-10-17T05:00:25+00:00,,0
+https://greeceny.new.swagit.com/videos/401409,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-10-17T05:00:27+00:00,,0
+https://www.harpersferrywv.us/council/audiovisual/2026/20260713-council-audio.m4a,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.31,2026-10-17T05:00:29+00:00,,0
+https://boxcast.tv/view/planning-board-meeting-9-14-26-hxbud6ujs7oywhlrlyq6,boxcast,hls-master+variant,1757.30,,,1,accept,,0.09,2026-10-17T05:00:31+00:00,,0
+https://boxcast.tv/view/planning-board-meeting-9-14-26-hxbud6ujs7oywhlrlyq6,boxcast,hls-master+variant,1757.30,,,1,accept,,0.05,2026-10-17T05:00:31+00:00,feed_tier3_auto_transcription,0
+https://bristolct.portal.civicclerk.com/event/4452/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.17,2026-10-17T05:00:34+00:00,,0
