@@ -1468,3 +1468,4 @@ http://www.leecova.org/Audio/2020/November%2017,%202020%20Regular%20Meeting.mp3	
 https://www.dextertownshipmi.gov/township-board/	https://www.dextertownshipmi.gov/township-board/	us:cousub:2616122180	Township Board
 https://franklintownshipindiana.org/meeting-videos/board-meeting-video-september-24-2026/	https://franklintownshipindiana.org/meeting-videos/board-meeting-video-september-24-2026/	us:cousub:1809725504
 https://apps.lacrossecounty.org/CountyMeetingDocuments/MeetingDocuments/1County%20Board/2010/December/December%206%20Audio.mp3	https://apps.lacrossecounty.org/countymeetingdocuments/	us:county:55063
+https://bristolbayboroughak.us/8.13.26 P&Z Meetinng.mp3?t=202608140004150	https://bristolbayboroughak.us/departments/planning___zoning/agendas___minutes.php	us:county:02060
