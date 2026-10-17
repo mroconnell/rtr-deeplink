@@ -2219,9 +2219,9 @@ actionability sections above.
 
 ### Meeting body is blank on ~90% of archived pages `[NEEDS-AUDIT]` `[BIG]`
 
-- **Issue**: `MeetingPage.meeting_body` ("City Council", "Planning Commission") was on 667 of 6,529 pages on 2026-09-09. Since then, CivicClerk, CivicPlus and Legistar extract it (WO-904/905/906). Cablecast, Granicus, eScribe and Swagit have no source field (Standing decision). iQM2 and PrimeGov have their own entries.
+- **Issue**: `MeetingPage.meeting_body` ("City Council", "Planning Commission") was on 667 of 6,529 pages on 2026-09-09 and 971 of 12,934 on 2026-10-17. Since then, CivicClerk, CivicPlus and Legistar extract it (WO-904/905/906). Cablecast, Granicus, eScribe and Swagit have no source field (Standing decision). iQM2 and PrimeGov have their own entries.
 - **Impact**: most pages can't be filtered or reported by body.
-- **Next action**: re-count with `GET /internal/meeting-inventory/summary` after the next deploy (the iQM2 calendar lookup from PR #2080 rides with it). The remaining real sources are iQM2's calendar and PrimeGov's `committeeId`, each on its own entry. New tier-3 lines already carry a body from Meeting Finder (WO-1176).
+- **Next action**: **Claimed 2026-10-17** (WO-1977): run `scripts/backfill_meeting_body_civicclerk.py` from the Archive shell, dry run first. The 2026-10-17 recount found 971 of 12,934 pages (7.5%) with a body, and CivicClerk at 66 of 791: the adapter reads `categoryName` since WO-904, but only at ingest, so older pages never got it. After that, the remaining real sources are iQM2's calendar and PrimeGov's `committeeId`, each on its own entry. New tier-3 lines already carry a body from Meeting Finder (WO-1176).
 - **Constraint**: no title-phrase table and no title guess, at ingest or at read time. The Standing decision "Cablecast, Granicus, eScribe, and Swagit have no real `meeting_body`" rules it out; the report exists to count the real gap.
 - **History**: `BACKLOG_DONE.md` WO-904/905/906/907; report from WO-124 (`scripts/export_meeting_inventory.py`).
 
