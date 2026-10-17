@@ -12425,3 +12425,16 @@ https://www.dextertownshipmi.gov/township-board/,unknown,head+ffprobe,7455.85,20
 https://franklintownshipindiana.org/meeting-videos/board-meeting-video-september-24-2026/,unknown,head+ffprobe,1008.83,2026-09-24,46552424,1,accept,,0.78,2026-10-17T08:57:37+00:00
 https://apps.lacrossecounty.org/CountyMeetingDocuments/MeetingDocuments/1County%20Board/2010/December/December%206%20Audio.mp3,direct_file,head+ffprobe,4185.71,2024-12-27,25114284,1,accept,,1.75,2026-10-17T08:57:39+00:00
 https://bristolbayboroughak.us/8.13.26 P&Z Meetinng.mp3?t=202608140004150,direct_file,head+ffprobe,6406.12,2026-08-14,64731968,1,accept,,1.25,2026-10-17T20:32:41+00:00
+https://conroetx.new.swagit.com/videos/402706,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.05,2026-10-17T20:58:43+00:00,,0
+https://applevalleymn.new.swagit.com/videos/325468,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-17T20:58:45+00:00,,0
+https://cleburnetx.new.swagit.com/videos/400296,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-17T20:58:47+00:00,,0
+https://bartlesvilleok.new.swagit.com/videos/237889,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-17T20:58:49+00:00,,0
+https://raytownmo.new.swagit.com/videos/401217,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-17T20:58:51+00:00,,0
+https://fatetx.new.swagit.com/videos/312091,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-17T20:58:54+00:00,,0
+https://lodinj.new.swagit.com/videos/395922,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-17T20:58:56+00:00,,0
+https://morrisville.granicus.com/MediaPlayer.php?view_id=5&clip_id=383,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-17T20:59:00+00:00,,0
+http://108.20.229.83/CablecastPublicSite/show/2040?channel=2,cablecast,unknown-accepted,,,,0,accept,"length unknown, accepted (Cablecast): Cablecast API fetch failed: ",15.78,2026-10-17T20:59:50+00:00,,0
+http://108.20.229.83/CablecastPublicSite/show/2040?channel=2,cablecast,unknown-accepted,,,,0,accept,"length unknown, accepted (Cablecast): Cablecast API fetch failed: ",15.99,2026-10-17T21:00:06+00:00,feed_tier3_auto_transcription,0
+https://highlandvillagetx.new.swagit.com/videos/395828,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.05,2026-10-17T21:00:09+00:00,,0
+https://beachwoodoh.new.swagit.com/videos/391053,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-17T21:00:11+00:00,,0
+https://belgrademt.new.swagit.com/videos/396395,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-10-17T21:00:13+00:00,,0
