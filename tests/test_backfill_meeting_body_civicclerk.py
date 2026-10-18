@@ -49,3 +49,33 @@ def test_body_skips_blank_and_general_category():
         None,
         "non_informative_category",
     )
+
+
+def test_skip_list_matches_the_adapter():
+    from app.platforms.civicclerk import _NON_INFORMATIVE_CATEGORY_NAMES
+    from scripts.backfill_meeting_body_civicclerk import (
+        NON_INFORMATIVE_CATEGORY_NAMES,
+    )
+
+    assert NON_INFORMATIVE_CATEGORY_NAMES == _NON_INFORMATIVE_CATEGORY_NAMES
+
+
+def test_runs_without_yt_dlp():
+    # The Archive service does not install yt_dlp, and this script runs on
+    # its shell (2026-10-17: ModuleNotFoundError via app.platforms.civicclerk).
+    import subprocess
+    import sys
+
+    code = (
+        "import sys; sys.modules['yt_dlp'] = None\n"
+        "from scripts.backfill_meeting_body_civicclerk import body_from_event\n"
+        "import archive.db.engine, archive.db.models\n"
+        "assert body_from_event({'categoryName': 'City Council'}) == "
+        "('City Council', 'filled')\n"
+        "assert 'app.platforms.civicclerk' not in sys.modules\n"
+    )
+    root = Path(__file__).resolve().parent.parent
+    r = subprocess.run(
+        [sys.executable, "-c", code], cwd=root, capture_output=True, text=True
+    )
+    assert r.returncode == 0, r.stderr

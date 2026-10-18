@@ -70,14 +70,20 @@ def event_api_url(source_url: str) -> str | None:
     return f"https://{tenant}.api.civicclerk.com/v1/Events/{match.group(1)}"
 
 
+# A copy of app.platforms.civicclerk._NON_INFORMATIVE_CATEGORY_NAMES. That
+# module imports the YouTube adapter, so yt_dlp, which the Archive service
+# does not install; this script runs on the Archive's shell (2026-10-17:
+# ModuleNotFoundError there). tests/test_backfill_meeting_body_civicclerk.py
+# keeps the two lists equal.
+NON_INFORMATIVE_CATEGORY_NAMES = frozenset({"general"})
+
+
 def body_from_event(event: dict) -> tuple[str | None, str]:
     """(body, outcome) from an Events API record, by the adapter's own rule."""
-    from app.platforms.civicclerk import _NON_INFORMATIVE_CATEGORY_NAMES
-
     name = (event.get("categoryName") or "").strip()
     if not name:
         return None, "no_category"
-    if name.lower() in _NON_INFORMATIVE_CATEGORY_NAMES:
+    if name.lower() in NON_INFORMATIVE_CATEGORY_NAMES:
         return None, "non_informative_category"
     return name, "filled"
 
