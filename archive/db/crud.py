@@ -10074,6 +10074,116 @@ async def manually_promote_transcript_version(
         return {"slug": slug, "promoted_version_id": version_id}
 
 
+# A4 (WO-1960): a copy of a version's own segments with corrected times.
+_TIME_CORRECTED_SOURCE = "aligned"
+# Segment keys a time correction may change; every other key must match.
+_TIME_KEYS = ("start", "end")
+# The largest shift accepted, either way (a whole recording is rarely off by
+# more; the audit's worst page was 868 s).
+MAX_TIME_SHIFT_SECONDS = 3600.0
+
+
+async def add_time_corrected_version(
+    *,
+    slug: str,
+    base_version_id: int,
+    segments: list,
+    note: str,
+    promote: bool = True,
+    dry_run: bool = True,
+) -> Optional[dict]:
+    """Add a "time-corrected" copy of one TranscriptVersion (A4, WO-1960):
+    the same segments, in the same order, with the same text and every
+    other field, and only `start`/`end` moved to match the video. Made by
+    scripts/align_page_timing.py from the meeting's own audio.
+
+    Why a new version and not an edit. The source captions are a record of
+    what the government published. The time-corrected copy sits beside
+    them, labelled, and the original stays one `?version=` away, the same
+    shape as WO-34's "de-duplicated" versions. Promoting it makes every
+    surface that reads the default version (the page, its deep links,
+    search, highlights, exports) use the corrected times at once.
+
+    Refuses (returns {"error": ...}) when the base is not this page's, the
+    segment count differs, any segment's text or other fields differ, a
+    time is negative or not a number, a segment would move by more than
+    MAX_TIME_SHIFT_SECONDS, or nothing moved at all. A re-ingest of the
+    source captions dedupes against the base version (same `source`), so
+    it does not undo this. `note` is kept as a transcript warning on the
+    new version so a reader sees why the times differ from the source."""
+    async with async_session() as session:
+        page = (
+            (await session.execute(select(MeetingPage).where(MeetingPage.slug == slug)))
+            .scalars()
+            .first()
+        )
+        if page is None:
+            return None
+        base = await session.get(TranscriptVersion, base_version_id)
+        if base is None or base.meeting_page_id != page.id:
+            return None
+        old = base.segments or []
+        if len(segments) != len(old):
+            return {
+                "error": "segment_count_differs",
+                "base": len(old),
+                "new": len(segments),
+            }
+        moved = 0
+        biggest = 0.0
+        for i, (a, b) in enumerate(zip(old, segments)):
+            if not isinstance(b, dict):
+                return {"error": "bad_segment", "index": i}
+            keys = (set(a) | set(b)) - set(_TIME_KEYS)
+            if any(a.get(k) != b.get(k) for k in keys):
+                return {"error": "segment_changed", "index": i}
+            for k in _TIME_KEYS:
+                v = b.get(k)
+                if not isinstance(v, (int, float)) or v != v or v < 0:
+                    return {"error": "bad_time", "index": i, "key": k}
+                if a.get(k) is not None:
+                    shift = abs(float(v) - float(a[k]))
+                    biggest = max(biggest, shift)
+                    if shift > MAX_TIME_SHIFT_SECONDS:
+                        return {
+                            "error": "shift_too_large",
+                            "index": i,
+                            "seconds": round(shift, 1),
+                        }
+            if any(b.get(k) != a.get(k) for k in _TIME_KEYS):
+                moved += 1
+        if moved == 0:
+            return {"error": "nothing_moved"}
+        summary = {
+            "slug": slug,
+            "base_version_id": base.id,
+            "segments": len(segments),
+            "segments_moved": moved,
+            "largest_shift_seconds": round(biggest, 1),
+            "promote": promote,
+            "dry_run": dry_run,
+        }
+        if dry_run:
+            return summary
+        version = TranscriptVersion(
+            meeting_page_id=page.id,
+            language=base.language,
+            source=_TIME_CORRECTED_SOURCE,
+            is_default=False,
+            segments=segments,
+            transcript_warnings=list(base.transcript_warnings or [])
+            + ([note] if note else []),
+            content_hash=_content_hash(segments),
+        )
+        session.add(version)
+        await session.flush()
+        if promote:
+            await promote_transcript_version(session, page.id, version.id)
+        await _refresh_search_corpus(session, page)
+        await session.commit()
+        return {**summary, "version_id": version.id}
+
+
 async def record_youtube_video_status(
     *,
     slug: str,
