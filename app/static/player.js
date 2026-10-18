@@ -544,6 +544,8 @@ function initVideo(videoUrl, videoFormat, videoWarnings) {
     initVimeoVideo(videoUrl);
   } else if (videoFormat === 'viebit') {
     initViebitVideo(videoUrl);
+  } else if (videoFormat === 'champds') {
+    initChampdsVideo(videoUrl);
   } else {
     initNativeVideo(videoUrl, videoFormat);
   }
@@ -1072,6 +1074,50 @@ function createViebitAdapter(iframeEl, baseEmbedUrl) {
     // the same reasoning as the hidden share button above.
     speedRates: null,
   };
+}
+
+// ChampDS VOD2-only meetings (A9, 2026-10-17): ChampDS's own event page in
+// an iframe. Like Viebit there is no cross-frame API; the page reads a
+// start time from a `/s/{seconds}` path segment once on load, so a seek
+// reloads the iframe at that path. The reader presses play inside it.
+function champdsUrlAt(baseEmbedUrl, seconds) {
+  const base = baseEmbedUrl.replace(/\/s\/\d+\/?$/, '').replace(/\/$/, '');
+  return seconds > 0 ? `${base}/s/${seconds}` : base;
+}
+
+function createChampdsAdapter(iframeEl, baseEmbedUrl) {
+  let lastSetTime = 0;
+  return {
+    get currentTime() { return lastSetTime; },
+    set currentTime(t) {
+      lastSetTime = Math.max(0, Math.floor(t));
+      iframeEl.src = champdsUrlAt(baseEmbedUrl, lastSetTime);
+    },
+    play: () => {},
+    pause: () => {},
+    addEventListener: () => {},
+    speedRates: null,
+  };
+}
+
+function initChampdsVideo(embedUrl) {
+  const iframe = document.getElementById('champdsFrame');
+  const errorEl = document.getElementById('videoError');
+  if (!iframe) {
+    errorEl.textContent = 'Could not load this video.';
+    errorEl.hidden = false;
+    return;
+  }
+
+  document.getElementById('meetingVideo').hidden = true;
+  document.getElementById('bigPlayButton').hidden = true;
+  iframe.hidden = false;
+  iframe.src = champdsUrlAt(embedUrl, 0);
+
+  const adapter = createChampdsAdapter(iframe, embedUrl);
+  activeVideoAdapter = adapter;
+  wireSharedControls(adapter, { liveTracking: false });
+  applyDeepLink(adapter);
 }
 
 function initViebitVideo(embedUrl) {

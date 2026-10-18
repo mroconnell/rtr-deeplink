@@ -71813,3 +71813,44 @@ The display is the open `BACKLOG.md` entry "Shade the stretches of a Whisper tra
 >   - **Next action**: **Claimed 2026-10-16** (office Mac session, A7): a 5-link pilot. Size it first. Search for `"zoom.us/rec/share"` together with governance phrases. If density is real, build a Zoom `rec/share` adapter from a live Rockport sample. Teams needs its own investigation.
 >   - **Constraint**: confirm a share link plays without sign-in before building.
 >   - **History**: found 2026-09-01/02; Utah PMN pilot 2026-09-08.
+## [Done 2026-10-18] ChampDS VOD2-only meetings play in ChampDS's own page, framed on ours (A9)
+
+**Decision.** Ryan took the A9 recommendation on 2026-10-18.
+
+**Why it works.** The office-Mac test (2026-10-17, `reports/wo-a9_champds_embed.md`) found that `play.champds.com` event pages send no `X-Frame-Options` and no CSP `frame-ancestors` (Cobb County GA, Atlanta GA, Largo FL). Inside an iframe on another site the page plays VOD2: its own stream requests carry `Referer: https://play.champds.com/`, every one answered 200. The page takes a start time as a path segment, `/{customer}/event/{id}/s/{seconds}`: the server writes `SC_AREA='s'`, `SC_ID=N`, and `embed.js` seeks there on load. `/s/600` started at 600 s and `/s/120` at 120 s. A query string (`?s=`) does not do this; `s` there is the transcript search box.
+
+**The change.**
+- `champds.py`: a VOD2-only meeting now returns `video_url` = the event page (`event_page_url()`), with `video_format="champds"`. The stream stays in `server_media_url` for our transcription (`transcription_media_url()` already prefers it). The warning now says the frame is ChampDS's own page and that the reader presses play inside it.
+- `archive/utils/video_formats.py`: `"champds"` joins `IFRAME_EMBED_VIDEO_FORMATS`, so thumbnail extraction and `/coverage` treat the page as an embed page, not media. The JSON-LD branch emits `embedUrl`.
+- Both pages (`archive/templates/meeting_page.html` with `archive/static/meeting_page.js`, and `app/templates/meeting.html` with `app/static/player.js`) get a `champdsFrame` iframe and a reload-to-seek adapter shaped like Viebit's (`liveTracking: false`, no speed chip, no share-at-current-time).
+- Meeting Finder (`resolving/resolve.py`): `_media_url()` returns the stream for a stream-only meeting even when `video_url` is the frame page, so the audio-only probe and the tier-3 line never point at HTML. `STREAM_ONLY_NOTE` was reworded.
+
+**Verification.** Tests updated and added (the adapter on the real Cobb, Gwinnett and Marlborough fixtures; the iframe-format guards; the Meeting Finder tier-3 case; a render test for `champdsFrame`). Checked in the browser pane against a local Archive on throwaway SQLite with a ChampDS page: `?t=300` loaded the frame at `/s/300`; clicking the 10:00 transcript line reloaded it at `/s/600`; the 0:00 line went back to the bare event page; ChampDS's player rendered inside the frame.
+
+**Limits.** The reader must press play inside the frame (ChampDS's player fails if started from script). Our page cannot read the frame's time, so the transcript highlight does not follow playback. Pages archived before this keep `video_url` empty until they are re-resolved (a page refresh, or a re-ingest).
+
+**History of the open entry, replaced here:**
+
+> - **ChampDS's VOD2 stream (majority of customers) can be transcribed but still can't play on our pages.**
+>   - **Issue**: VOD2's HLS stream (`securestream10.champds.com`) answers
+>     only requests carrying `Referer: https://play.champds.com/`; with
+>     no referer or ours, every request gets HTTP 406. Our server can send
+>     that header, so since WO-1045 (2026-09-24) the adapter returns the
+>     stream as `server_media_url` and every transcription path uses it.
+>     A reader's browser cannot send it, so the page still has no player.
+>     `MediaInfo.MediaPath` (`.mp4`) is not a way round it: 404 on every
+>     host tried.
+>   - **Impact**: VOD2-only meetings (39 of 48 fresh tenants in the
+>     2026-09-06 CDX scan; Cobb and Gwinnett County GA, 2026-09-24) now
+>     get a transcript but show "ChampDS only streams it inside its own
+>     player" instead of a player, so transcript timestamps can't seek.
+>   - **Next action**: **Claimed 2026-10-16** (office Mac session, A9):
+>     embed test. From the office Mac, check whether a `play.champds.com`
+>     event page allows framing on our page and accepts a start time. A
+>     frame would send ChampDS's own Referer.
+>   - **Constraint**: no streaming proxy (Ryan, 2026-10-16; see Standing
+>     decisions). The cloud gets HTTP 403 from ChampDS, so the test runs
+>     from the office Mac.
+>   - **History**: `BACKLOG_DONE.md` (video-indexing investigation; WO-1045
+>     for the live re-check and the transcription path).
+> 

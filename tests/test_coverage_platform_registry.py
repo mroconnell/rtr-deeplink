@@ -121,4 +121,6 @@ def test_iframe_embed_video_formats_covers_the_known_embed_platforms():
     # possible. Confirmed by grepping every adapter's `video_format=`
     # assignment: all other stored values (mp4/m3u8/mp3/wav) are genuine
     # fetchable media URLs.
-    assert _IFRAME_EMBED_VIDEO_FORMATS == {"youtube", "vimeo", "viebit"}
+    # "champds" joined 2026-10-17 (A9): a VOD2-only ChampDS meeting stores
+    # ChampDS's own event page as its player.
+    assert _IFRAME_EMBED_VIDEO_FORMATS == {"youtube", "vimeo", "viebit", "champds"}

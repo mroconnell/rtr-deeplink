@@ -33,6 +33,7 @@ _EMBED_URLS = {
     "youtube": "https://www.youtube.com/embed/dQw4w9WgXcQ",
     "vimeo": "https://player.vimeo.com/video/1212025580",
     "viebit": "https://councilnyc.viebit.com/embed/vod?v=hFWIQkuFLuWGb0mw",
+    "champds": "https://play.champds.com/cobbcoga/event/155",
 }
 _REAL_MEDIA = {
     "m3u8": "https://example.granicus.com/OnDemand/x/chunklist.m3u8",
@@ -51,7 +52,7 @@ def test_the_set_covers_exactly_the_adapters_that_store_an_embed_page():
     # Guards the constant itself. A new iframe-embed adapter has to land
     # here deliberately, and meeting_page.html's JSON-LD branch has its
     # own guard in test_meeting_page_structured_data.py.
-    assert IFRAME_EMBED_VIDEO_FORMATS == {"youtube", "vimeo", "viebit"}
+    assert IFRAME_EMBED_VIDEO_FORMATS == {"youtube", "vimeo", "viebit", "champds"}
 
 
 def test_none_is_not_an_embed_format():
