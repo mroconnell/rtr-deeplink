@@ -1,3 +1,4 @@
+import html
 import logging
 import re
 from typing import List, Optional, Tuple
@@ -244,7 +245,9 @@ class CivicClerkAssetFinder(AssetFinder):
             )
 
             title = event.get("eventName") or None
-            category_name = (event.get("categoryName") or "").strip()
+            # Some tenants send it HTML-escaped ("Planning &amp; Zoning
+            # Commission"); the page template escapes it again.
+            category_name = html.unescape(event.get("categoryName") or "").strip()
             meeting_body = (
                 category_name
                 if category_name

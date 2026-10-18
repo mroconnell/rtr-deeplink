@@ -33,6 +33,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import csv
+import html
 import re
 import sys
 from collections import Counter
@@ -80,7 +81,10 @@ NON_INFORMATIVE_CATEGORY_NAMES = frozenset({"general"})
 
 def body_from_event(event: dict) -> tuple[str | None, str]:
     """(body, outcome) from an Events API record, by the adapter's own rule."""
-    name = (event.get("categoryName") or "").strip()
+    # Some tenants send the name HTML-escaped ("Planning &amp; Zoning
+    # Commission", seen on 5 pages in the 2026-10-18 dry run). The page
+    # template escapes it again, so store the plain text.
+    name = html.unescape(event.get("categoryName") or "").strip()
     if not name:
         return None, "no_category"
     if name.lower() in NON_INFORMATIVE_CATEGORY_NAMES:

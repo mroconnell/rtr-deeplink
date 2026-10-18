@@ -79,3 +79,12 @@ def test_runs_without_yt_dlp():
         [sys.executable, "-c", code], cwd=root, capture_output=True, text=True
     )
     assert r.returncode == 0, r.stderr
+
+
+def test_body_unescapes_html_entities():
+    # Synthetic record. The escaped name itself is real: the 2026-10-18
+    # dry run on the Archive found 5 pages whose categoryName was
+    # "Planning &amp; Zoning Commission". Which tenant sent it is not
+    # recorded here.
+    event = {"categoryName": "Planning &amp; Zoning Commission"}
+    assert body_from_event(event) == ("Planning & Zoning Commission", "filled")
