@@ -220,7 +220,16 @@ def _ffmpeg_input_header_args(source_page_url: str, media_url: str) -> list[str]
     URL, so this gap was invisible until then.
     """
     if media_url.startswith("http://") or media_url.startswith("https://"):
-        return ["-headers", realistic_headers(source_page_url)]
+        headers = realistic_headers(source_page_url)
+        # A7: a Zoom recording's MP4 answers only with the session cookies
+        # its resolve got (zoom.py's module docstring); sent to that MP4 only.
+        if (urlparse(media_url).hostname or "").endswith(".zoom.us"):
+            from .zoom import media_cookie_header
+
+            cookie = media_cookie_header(media_url)
+            if cookie:
+                headers += f"Cookie: {cookie}\r\n"
+        return ["-headers", headers]
     return []
 
 

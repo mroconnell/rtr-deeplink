@@ -216,7 +216,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (77)
     [HUMAN] Re-run the wrong-content screen after the wrong-page sheet is…
     [NEEDS-AUDIT] `scripts/score_gov_registry.py` can't see `match`-
     [NEEDS-AUDIT] Two known duplicate-page pairs for one meeting (Yamhill…
-    [IMPROVEMENT-ROUND] `[BIG]` Zoom cloud recordings…
+    [IMPROVEMENT-ROUND] Microsoft Teams past recordings and Zoom for…
     [NEEDS-AUDIT] Topic chips are ranked by corpus hits, not real search
   Pages filed under a wrong government by a since-removed pin can't be…
   `backfill_gov_id.py --apply` writes hub redirects to a file the live…
@@ -1549,13 +1549,12 @@ of human step they need.
   - **Next action**: read both pairs' `platform`/`external_id` in the export to find which field differed, then fix that adapter. Merge each pair, keeping the copy with more segments (1,726 vs 757 for Yamhill).
   - **History**: found 2026-09-01 (Yamhill) and 2026-09-06 (Tompkins).
 
-- **[IMPROVEMENT-ROUND] `[BIG]` Zoom cloud recordings (`zoom.us/rec/share/...`) and Microsoft Teams have no adapter.**
-  - **Issue**: some governments publish past meetings only as Zoom cloud-recording share links (Rockport MA's `rockportma.gov/598/Recorded-Zoom-Meetings`, Brookline MA's zoomgov links on CivicClerk, 4 `zoom.us` values in Utah PMN notices). No Teams past-recording example has been found; every Teams hit so far is a live join link.
-  - **Impact**: governments whose only platform is Zoom are invisible to every discovery path.
-  - **Next action**: **Claimed 2026-10-16** (office Mac session, A7): a 5-link pilot. Size it first. Search for `"zoom.us/rec/share"` together with governance phrases. If density is real, build a Zoom `rec/share` adapter from a live Rockport sample. Teams needs its own investigation.
-  - **Constraint**: confirm a share link plays without sign-in before building.
-  - **History**: found 2026-09-01/02; Utah PMN pilot 2026-09-08.
-
+- **[IMPROVEMENT-ROUND] Microsoft Teams past recordings and Zoom for Government have no adapter (Zoom `zoom.us/rec/share` shipped 2026-10-18).**
+  - **Issue**: `app/platforms/zoom.py` reads `*.zoom.us` cloud recordings (see `BACKLOG_DONE.md`, "Zoom cloud recordings"). Still unread: Zoom for Government links (`zoomgov.com`, Brookline MA's on CivicClerk) and Teams. No Teams past-recording example has been found; every Teams hit so far is a live join link.
+  - **Impact**: governments that publish only on Teams or Zoom for Government stay invisible.
+  - **Next action**: check one real `zoomgov.com/rec/share` link with the same four-request flow before widening `is_zoom_recording_url()`. Check the Zoom adapter from Render once (Cloudflare may treat a server differently). Queue the Rockport MA and Utah PMN Zoom recordings as tier-3 lines.
+  - **Constraint**: open only links a government published, one at a time; never list or walk Zoom (robots.txt disallows `/rec/*`; see the tier-3 standing decision).
+  - **History**: found 2026-09-01/02; Utah PMN pilot 2026-09-08; A7 pilot 2026-10-17 (`reports/wo-a7_zoom_pilot.md` on the office Mac).
 - **[NEEDS-AUDIT] Topic chips are ranked by corpus hits, not real search
   demand.**
   - **Issue**: `/meetings` topic chips are ranked by corpus hit count.

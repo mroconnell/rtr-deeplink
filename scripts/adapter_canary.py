@@ -332,6 +332,13 @@ CANARY_URLS: dict[str, list[str]] = {
 # every registered platform appears in exactly one of the two, so removing
 # a platform from here without adding a URL (or vice versa) fails CI.
 CANARY_EXCLUSIONS: dict[str, str] = {
+    "zoom": (
+        "Zoom's robots.txt disallows /rec/* for every agent. Ryan's 2026-10-18 "
+        "condition for the adapter (A7) is that we open only a recording link a "
+        "government published, one at a time, never on a schedule; a daily "
+        "canary would be exactly that. Check by hand from the office Mac "
+        "(tests/test_zoom.py has the real captures)."
+    ),
     "youtube": (
         "Removed 2026-10-16 (backlog triage; found reading canary logs for "
         "WO-1112). From a GitHub runner YouTube answers yt-dlp with 'Sign "
