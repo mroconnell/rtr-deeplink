@@ -286,13 +286,21 @@ def _download(
     hdr = f"User-Agent: {_UA}\r\nReferer: {o.scheme}://{o.netloc}/\r\n"
     try:
         p = subprocess.run(
-            ["ffmpeg", "-y", "-v", "error", "-headers", hdr, "-i", media["video_url"],
+            ["ffmpeg", "-y", "-v", "error", "-headers", hdr,
+             # A dropped connection (a laptop going to sleep, 2026-10-18)
+             # left ffmpeg waiting forever; give up on a 60 s silence and
+             # reconnect instead.
+             "-rw_timeout", "60000000", "-reconnect", "1",
+             "-reconnect_on_network_error", "1", "-reconnect_delay_max", "30",
+             "-i", media["video_url"],
              "-t", str(seconds), "-vn", "-c:a", "copy", str(dest)],
             capture_output=True, text=True, env=env, timeout=7200,
         )  # fmt: skip
     except subprocess.TimeoutExpired:
+        dest.unlink(missing_ok=True)
         return "ffmpeg timed out"
     if p.returncode or not dest.exists() or dest.stat().st_size <= 100000:
+        dest.unlink(missing_ok=True)  # never reuse a partial file
         lines = (p.stderr or "").strip().splitlines()
         return (lines[-1] if lines else f"exit {p.returncode}")[:200]
     return ""
