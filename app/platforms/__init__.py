@@ -56,6 +56,7 @@ def register_all_finders() -> None:
     from .swd_live import SwdLiveAssetFinder
     from .webtv_coop import WebtvCoopAssetFinder
     from .vimeo import VimeoAssetFinder
+    from .zoom import ZoomAssetFinder
     from .wistia import WistiaAssetFinder
     from .boxcast import BoxcastAssetFinder
     from .direct_file import DirectFileAssetFinder
@@ -97,6 +98,7 @@ def register_all_finders() -> None:
     register(AVCaptureAllAssetFinder())
     register(SuiteOneAssetFinder())
     register(VimeoAssetFinder())
+    register(ZoomAssetFinder())
     register(ChicagoElmsAssetFinder())
     register(ProudCityAssetFinder())
     register(TampaAssetFinder())

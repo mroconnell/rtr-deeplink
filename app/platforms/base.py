@@ -519,6 +519,12 @@ def detect_platform(url: str) -> str:
         # Internet Archive item page (WO-1962): one shared host, any government's items. ONLY /details/{item_id} -- a /download/... media link stays on
         # the direct_file path below (existing queue lines depend on it). See archiveorg.py.
         return "archiveorg"
+    if (netloc == "zoom.us" or netloc.endswith(".zoom.us")) and path.startswith(
+        ("/rec/share/", "/rec/play/")
+    ):
+        # Zoom cloud recordings a government shared (A7, 2026-10-18) -- see
+        # zoom.py. Only recording links: a /j/ join link is not a recording.
+        return "zoom"
     if netloc == "media.avcaptureall.cloud":
         # AV Capture All (WO-1190): one viewer site for many small governments; a meeting is /meeting/{guid}. Office-Mac only (the record needs a
         # browser-minted AWS WAF token) -- see avcaptureall.py. Any path on the host routes here; the adapter says plainly when it is not a meeting.

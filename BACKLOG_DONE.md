@@ -71792,3 +71792,24 @@ The display is the open `BACKLOG.md` entry "Shade the stretches of a Whisper tra
 **Verification.** Fresh real fixtures captured 2026-10-17: `anacorteswa_event1452_2026-10-17.json` and `anacorteswa_media1452_2026-10-17.json` (agenda and packet), `kaysvilleut_event823_2026-10-17.json` and `kaysvilleut_media823_2026-10-17.json` (the same event as the 2026-08 fixture, now with `url` null), and `anacorteswa_agenda4213_2026-10-17.pdf` (that agenda's real PDF, 164 KB). Tests added in `tests/test_civicclerk.py` (both events resolve to stream links, and any other request fails as unmocked) and `tests/test_agenda_text.py` (stream links are one file read; the real Anacortes PDF extracts with "Fourth of July Fireworks" in it). The live A2 check had already read 3 CivicClerk agendas and 2 packets through the stream route, 3,296 to 605,945 characters each.
 
 **Correction.** The open entry said "CivicPlus read correctly on 3 of 3 (a 315-page Anacortes packet ...)". Anacortes is CivicClerk. CivicPlus read 2 of 3 (St. James Parish LA is a scanned PDF with no text layer). On 2 of 3 CivicPlus meetings, `?packet=true` returned the agenda itself; WO-1971 (PR #2092, merged 2026-10-17) stops storing that duplicate.
+
+## [Done 2026-10-18] Zoom cloud recordings (`*.zoom.us/rec/share/...`): an adapter, transcription through Zoom's own cookies (A7)
+
+**Decision.** Ryan took the A7 recommendation on 2026-10-18: build a `/rec/share` adapter for recordings a government published, knowing Zoom's robots.txt disallows `/rec/*`.
+
+**What the pilot found** (office Mac, 2026-10-16/17, `reports/wo-a7_zoom_pilot.md`): 7 of 8 government share links played without sign-in or passcode, each with a real MP4; 2 of 8 had a Zoom transcript or captions. A `/rec/play/` link (Bristol CT) showed a blank page.
+
+**How it works, plain HTTP, checked 2026-10-17.** The share page's `window.__data__` names a one-time `meetingId` and sets Zoom's session cookies; `/nws/recording/1.0/play/share-info/{meetingId}` gives the play page; its `window.__data__` names the `fileId`; `/nws/recording/1.0/play/info/{fileId}` gives the topic, `meetingStartTimeStr`, `duration`, the signed `mp4Url` on `ssrweb.zoom.us`, and `transcriptUrl` when Zoom made one. The MP4 answers 403 without the session cookies (even with a Referer) and 206 with them, so it is `server_media_url` (our transcription only) and the reader is pointed to Zoom's page. The adapter keeps each MP4's cookies in-process; `media_probe._ffmpeg_input_header_args()` adds them to that MP4's ffmpeg/ffprobe calls only. Live end-to-end check from the Mac: Sidney MT's "Impact Fee Committee 9/30/26" resolved, and `probe_duration()` read 2,075.9 s with the cookies (Zoom says 2,075 s) and failed without them.
+
+**Files.** `app/platforms/zoom.py` (new), `app/platforms/base.py` (detection: `*.zoom.us` with `/rec/share/` or `/rec/play/` only; a `/j/` join link is not a recording), `app/platforms/__init__.py`, `app/platforms/media_probe.py` (the cookie line), `archive/db/crud.py` (platform label). Tests: `tests/test_zoom.py`, from real captures of two links (`tests/fixtures/zoom/`; the ~500 KB player pages are kept as their real `window.__data__` block only).
+
+**Not done.** Zoom for Government (`zoomgov.com`), Teams, and a check from Render; these stay in the open `BACKLOG.md` entry.
+
+**History of the open entry, replaced here:**
+
+> - **[IMPROVEMENT-ROUND] `[BIG]` Zoom cloud recordings (`zoom.us/rec/share/...`) and Microsoft Teams have no adapter.**
+>   - **Issue**: some governments publish past meetings only as Zoom cloud-recording share links (Rockport MA's `rockportma.gov/598/Recorded-Zoom-Meetings`, Brookline MA's zoomgov links on CivicClerk, 4 `zoom.us` values in Utah PMN notices). No Teams past-recording example has been found; every Teams hit so far is a live join link.
+>   - **Impact**: governments whose only platform is Zoom are invisible to every discovery path.
+>   - **Next action**: **Claimed 2026-10-16** (office Mac session, A7): a 5-link pilot. Size it first. Search for `"zoom.us/rec/share"` together with governance phrases. If density is real, build a Zoom `rec/share` adapter from a live Rockport sample. Teams needs its own investigation.
+>   - **Constraint**: confirm a share link plays without sign-in before building.
+>   - **History**: found 2026-09-01/02; Utah PMN pilot 2026-09-08.
