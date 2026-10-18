@@ -34,6 +34,14 @@ from ..utils.vtt_parser import (
 # cds.common.js's own client-side HOST-splicing logic).
 _EVENT_PATH_RE = re.compile(r"/([^/]+)/event/(\d+)")
 
+
+def event_page_url(customer: str, event_id: str) -> str:
+    """ChampDS's own event page, the iframe player for a VOD2-only meeting.
+    The page reads a start time from `/s/{seconds}` appended to this path
+    (A9, 2026-10-17); the frontends add that, never this function."""
+    return f"https://play.champds.com/{customer}/event/{event_id}"
+
+
 logger = logging.getLogger("rtr_deeplink.champds")
 
 # Hub pick list (2026-10-06): a pasted account page (`play.champds.com/{cust}`,
@@ -51,9 +59,9 @@ _hub_cache: dict = {}
 # docstring). Distinct from "No video found" on purpose -- the video
 # exists, it just only plays inside ChampDS's own player.
 _STREAM_ONLY_WARNING = (
-    "This meeting has a video, but ChampDS only streams it inside its own "
-    "player, so we can't play it here. Watch it on ChampDS's page for this "
-    "meeting."
+    "ChampDS only streams this video inside its own player, so ChampDS's "
+    "page for this meeting is shown here. Press play inside it. Clicking "
+    "the transcript reloads that page at the moment you clicked."
 )
 
 # WO-308 (2026-09-12): the missing "list what's on this customer" step.
@@ -450,6 +458,16 @@ class ChampDSAssetFinder(AssetFinder):
         if video_url:
             video_warnings = []
         elif server_media_url:
+            # A9 (2026-10-17, office-Mac test, reports/wo-a9_champds_embed.md):
+            # the event page has no X-Frame-Options or CSP frame-ancestors,
+            # plays VOD2 inside an iframe (its own requests carry the
+            # ChampDS Referer the stream demands), and starts at a time given
+            # as a path segment, `/event/{id}/s/{seconds}`. So the reader gets
+            # ChampDS's own page as an iframe player (`video_format="champds"`,
+            # an IFRAME_EMBED_VIDEO_FORMATS member, like Viebit). Our own
+            # transcription still reads `server_media_url`.
+            video_url = event_page_url(match.group(1), match.group(2))
+            video_format = "champds"
             video_warnings = [_STREAM_ONLY_WARNING]
         else:
             video_warnings = ["No video found for this ChampDS meeting."]

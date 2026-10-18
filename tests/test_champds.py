@@ -126,8 +126,9 @@ async def test_resolve_keeps_vod2_out_of_the_player():
     with mock_session(routes):
         result = await ChampDSAssetFinder().resolve(MARLBOROUGH_URL)
 
-    assert result.video_url is None
-    assert result.video_format is None
+    # A9: the reader's player is ChampDS's own event page in a frame.
+    assert result.video_url == "https://play.champds.com/marlboroughma/event/806"
+    assert result.video_format == "champds"
     assert result.server_media_url == (
         "https://securestream10.champds.com/VOD/event/MarlboroughMA/806/"
         "1718783802000/D33VeG9r-BDw8BsuIwReeA/master.m3u8"
@@ -517,8 +518,8 @@ async def test_download_disabled_customer_gets_stream_for_transcription_only():
     with mock_session(_api_route("cobbcoga", 155, "cobbcoga_event_155.json")):
         result = await ChampDSAssetFinder().resolve(COBB_URL)
 
-    assert result.video_url is None
-    assert result.video_format is None
+    assert result.video_url == "https://play.champds.com/cobbcoga/event/155"
+    assert result.video_format == "champds"
     assert result.server_media_url == (
         "https://securestream10.champds.com/VOD/event/CobbCoGA/155/"
         "1788977097000/1o3BB_6OF2yCFDiWWL9CXA/master.m3u8"
@@ -537,7 +538,8 @@ async def test_second_download_disabled_customer_same_shape():
     with mock_session(_api_route("gwinnettcoga", 356, "gwinnettcoga_event_356.json")):
         result = await ChampDSAssetFinder().resolve(GWINNETT_URL)
 
-    assert result.video_url is None
+    assert result.video_url == "https://play.champds.com/gwinnettcoga/event/356"
+    assert result.video_format == "champds"
     assert result.server_media_url == (
         "https://securestream10.champds.com/VOD/event/GwinnettCoGA/356/"
         "1789498072000/MJOFEzzY9p_9uNdXuCNheA/master.m3u8"

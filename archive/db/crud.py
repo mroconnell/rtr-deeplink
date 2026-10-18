@@ -6136,6 +6136,9 @@ DIRECT_PLATFORMS: dict[str, str] = {
     # governments. Direct video host; webtv_coop.py keeps its own platform
     # name on every result.
     "webtv_coop": "Coop WebTV (webtv.coop)",
+    # Zoom cloud recordings a government shared (A7): zoom.py keeps its own
+    # platform name; the MP4 is server-only, like ChampDS's VOD2.
+    "zoom": "Zoom recording",
     # SWD Live (swd-live.com): Service Web Diffusion's council webcasts (Gatineau, Mont-Royal). Direct MP4 files; swd_live.py has its own platform.
     "swd_live": "SWD Live (swd-live.com)",
     # CATS (catstv.net): Bloomington IN community access TV; direct .m4v files and WebVTT captions. catstv.py has its own platform.

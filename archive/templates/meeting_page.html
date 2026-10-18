@@ -138,7 +138,7 @@
        drifted apart once already (WO-35 added "viebit" there and not
        here). tests/test_meeting_page_structured_data.py iterates that
        constant and fails if this branch stops agreeing with it. #}
-    {% if page.video_format in ("youtube", "vimeo", "viebit") -%}
+    {% if page.video_format in ("youtube", "vimeo", "viebit", "champds") -%}
     "embedUrl": {{ page.video_url|tojson }},
     {% else -%}
     {#- player_video_url, not page.video_url: for a NEEDS_REFRESH
@@ -437,6 +437,11 @@
           <div id="vimeoPlayerContainer" class="youtube-player-container vimeo-player-container"></div>
           {% elif page.video_format == "viebit" %}
           <iframe id="viebitFrame" class="viebit-player-container" allow="autoplay; fullscreen" allowfullscreen title="Meeting video"></iframe>
+          {% elif page.video_format == "champds" %}
+          {#- A9: ChampDS's own event page, for a VOD2-only meeting (see
+             champds.py's event_page_url()). Same reload-to-seek shape as
+             Viebit's, with `/s/{seconds}` in the path. #}
+          <iframe id="champdsFrame" class="viebit-player-container champds-player-container" allow="autoplay; fullscreen" allowfullscreen title="Meeting video"></iframe>
           {% elif page.video_format == "m3u8" %}
           {#- Real src/source server-rendered here, not left to JS alone --
              found 2026-08-21 (BACKLOG.md) that Google's Search Console

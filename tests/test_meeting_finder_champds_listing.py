@@ -319,8 +319,11 @@ async def test_vod2_only_recording_resolves_as_tier_3(monkeypatch):
         LARGO_342_VOD2,
         "https://play.champds.com/largofl/event/342",
     )
-    # The page itself still has no player, and says where to watch.
-    assert meeting.video_url is None
+    # A9 (2026-10-17): the page's player is ChampDS's own event page in a
+    # frame; the stream stays server-only, and Meeting Finder's video_url
+    # above is still the stream, not that page.
+    assert meeting.video_url == "https://play.champds.com/largofl/event/342"
+    assert meeting.video_format == "champds"
     assert meeting.source_url == "https://play.champds.com/largofl/event/342"
     assert meeting.server_media_url == LARGO_342_VOD2
 
