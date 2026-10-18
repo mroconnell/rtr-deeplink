@@ -497,6 +497,7 @@ _EMBED_URL_BY_FORMAT: dict[str, str] = {
     "youtube": "https://www.youtube.com/embed/dQw4w9WgXcQ",
     "vimeo": "https://player.vimeo.com/video/1212025580",
     "viebit": "https://councilnyc.viebit.com/embed/vod?v=hFWIQkuFLuWGb0mw",
+    "champds": "https://play.champds.com/cobbcoga/event/155",
 }
 
 
@@ -596,3 +597,20 @@ async def test_direct_media_formats_still_use_contenturl():
         data = _get_json_ld(archive_client.get(f"/m/{slug}").text)
         assert data["contentUrl"] == video_url, video_format
         assert "embedUrl" not in data, video_format
+
+
+async def test_champds_page_renders_the_event_page_in_a_frame():
+    # A9 (2026-10-17): a VOD2-only ChampDS meeting's player is ChampDS's
+    # own event page (real Cobb County GA event 155, see test_champds.py).
+    # meeting_page.js seeks it by reloading at `/s/{seconds}`.
+    embed_url = "https://play.champds.com/cobbcoga/event/155"
+    slug = await _make_page(
+        "sd-champds-frame",
+        platform="champds",
+        video_url=embed_url,
+        video_format="champds",
+    )
+    html = archive_client.get(f"/m/{slug}").text
+    assert 'id="champdsFrame"' in html
+    assert 'data-video-format="champds"' in html
+    assert '<video id="meetingVideo"' not in html
