@@ -228,6 +228,9 @@ _SOURCE_LABELS = {
     # same meeting apart -- "English (sourced)" vs.
     # "English (de-duplicated)" -- which language+source alone could not.
     "deduped": "de-duplicated",
+    # A4 (WO-1960, 2026-10-18): the same source captions with their times
+    # moved to match the video (scripts/align_page_timing.py).
+    "aligned": "time-corrected",
 }
 templates.env.filters["source_label"] = lambda source: _SOURCE_LABELS.get(
     source, source
@@ -2443,6 +2446,44 @@ async def internal_correct_text(
     if "error" in result:
         status = 409 if result["error"].startswith("old_text_not") else 400
         return JSONResponse(result, status_code=status)
+    return result
+
+
+class TimeCorrectedVersionRequest(BaseModel):
+    slug: str
+    base_version_id: int
+    segments: list
+    note: str = ""
+    promote: bool = True
+    dry_run: bool = True
+
+
+@app.post("/internal/transcript-version/add-time-corrected")
+async def internal_add_time_corrected(
+    req: TimeCorrectedVersionRequest, authorization: Optional[str] = Header(None)
+):
+    """Add a time-corrected copy of a page's captions (A4, WO-1960): same
+    text, only start/end moved to match the video. Written by
+    scripts/align_page_timing.py. Dry run by default. See
+    crud.add_time_corrected_version() for what it refuses."""
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    result = await crud.add_time_corrected_version(
+        slug=req.slug,
+        base_version_id=req.base_version_id,
+        segments=req.segments,
+        note=req.note,
+        promote=req.promote,
+        dry_run=req.dry_run,
+    )
+    if result is None:
+        return JSONResponse(
+            {"error": "not_found", "message": "No matching meeting page/version."},
+            status_code=404,
+        )
+    if "error" in result:
+        return JSONResponse(result, status_code=400)
     return result
 
 
