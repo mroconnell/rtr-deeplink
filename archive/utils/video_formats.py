@@ -25,10 +25,15 @@ from typing import Optional
 #   youtube.py  -> youtube.com/embed/{id}
 #   vimeo.py    -> player.vimeo.com/video/{id}
 #   viebit.py   -> {origin}/embed/vod?v={id}
+#   champds.py  -> play.champds.com/{customer}/event/{id}, VOD2-only
+#                  meetings only (A9, 2026-10-17); the stream itself is
+#                  `server_media_url`, never stored on the page
 # Confirmed by grepping every adapter's `video_format=` assignment: every
 # other value this app stores (mp4/m3u8/mp3/wav) is a genuine fetchable
 # media URL.
-IFRAME_EMBED_VIDEO_FORMATS: frozenset[str] = frozenset({"youtube", "vimeo", "viebit"})
+IFRAME_EMBED_VIDEO_FORMATS: frozenset[str] = frozenset(
+    {"youtube", "vimeo", "viebit", "champds"}
+)
 
 
 def is_iframe_embed_format(video_format: Optional[str]) -> bool:

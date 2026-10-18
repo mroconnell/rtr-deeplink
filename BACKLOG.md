@@ -1838,29 +1838,6 @@ actionability sections above.
   - **Constraint**: use `/internal/jurisdiction/missing`, not `/internal/low-trust-pages`.
   - **History**: WO-38 (2026-08-21), `BACKLOG_DONE.md`.
 
-- **ChampDS's VOD2 stream (majority of customers) can be transcribed but still can't play on our pages.**
-  - **Issue**: VOD2's HLS stream (`securestream10.champds.com`) answers
-    only requests carrying `Referer: https://play.champds.com/`; with
-    no referer or ours, every request gets HTTP 406. Our server can send
-    that header, so since WO-1045 (2026-09-24) the adapter returns the
-    stream as `server_media_url` and every transcription path uses it.
-    A reader's browser cannot send it, so the page still has no player.
-    `MediaInfo.MediaPath` (`.mp4`) is not a way round it: 404 on every
-    host tried.
-  - **Impact**: VOD2-only meetings (39 of 48 fresh tenants in the
-    2026-09-06 CDX scan; Cobb and Gwinnett County GA, 2026-09-24) now
-    get a transcript but show "ChampDS only streams it inside its own
-    player" instead of a player, so transcript timestamps can't seek.
-  - **Next action**: **Claimed 2026-10-16** (office Mac session, A9):
-    embed test. From the office Mac, check whether a `play.champds.com`
-    event page allows framing on our page and accepts a start time. A
-    frame would send ChampDS's own Referer.
-  - **Constraint**: no streaming proxy (Ryan, 2026-10-16; see Standing
-    decisions). The cloud gets HTTP 403 from ChampDS, so the test runs
-    from the office Mac.
-  - **History**: `BACKLOG_DONE.md` (video-indexing investigation; WO-1045
-    for the live re-check and the transcription path).
-
 - **[NEEDS-AUDIT] Palm Beach County FL's SharePoint page now escalates correctly; the real video is still unreachable behind client-side JS.**
   - **Issue**: escalation itself is fixed (a SharePoint-specific
     `_spPageContextInfo`/`_layouts/15` fingerprint trigger shipped

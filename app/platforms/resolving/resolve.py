@@ -144,19 +144,32 @@ LOCAL_ONLY_CAPTIONS_NOTE = (
 # Ryan, 2026-10-16: a ChampDS VOD2-only recording is a tier-3 find. Said
 # in the note so nobody reads `video_url` as something a reader can play.
 STREAM_ONLY_NOTE = (
-    "stream-only recording (VOD2): our transcription can read it, but our "
-    "page has no player and links back to the source"
+    "stream-only recording (VOD2): our transcription can read it, and our "
+    "page shows ChampDS's own player in a frame"
 )
+
+
+def _stream_only(result: ResolvedMeeting) -> bool:
+    """A ChampDS VOD2-only meeting: the stream is `server_media_url`, and
+    `video_url` is empty or (since A9, 2026-10-17) ChampDS's own event page
+    as an iframe player (`video_format="champds"`), never media."""
+    return bool(getattr(result, "server_media_url", None)) and (
+        not result.video_url or result.video_format == "champds"
+    )
 
 
 def _media_url(result: ResolvedMeeting) -> Optional[str]:
     """The playable `video_url`, else the server-only stream (ChampDS's
-    VOD2, `server_media_url`) that a tier-3 transcription reads."""
+    VOD2, `server_media_url`) that a tier-3 transcription reads. For a
+    stream-only meeting the stream wins, because its `video_url` is an
+    HTML page."""
+    if _stream_only(result):
+        return result.server_media_url
     return result.video_url or getattr(result, "server_media_url", None)
 
 
 def _stream_only_note(result: ResolvedMeeting) -> str:
-    return "" if result.video_url or not _media_url(result) else STREAM_ONLY_NOTE
+    return STREAM_ONLY_NOTE if _stream_only(result) else ""
 
 
 def captions_local_only(platform: Optional[str], video_url: Optional[str]) -> bool:
