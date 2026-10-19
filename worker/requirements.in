@@ -38,4 +38,5 @@ sentry-sdk>=2.69.2
 # same reasoning. Both are appended unpinned directly to the bottom of
 # requirements.txt by hand after every `pip-compile requirements.in` run
 # -- see that file's own comment at the bottom. Don't add either above
-# this line.
+# this line. The same hand-appended block also carries an `av<19` cap
+# (WO-1978); keep it when re-appending.

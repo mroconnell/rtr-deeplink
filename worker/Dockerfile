@@ -46,12 +46,26 @@ COPY worker worker
 # invalidates it, so freshness tracks merge cadence with no manual bump.
 # Do not "fix" staleness by pinning these two -- that reverses WO-11.
 #
-# `av` (PyAV) is upgraded here too, on purpose. faster-whisper only
-# declares a loose `av>=` floor, so upgrading faster-whisper alone leaves
-# an older cached `av` in place when it still satisfies the floor. A newer
-# faster-whisper then calls `av.open(..., metadata_errors="ignore")`, which
-# the old `av` rejects: "open() got an unexpected keyword argument
-# 'metadata_errors'" on chunk 0 of every job (2026-10-12, job 7940).
-RUN pip install --no-cache-dir --upgrade yt-dlp faster-whisper av
+# `av` (PyAV) is upgraded here too, but capped below 19 (WO-1978).
+# faster-whisper's decode_audio() calls
+# `av.open(..., metadata_errors="ignore")`. PyAV 19.0.0 (released
+# 2026-09-29) removed that argument, so with av 19 every chunk fails with
+# "open() got an unexpected keyword argument 'metadata_errors'".
+# Measured 2026-10-19: av 18.1.0 accepts the call; av 19.0.1 raises.
+# faster-whisper 1.2.1 (the newest release) still passes the argument.
+# The 2026-10-12 note here had the direction backwards (it blamed an
+# OLD av), so adding a bare `av` to this line could not help: it
+# installs the newest av, which is 19. Failures began 2026-10-08. Lift
+# the cap only after a faster-whisper release stops passing
+# metadata_errors; the smoke check below fails the build if that is
+# not yet true, so the running workers keep their old image.
+RUN pip install --no-cache-dir --upgrade yt-dlp faster-whisper "av<19"
+
+# Build-time smoke check (WO-1978): decode one second of silence through
+# faster-whisper's own audio path. A broken faster-whisper/av pair fails
+# here, at build time, instead of failing every transcription job after
+# deploy (290 failed jobs in the 24 hours before 2026-10-19). Loads no
+# model and makes no network request.
+RUN python -I -c "import io, wave; from faster_whisper.audio import decode_audio; b = io.BytesIO(); w = wave.open(b, 'wb'); w.setnchannels(1); w.setsampwidth(2); w.setframerate(16000); w.writeframes(bytes(32000)); w.close(); b.seek(0); assert len(decode_audio(b)) == 16000; print('faster-whisper audio decode OK')"
 
 CMD ["python", "-m", "worker.main"]

@@ -69,7 +69,7 @@ From the repo root, on an up-to-date `main`:
 
 ```
 git pull
-.venv/bin/python -m pip install faster-whisper     # once
+.venv/bin/python -m pip install faster-whisper "av<19"     # once; av 19 breaks faster-whisper (WO-1978)
 ```
 
 Python 3.12, `ffmpeg` and `ffprobe` on the path, and `.env` holding
