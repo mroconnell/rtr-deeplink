@@ -138,8 +138,9 @@ deliberately NOT added to requirements-dev.txt (a heavy, CTranslate2-
 backed, CPU-inference-only dependency genuinely irrelevant to every other
 dev workflow in this repo, same "local tooling only" reasoning
 requirements-dev.txt already documents for youtube-transcript-api):
-    pip install faster-whisper
-(or `pip install -r worker/requirements.txt`, which already has it plus
+    pip install faster-whisper "av<19"
+(av 19 breaks faster-whisper's audio decoding, WO-1978; or
+`pip install -r worker/requirements.txt`, which already has it plus
 this script's other imports).
 """
 

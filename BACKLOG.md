@@ -178,7 +178,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (31)
   `[IMPROVEMENT-ROUND]` Full Context entries on YouTube-backed meetings…
   [IMPROVEMENT-ROUND] Lifecycle-triggered transactional emails (Resend)…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (77)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (78)
+  [NEEDS-AUDIT] Idle auto-transcription re-picks the same meeting every…
   [NEEDS-AUDIT] Tampa deep links assume the video starts at the first…
   [NEEDS-AUDIT] Some stored captions do not line up with their video,…
   [NEEDS-AUDIT] Meeting Finder picks the wrong clip from a Granicus…
@@ -1206,6 +1207,13 @@ of human step they need.
   copy/voice, reusing/extending existing Resend infrastructure.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
+
+- **[NEEDS-AUDIT] Idle auto-transcription re-picks the same meeting every 5 minutes after it fails (found 2026-10-19, WO-1978).**
+  - **Issue**: while PyAV 19 broke every chunk (WO-1978), the worker's idle auto-generation created a new job for City of Hamilton's "City Council Meeting 8-12-26" (`tvhamilton.cablecast.tv/show/528`) about every 5 minutes, jobs 9723-9811 and earlier; Portage's "City Council Meeting 8-11-2026" did the same 2026-10-08 to 10-12. `_cooldown_active()` should hold a page for at least a day after one failed job, so something gets past it.
+  - **Impact**: about 290 failed jobs and failure emails a day on one meeting, and no other backlog page got a turn.
+  - **Next action**: in the worker's Render log, compare the slug in "Auto-generation: trying candidate ..." with the page each new job lands on. If they differ, the re-resolve files the job on a different page, so the candidate page never gets a failed job and never cools down (a guess, not checked). Then make the failure count against the candidate page.
+  - **Constraint**: reading production jobs needs the Archive token or the Render shell; this sandbox has neither.
+  - **History**: `BACKLOG_DONE.md` WO-1978.
 
 - **[NEEDS-AUDIT] Tampa deep links assume the video starts at the first caption (found 2026-10-09, WO-1960).**
   - **Issue**: Tampa's transcript stamps are wall-clock times of day (for example 5:04:14 PM), not positions in the video. `app/platforms/tampa.py` turns the first caption's clock time into video 0:00 (`t0 = raw_entries[0][0]`, line 422) and nothing checks it. On meeting 2698 (2026-08-20) the page header gives a 5:01 PM start and the first caption is at 5:04:14 PM, a 3 minute 14 second gap; whether the video starts at the first caption was never measured. There is also no midnight handling: a line stamped after midnight gives a negative offset and `max(0, seconds - t0)` (line 425) clamps it to 0.

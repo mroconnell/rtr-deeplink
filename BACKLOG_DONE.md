@@ -1,5 +1,43 @@
 # Backlog — done
 
+## [Done 2026-10-19] WO-1978: PyAV 19 broke every cloud transcription job ("unexpected keyword argument 'metadata_errors'")
+
+**What happened.** From 2026-10-08 every cloud transcription job failed on
+chunk 0 with "open() got an unexpected keyword argument 'metadata_errors'".
+The worker daily report of 2026-10-19 showed 0 chunks completed and 290
+failures in 24 hours, all with this error. A user-requested job failed the
+same way (job 8815, Brisbane CA, 2026-10-16, after 3 retries).
+
+**Cause.** faster-whisper's `decode_audio()` calls
+`av.open(input_file, mode="r", metadata_errors="ignore")`. PyAV 19.0.0
+(released 2026-09-29) removed that argument. Measured 2026-10-19 with
+faster-whisper 1.2.1, the newest release:
+
+| av version | Result |
+|---|---|
+| 18.1.0 | decodes |
+| 19.0.1 | raises the error above |
+
+The 2026-10-12 note in `worker/Dockerfile` blamed an *old* av and added a
+bare `av` to the upgrade line. That installs the newest av, which is 19, so
+it could not help.
+
+**Fix.** `av<19` in `worker/requirements.txt`'s hand-appended block and on
+the Dockerfile's upgrade line. The Dockerfile also now decodes one second
+of silence through `faster_whisper.audio.decode_audio` at build time, so a
+broken pair fails the build and the running workers keep their old image.
+`tests/test_worker_av_cap.py` guards both caps. The local Whisper install
+lines (`docs/RETRANSCRIPTION_QUEUE.md`, `scripts/transcribe_backlog_locally.py`)
+carry the same cap.
+
+**"Gave up after 0 retries" is by design.** Auto-generated jobs are
+`PRIORITY_LOW`, and only `PRIORITY_MEDIUM` jobs (real requests) get the 3
+retries (`report_chunk_result()` in `archive/db/crud.py`).
+
+**Residual.** The same meeting was re-picked about every 5 minutes; split
+out as its own `BACKLOG.md` entry ("Idle auto-transcription re-picks the
+same meeting").
+
 ## [Done 2026-10-16] `[IMPROVEMENT-ROUND]` `[BIG]` "Feed cities" — should this app ever synthesize coverage for jurisdictions that publish nothing?
 
 Closed as overtaken (WO-1970). Every city `FEED_CITIES.md` names is now

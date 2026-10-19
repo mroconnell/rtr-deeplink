@@ -68,8 +68,13 @@ yarl==1.24.5
 
 # Deliberately unpinned (WO-11, per AUDIT_EXECUTION_BRIEF.md's explicit
 # instruction, 2026-08-16). See requirements.in's matching comment.
-# Re-add these two lines after every `pip-compile requirements.in`
+# Re-add these three lines after every `pip-compile requirements.in`
 # re-run -- pip-compile doesn't know about them since they're excluded
 # from requirements.in on purpose.
 yt-dlp
 faster-whisper
+# WO-1978: PyAV 19 removed the `metadata_errors` argument faster-whisper's
+# decode_audio() still passes, so every chunk failed with "open() got an
+# unexpected keyword argument 'metadata_errors'". A cap, not a pin; see
+# worker/Dockerfile's matching comment for when to lift it.
+av<19
