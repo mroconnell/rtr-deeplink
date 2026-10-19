@@ -1,0 +1,101 @@
+slug,platform,video_format,media_host,caption_span_s,lag_early,lag_mid,lag_late,agree_early,agree_mid,agree_late,deeplink_ok_early,deeplink_ok_mid,deeplink_ok_late,result,note,checked_at
+cambridge-school-district-ma-2026-06-18-school-climate-subcommittee-meeting-6-18,cablecast,m3u8,reflect-video-ondemand-cpsd.cablecast.tv,5120,-21.8,-40.7,-74.8,84.9,76.4,98.1,no,no,no,drift or step,,2026-10-16T18:12:41
+markham-il-2021-02-08-development-services-committee-meeting,escribe,m3u8,cdn1.isilive.ca,25579,-1.9,-1.5,-1.6,84.2,85.7,92.4,yes,yes,yes,aligned,,2026-10-16T18:15:30
+walla-walla-wa-2026-08-11-2026-09-23-city-council-meeting,vimeo,vimeo,player.vimeo.com,,,,,,,,,,,could not check,video not a direct file (vimeo),2026-10-16T18:17:26
+la-prairie-city-mn-2026-09-21-laprairie-city-council-09-21-2026,cablecast,m3u8,reflect-ictv.cablecast.tv,,,,,,,,,,,could not check,too few caption cues,2026-10-16T18:17:31
+whately-ma-2025-12-11-whately-zoning-board-of-appeals-december-4-2025,other,mp4,archive.org,5412,-0.6,-0.7,-0.6,94.7,95.4,96.4,yes,yes,yes,aligned,,2026-10-16T18:17:35
+pittsburg-city-ks-2020-12-16-city-commission-meeting-12-15-2020,other,mp4,archive.org,10210,-0.6,-0.7,,88.8,92.1,,yes,yes,,aligned,late: quiet audio,2026-10-16T18:29:41
+marblehead-ma-2026-09-24-marblehead-select-board-meeting-9-23-26,vimeo,vimeo,player.vimeo.com,,,,,,,,,,,could not check,video not a direct file (vimeo),2026-10-16T18:31:20
+derry-nh-2026-04-21-town-council-04-21-26,telvue,m3u8,telvuevod-secure.akamaized.net,2562,-0.9,-0.9,-1.0,92.1,89.5,91.7,yes,yes,yes,aligned,,2026-10-16T18:31:24
+framingham-ma-2026-09-14-board-of-license-commissioners-9-14-26,cablecast,m3u8,reflect-vod-framingham.cablecast.tv,1885,-3.5,-3.4,-6.1,94.1,90.9,91.0,yes,yes,no,constant offset,,2026-10-16T18:35:52
+beaconsfield-qc-2025-08-25-2025-08-25-conseil-municipal-de-beaconsfield,webtv_coop,m3u8,5976193b91256.streamlock.net,4964,-2.6,,29.6,76.1,37.7,81.9,yes,,no,drift or step,mid: no match,2026-10-16T18:46:16
+oak-hill-tn-2026-08-19-board-of-commissioners-workshop,champds,mp4,play.champds.com,6514,-2.7,-2.1,-2.1,94.7,97.4,91.4,yes,yes,yes,aligned,,2026-10-16T18:52:41
+tarrant-county-tx-2026-08-31-monthly-meeting-of-the-board-of-trustees,granicus,m3u8,archive-stream.granicus.com,12685,0.2,3.0,,91.6,86.1,,yes,yes,,aligned,late: quiet audio,2026-10-16T19:00:14
+city-of-martinez-ca-2026-07-24-zoning-administrator,granicus,m3u8,archive-stream.granicus.com,4590,-0.7,-0.6,-0.8,95.4,96.0,97.5,yes,yes,yes,aligned,,2026-10-16T19:04:27
+cupertino-ca-2026-07-28-audit-committee-july-28-2026,granicus,m3u8,archive-stream.granicus.com,8933,-0.8,-1.3,-0.9,89.1,97.6,92.5,yes,yes,yes,aligned,,2026-10-16T19:07:23
+queen-anne-s-county-md-fy2027-county-commissioners-budget-presentation,telvue,m3u8,telvuevod-secure.akamaized.net,4001,-0.9,-0.8,-0.8,95.7,97.3,94.9,yes,yes,yes,aligned,,2026-10-16T19:11:05
+city-of-redding-ca-2025-09-16-sep-16-2025-6-00-pm-redding-city-council-regular-m,granicus,m3u8,archive-stream.granicus.com,13036,-0.2,3.4,-0.7,95.4,94.9,94.7,yes,yes,yes,aligned,,2026-10-16T19:14:12
+anson-me-2026-09-09-anson-selectmen-s-meeting-sept-8th-2026,other,mp4,archive.org,4161,-0.4,-0.6,-0.6,44.0,79.9,78.9,yes,yes,yes,aligned,,2026-10-16T19:20:41
+fairhaven-ma-2026-09-14-select-board-9-14-26,vimeo,vimeo,player.vimeo.com,,,,,,,,,,,could not check,video not a direct file (vimeo),2026-10-16T19:24:04
+county-of-orange-board-meeting,granicus,m3u8,archive-stream.granicus.com,12069,867.6,5.0,4.9,48.3,90.8,94.1,no,yes,yes,drift or step,,2026-10-17T02:12:49
+mississauga-2022-07-07-regional-council,escribe,m3u8,cdn1.isilive.ca,14884,207.8,207.6,207.5,75.0,86.0,77.8,no,no,no,constant offset,,2026-10-17T02:17:12
+redding-ca-2026-09-01-sep-1-2026-6-00-pm-redding-city-council-regular-meeting-se,granicus,mp4,archive-video.granicus.com,4457,-1.8,-2.6,-2.5,94.2,94.5,96.6,yes,yes,yes,aligned,,2026-10-17T02:23:13
+hardin-county-school-district-ky-2026-09-23-hardin-county-schools-board-of-educa,other,mp4,archive.org,2339,-0.8,-0.9,-0.7,68.0,55.2,71.9,yes,yes,yes,aligned,,2026-10-17T02:24:35
+king-city-or-2026-09-23-september-23-2026-king-city-planning-commission-meeting,cablecast,m3u8,reflect-tvctv.cablecast.tv,4406,1.7,0.9,1.8,89.9,92.4,84.4,yes,yes,yes,aligned,,2026-10-17T02:26:16
+metropolitan-transportation-commission-ca-2026-09-11-regional-network-management,granicus,m3u8,archive-stream.granicus.com,4566,,,,,,,,,,could not check,early: ffmpeg: Error opening input files: Server returned 404 Not Found; mid: ffmpeg: Error opening input files: Server returned 404 Not Found; late: ffmpeg: Error opening input files: Server returned 404 Not Found,2026-10-17T02:28:24
+hutto-tx-2026-04-07-apr-07-2026-planning-and-zoning,swagit,m3u8,archive-stream.granicus.com,20279,-1.7,-1.7,0.0,91.8,96.3,94.6,yes,yes,yes,aligned,,2026-10-17T02:28:38
+brucecounty-2023-09-07-mr-daryl-abbs-watson-and-associates-presentation-backgrou,escribe,m3u8,cdn1.isilive.ca,6254,2.6,2.3,2.0,94.7,97.2,91.9,yes,yes,yes,aligned,,2026-10-17T02:34:23
+greenburgh-ny-2026-05-06-may-06-2026-planning-board-meeting,swagit,m3u8,archive-stream.granicus.com,10141,2.6,,3.3,94.7,,89.9,yes,,yes,aligned,mid: ffmpeg timeout,2026-10-17T02:36:08
+avon-co-avon-town-council,telvue,m3u8,telvuevod-secure.akamaized.net,10320,-0.9,-1.0,-0.8,96.5,90.0,93.9,yes,yes,yes,aligned,,2026-10-17T03:39:03
+southfield-city-mi-2026-08-25-council-meeting-august-24-2026,cablecast,m3u8,reflect-southfield.cablecast.tv,12218,-121.2,-119.3,-12.3,97.7,94.3,92.6,no,no,no,drift or step,,2026-10-17T03:41:12
+dunnellon-fl-2026-07-15-city-council-amended-to-add-item-5a,granicus,m3u8,archive-stream.granicus.com,8251,,,,0.0,0.0,12.1,,,,captions never match the audio,early: no match; mid: no match; late: no match,2026-10-17T03:42:33
+merced-county-ca-2025-09-18-sep-18-2025-lafco-meeting,swagit,m3u8,archive-stream.granicus.com,2673,-3.2,-2.5,-4.3,92.2,91.2,93.4,yes,yes,yes,aligned,,2026-10-17T03:44:59
+san-antonio-tx-2026-08-26-aug-26-2026-city-council-budget-work-session,swagit,m3u8,archive-stream.granicus.com,10807,-174.4,-106.6,-191.1,87.6,81.7,84.3,no,no,no,drift or step,,2026-10-17T03:47:36
+kalamazoo-charter-township-mi-2026-09-14-kalamazoo-township-board-of-trustees-se,telvue,m3u8,telvuevod-secure.akamaized.net,1177,3.2,3.3,3.2,91.0,81.9,80.6,yes,yes,yes,aligned,,2026-10-17T03:50:38
+inverness-fl-2025-08-12-5-year-financial-forecast-workshop,civicclerk,mp4,cpmedia.azureedge.net,4085,,6.2,5.6,,90.5,77.7,,no,no,constant offset,early: quiet audio,2026-10-17T03:52:27
+redlands-ca-2026-07-22-redlands-city-council-meeting-july-21-2026,cablecast,m3u8,cityofredlands.cablecast.tv,3333,-47.9,-20.8,-25.4,97.4,97.8,89.0,no,no,no,drift or step,,2026-10-17T03:54:15
+conway-school-district-ma-2026-01-29-conway-school-committee-january-12-2026,other,mp4,archive.org,3364,-0.7,-0.7,-0.7,94.0,97.2,91.6,yes,yes,yes,aligned,,2026-10-17T03:56:35
+birdville-isd-tx-2022-01-27-jan-27-2022-regular-board-meetings,swagit,m3u8,archive-stream.granicus.com,5893,-2.8,1.5,-2.9,92.0,91.4,91.3,yes,yes,yes,aligned,,2026-10-17T03:58:25
+new-bern-nc-2025-06-10-jun-10-2025-board-of-aldermen,swagit,m3u8,archive-stream.granicus.com,6948,-1.8,-1.6,-1.2,95.5,93.6,84.2,yes,yes,yes,aligned,,2026-10-17T04:01:27
+mariemont-oh-2026-08-25-mariemont-village-council-8-24-26,other,mp4,archive.org,2338,-0.7,-0.7,-0.5,92.2,94.2,90.5,yes,yes,yes,aligned,,2026-10-17T04:04:19
+salina-unified-school-district-305-ks-2026-09-08-usd-305-boe-meeting-september-8,cablecast,m3u8,reflect-city-of-salinaks.cablecast.tv,706,-6.6,-7.8,-9.9,86.6,81.1,48.0,no,no,no,constant offset,,2026-10-17T04:06:21
+2025-04-08-board-of-trustees-meeting,civicclerk,mp4,cpmedia.azureedge.net,1885,-0.8,-0.9,-0.8,95.9,93.1,90.7,yes,yes,yes,aligned,,2026-10-17T04:07:57
+oneida-county-ny-2026-08-12-aug-12-2026-ways-and-means,primegov,m3u8,archive-stream.granicus.com,,,,,,,,,,,could not check,too few caption cues,2026-10-17T04:10:26
+grove-city-oh-2026-05-04-may-04-2026-city-council,swagit,m3u8,archive-stream.granicus.com,5795,1.7,2.7,1.7,97.1,96.4,91.8,yes,yes,yes,aligned,,2026-10-17T04:10:41
+beaconsfield-qc-2023-06-19-2023-06-19-conseil-municipal-de-beaconsfield,webtv_coop,m3u8,5976193b91256.streamlock.net,3509,-1.0,,,89.7,30.3,25.8,yes,,,drift or step,mid: no match; late: no match,2026-10-17T04:14:07
+essex-ma-2026-06-25-essex-planning-board-meeting-june-17-2026,other,mp4,archive.org,9527,-0.9,-0.6,-0.6,96.2,92.6,90.0,yes,yes,yes,aligned,,2026-10-17T04:17:18
+hillsborough-county-fl-2026-09-09-20260909-tpo,granicus,m3u8,archive-stream.granicus.com,2437,2.9,2.5,2.7,93.4,94.4,91.3,yes,yes,yes,aligned,,2026-10-17T04:19:06
+pointe-claire-qc-2023-04-04-2023-04-04-conseil-de-la-ville-de-pointe-claire,webtv_coop,m3u8,5976193b91256.streamlock.net,8160,-2.6,-2.6,,68.2,81.9,12.8,yes,yes,,drift or step,late: no match,2026-10-17T04:22:34
+lighthouse-point-fl-city-commission-meeting-partial,granicus,m3u8,archive-stream.granicus.com,16201,656.7,403.7,141.2,72.6,69.7,54.9,no,no,no,drift or step,,2026-10-17T04:24:53
+lincoln-city-ne-2026-09-21-lincoln-city-council-meeting-september-21-2026,cablecast,m3u8,reflect-lnktv-lincoln.cablecast.tv,5022,-1.3,-5.1,-1.9,90.0,71.5,85.6,yes,no,yes,constant offset,,2026-10-17T04:28:29
+city-of-st-john-s-nl-2026-08-25-regular-council-meeting-db3b8c,escribe,m3u8,cdn1.isilive.ca,2841,-0.1,0.5,0.6,86.0,88.0,81.6,yes,yes,yes,aligned,,2026-10-17T04:39:27
+citrus-county-fl-2026-09-08-board-of-county-commissioners-regular-meeting,civicclerk,mp4,cpmedia.azureedge.net,12835,3.8,3.4,3.8,88.2,86.3,78.7,yes,yes,yes,aligned,,2026-10-17T05:11:32
+sep-12-2025-dfps-council-meeting-texas-dept-of-family-and-protective-services,swagit,m3u8,archive-stream.granicus.com,10368,-2.7,-2.5,-2.4,95.1,91.7,90.8,yes,yes,yes,aligned,,2026-10-17T05:37:35
+wyandotte-mi-2026-09-28-wyandotte-city-council-meeting-9-28-26,vimeo,vimeo,player.vimeo.com,,,,,,,,,,,could not check,video not a direct file (vimeo),2026-10-17T05:58:06
+derry-nh-2026-04-20-derry-nh-conservation-commission-meeting-of-04-20-26,telvue,m3u8,telvuevod-secure.akamaized.net,4176,-1.0,-1.0,-0.9,96.3,93.9,93.9,yes,yes,yes,aligned,,2026-10-17T05:58:09
+lauderdale-by-the-sea-fl-2023-06-27-town-commission-jun-27th-2023,granicus,m3u8,archive-stream.granicus.com,4208,,,,0.0,0.0,0.0,,,,captions never match the audio,early: no match; mid: no match; late: no match,2026-10-17T06:00:20
+cabarrus-county-schools-nc-2026-05-11-boe-business-meeting-05-11-2026,cablecast,m3u8,reflect-cabarrus.cablecast.tv,10833,-30.0,-103.7,-100.1,91.5,93.8,96.0,no,no,no,drift or step,,2026-10-17T06:03:08
+puyallup-wa-2026-08-31-arts-culture-commission-aug-31st-2026,granicus,m3u8,archive-stream.granicus.com,2193,-5.3,-5.6,-7.8,96.4,95.9,94.4,no,no,no,constant offset,,2026-10-17T06:06:24
+state-of-new-mexico-2026-09-21-ic-indian-affairs,other,m3u8,sg002-live.sliq.net,22421,5.0,4.9,5.1,89.2,88.7,74.9,yes,yes,no,constant offset,,2026-10-17T06:08:30
+city-of-port-moody-bc-2026-07-28-regular-council,escribe,m3u8,cdn1.isilive.ca,8890,244.3,244.2,244.2,93.7,96.5,93.9,no,no,no,constant offset,,2026-10-17T06:11:02
+savannah-ga-2024-09-26-savannah-city-council-9-26-24,telvue,m3u8,telvuevod-secure.akamaized.net,5589,-1.2,-1.3,-1.3,91.2,90.4,88.6,yes,yes,yes,aligned,,2026-10-17T06:12:46
+city-of-indianapolis-in-2026-08-26-board-of-public-works,granicus,m3u8,archive-stream.granicus.com,5028,6.8,6.3,6.7,72.0,88.1,83.5,no,no,no,constant offset,,2026-10-17T06:15:29
+rochester-nh-2026-04-07-city-council-4-07-26,telvue,m3u8,telvuevod-secure.akamaized.net,1878,-0.9,-0.8,0.4,93.7,91.5,89.5,yes,yes,yes,aligned,,2026-10-17T06:18:59
+city-of-olathe-ks-2026-08-24-planning-commission-on-2026-08-24-final-trimmed,granicus,m3u8,archive-stream.granicus.com,4763,-0.5,-0.5,-0.6,81.0,81.9,82.9,yes,yes,yes,aligned,,2026-10-17T06:21:07
+goochland-county-va-2026-01-15-jan-15-2026-planning-commission-regular-meeting-1,swagit,m3u8,archive-stream.granicus.com,21841,-1.7,-1.9,-1.7,95.4,95.6,95.2,yes,yes,yes,aligned,,2026-10-17T06:25:02
+newark-ca-2024-12-13-city-of-newark-city-council-special-meeting-city-council-re,other,mp4,archive.org,8057,-1.0,-0.7,-1.0,96.0,94.2,93.2,yes,yes,yes,aligned,,2026-10-17T06:30:24
+city-of-san-diego-2025-06-09-city-council-meetings-special-agenda-revised-added,granicus,m3u8,archive-stream.granicus.com,1819,5.6,5.8,5.6,95.0,90.8,92.7,no,no,no,constant offset,,2026-10-17T06:31:38
+gloucester-ma-2026-03-27-gloucester-licensing-board-meeting-march-24-2026,other,mp4,archive.org,3078,-0.9,-0.8,-0.7,83.0,93.6,88.7,yes,yes,yes,aligned,,2026-10-17T06:34:47
+onekama-township-mi-2026-09-01-onekama-township-planning-commission-meeting-2026,other,mp4,archive.org,2633,-0.7,-0.6,-0.8,88.3,93.2,93.8,yes,yes,yes,aligned,,2026-10-17T06:36:27
+kyle-tx-2026-05-05-may-05-2026-city-council-special-meeting,swagit,m3u8,archive-stream.granicus.com,,,,,,,,,,,could not check,too few caption cues,2026-10-17T06:37:58
+halifax-area-school-district-pa-2026-09-22-school-board-meeting,vimeo,vimeo,player.vimeo.com,,,,,,,,,,,could not check,video not a direct file (vimeo),2026-10-17T06:38:01
+barre-unified-union-school-district-97-vt-buusd-special-board-meeting-2026-05-26,telvue,m3u8,telvuevod-secure.akamaized.net,5126,-1.0,0.3,-0.9,94.5,97.8,95.0,yes,yes,yes,aligned,,2026-10-17T06:38:04
+nicholas-county-wv-2026-09-16-nicholas-county-commission-9-16-26,other,mp4,archive.org,2874,-0.7,-1.0,-1.1,47.1,45.6,45.5,yes,yes,yes,aligned,,2026-10-17T06:40:33
+valparaiso-in-2026-09-10-rdc-meeting-09-10-2026,boxcast,m3u8,,2335,,,,,,,,,,could not check,early: ffmpeg: Error opening output files: Invalid argument; mid: ffmpeg: Error opening output files: Invalid argument; late: ffmpeg: Error opening output files: Invalid argument,2026-10-17T06:42:04
+nolensville-tn-2026-09-03-regular-meeting,champds,mp4,play.champds.com,2192,-0.2,-1.6,-2.4,89.1,91.1,96.4,yes,yes,yes,aligned,,2026-10-17T06:42:33
+palmer-town-ma-2026-09-14-09-14-26-palmer-town-council,cablecast,m3u8,m-pact.cablecast.tv,4568,-11.4,-4.6,-12.4,95.2,94.3,94.6,no,yes,no,drift or step,,2026-10-17T06:51:31
+derry-cooperative-school-district-nh-2026-05-26-school-board-meeting-meeting-of,telvue,m3u8,telvuevod-secure.akamaized.net,8208,-0.8,-0.9,-0.8,82.6,95.7,92.9,yes,yes,yes,aligned,,2026-10-17T06:53:12
+santa-barbara-county-ca-board-of-directors-sm-feb-19-2026,granicus,m3u8,archive-stream.granicus.com,6026,4.3,4.4,4.3,88.9,96.7,95.2,yes,yes,yes,aligned,,2026-10-17T06:55:28
+city-of-san-diego-2026-06-29-city-council-meetings-monday-agenda-revised-added-s,granicus,m3u8,archive-stream.granicus.com,13855,6.3,7.0,5.9,95.7,94.4,98.0,no,no,no,constant offset,,2026-10-17T06:59:46
+groton-city-ct-2026-09-29-city-of-groton-committee-of-the-whole-9-28-26,other,mp4,archive.org,4784,-0.3,-0.5,,57.9,62.7,,yes,yes,,aligned,late: quiet audio,2026-10-17T07:04:27
+city-of-colorado-springs-co-2025-05-12-council-work-session-on-2025-05-12-9-00-a,granicus,m3u8,archive-stream.granicus.com,11370,3.5,1.4,1.6,83.5,89.2,91.0,yes,yes,yes,aligned,,2026-10-17T07:05:09
+cedar-hill-tx-2026-09-22-sep-22-2026-city-council-briefing-session,swagit,m3u8,archive-stream.granicus.com,,,,,,,,,,,could not check,too few caption cues,2026-10-17T07:10:09
+city-of-san-diego-2026-06-22-city-council-meetings-monday-agenda,granicus,m3u8,archive-stream.granicus.com,24016,,7.6,7.5,,91.0,95.5,,no,no,constant offset,early: quiet audio,2026-10-17T07:10:20
+weymouth-school-district-ma-2025-08-14-school-committee,telvue,m3u8,telvuevod-secure.akamaized.net,1999,-1.1,-0.9,-0.7,94.8,93.9,93.7,yes,yes,yes,aligned,,2026-10-17T07:14:16
+city-of-honolulu-2024-06-27-2024-06-27-ps,granicus,m3u8,archive-stream.granicus.com,4789,5.0,2.7,2.7,70.2,66.7,56.7,yes,yes,yes,aligned,,2026-10-17T07:16:28
+townshipofbrock-2024-06-28-special-council-meeting,escribe,m3u8,cdn1.isilive.ca,1558,-2.9,-2.8,-3.7,94.5,93.9,92.1,yes,yes,yes,aligned,,2026-10-17T07:19:07
+newport-news-city-public-schools-va-2026-09-15-school-board-meeting,telvue,m3u8,telvuevod-secure.akamaized.net,5844,-0.9,-0.8,-0.7,95.4,95.5,93.0,yes,yes,yes,aligned,,2026-10-17T07:21:06
+libertyville-village-il-2026-09-08-september-8-2026,vimeo,vimeo,player.vimeo.com,,,,,,,,,,,could not check,video not a direct file (vimeo),2026-10-17T07:23:12
+port-arthur-tx-2025-11-04-nov-04-2025-city-council,swagit,m3u8,archive-stream.granicus.com,9282,-1.6,-1.7,0.8,82.9,95.3,86.8,yes,yes,yes,aligned,,2026-10-17T07:23:16
+2025-05-19-village-of-friendship-heights-council-5-19-2025,other,mp4,embed-ssl.wistia.com,1914,-0.6,-1.0,-0.8,95.2,97.5,94.6,yes,yes,yes,aligned,,2026-10-17T07:25:53
+atlanta-ga-2026-09-21-committee-chairs,champds,mp4,play.champds.com,662,5.7,5.6,5.7,90.7,89.7,91.6,no,no,no,constant offset,,2026-10-17T07:27:09
+festus-mo-2026-08-24-city-council-meeting,civicclerk,mp4,cpmedia.azureedge.net,5937,-4.4,-2.8,-5.3,94.9,96.5,88.8,yes,yes,no,constant offset,,2026-10-17T07:28:59
+kaufman-county-tx-2026-02-03-feb-03-2026-commissioners-court,swagit,m3u8,archive-stream.granicus.com,1475,-1.9,-1.7,-1.9,89.4,88.9,75.3,yes,yes,yes,aligned,,2026-10-17T07:30:33
+decatur-tx-2024-09-09-sep-09-2024-city-council,swagit,m3u8,archive-stream.granicus.com,2892,-2.3,-2.7,-2.6,88.8,93.7,86.4,yes,yes,yes,aligned,,2026-10-17T07:33:18
+pointe-claire-qc-2022-08-16-2022-08-16-conseil-de-la-ville-de-pointe-claire,webtv_coop,m3u8,5976193b91256.streamlock.net,12765,-1.8,-2.1,-2.4,74.8,70.3,65.4,yes,yes,yes,aligned,,2026-10-17T07:35:52
+marlboro-vt-2026-08-12-marlboro-planning-commission-public-hearing-8-11-26,other,mp4,archive.org,4630,-0.2,-0.3,-0.3,61.7,64.6,59.3,yes,yes,yes,aligned,,2026-10-17T07:37:18
+stanly-county-nc-2026-09-09-stanly-county-commissioners-meeting-september-8-2026,other,mp4,archive.org,8427,-0.6,-0.7,-0.8,96.8,88.2,96.6,yes,yes,yes,aligned,,2026-10-17T07:38:49
+pointe-claire-qc-2026-03-10-2026-03-10-conseil-de-la-ville-de-pointe-claire,webtv_coop,m3u8,5976193b91256.streamlock.net,5939,-1.3,-1.7,-1.3,76.0,92.9,43.9,yes,yes,yes,aligned,,2026-10-17T07:40:18
+stuart-fl-2025-10-13-oct-13-2025-regular-city-commission-meeting,swagit,m3u8,archive-stream.granicus.com,12694,2.3,2.8,2.6,95.1,92.1,97.2,yes,yes,yes,aligned,,2026-10-17T07:42:42
+des-plaines-il-2026-08-24-community-connection-august-2026,cablecast,m3u8,desplainesil.cablecast.tv,,,,,,,,,,,could not check,too few caption cues,2026-10-17T07:46:17
+sunderland-school-district-ma-2026-01-29-sunderland-school-committee-january-13,other,mp4,archive.org,4704,-0.8,-0.7,-0.6,94.0,92.3,94.6,yes,yes,yes,aligned,,2026-10-17T07:46:20
