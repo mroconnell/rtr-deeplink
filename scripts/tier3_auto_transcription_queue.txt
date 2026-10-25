@@ -15,7 +15,6 @@ https://vimeo.com/1226954979/a7a330799a		us:sd:3625380
 https://vimeo.com/560189851	https://vimeo.com/channels/1570654
 https://vimeo.com/879928833		us:sd:2314809
 https://vimeo.com/921274753?share=copy		us:sd:3610650
-https://hcpss-org.community.diligentoneplatform.com/Portal/MeetingInformation.aspx?Id=2700		us:sd:2400420
 https://www.youtube.com/watch?v=mK97ehq_aoQ		us:place:0672520
 https://www.youtube.com/watch?v=cOLWYO3hpnA		us:place:0682744
 https://www.youtube.com/watch?v=sNqq1h291l4		us:place:0809555
