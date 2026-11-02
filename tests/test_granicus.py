@@ -1082,7 +1082,7 @@ async def test_resolve_retypes_county_from_page_meta_description():
     assert result.date == "2026-03-04"  # from the page's own title
 
 
-async def test_resolve_body_text_date_scan_rejects_future_dates():
+async def test_resolve_body_text_date_scan_rejects_future_dates(monkeypatch):
     # Real Mission Viejo, CA clip 2515 (fetched live 2026-08-23). The
     # page carries no meeting date anywhere -- no meta, none in the
     # title, no view_id for an RSS lookup -- but agenda item 16 reads
@@ -1091,6 +1091,20 @@ async def test_resolve_body_text_date_scan_rejects_future_dates():
     # date as the meeting's own date in production. A recorded clip's
     # meeting date is never meaningfully in the future, so the body scan
     # must skip future matches and come through honestly dateless.
+    #
+    # "Today" is pinned to the capture date. The scan allows today + 1 day,
+    # so from 2026-11-02 on the real clock let the 2026-11-03 election
+    # date through and this test failed on every run.
+    import datetime as _dt
+
+    import app.platforms.granicus as granicus_module
+
+    class _CaptureDay(_dt.date):
+        @classmethod
+        def today(cls):
+            return cls(2026, 8, 23)
+
+    monkeypatch.setattr(granicus_module, "_date", _CaptureDay)
     url = "https://missionviejo.granicus.com/player/clip/2515"
     html = load_fixture("granicus", "missionviejo_clip2515.html")
 
