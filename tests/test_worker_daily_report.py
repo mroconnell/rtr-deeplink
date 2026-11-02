@@ -188,13 +188,14 @@ async def test_send_worker_daily_report_route_sends_and_advances_snapshot(monkey
 
     calls = []
 
-    async def _fake_send(to, *, summary, previous, failures=None):
+    async def _fake_send(to, *, summary, previous, failures=None, completions=None):
         calls.append(
             {
                 "to": to,
                 "summary": summary,
                 "previous": previous,
                 "failures": failures,
+                "completions": completions,
             }
         )
         return True
@@ -217,6 +218,8 @@ async def test_send_worker_daily_report_route_sends_and_advances_snapshot(monkey
     # omitted `failures` renders no section at all, which would make a
     # clean day and a broken digest look identical in the mail.
     assert isinstance(calls[0]["failures"], list)
+    # WO-1979: same rule for the finished-jobs list.
+    assert isinstance(calls[0]["completions"], list)
 
     second = client.get(
         "/internal/send-worker-daily-report",
@@ -401,7 +404,9 @@ async def test_failed_send_leaves_the_snapshot_untouched(monkeypatch):
     )
     before = await crud.read_worker_report_snapshot()
 
-    async def _fake_send_failing(to, *, summary, previous, failures=None):
+    async def _fake_send_failing(
+        to, *, summary, previous, failures=None, completions=None
+    ):
         return False
 
     monkeypatch.setattr(
@@ -430,7 +435,7 @@ async def test_successful_send_does_advance_the_snapshot(monkeypatch):
     )
     before = await crud.read_worker_report_snapshot()
 
-    async def _fake_send_ok(to, *, summary, previous, failures=None):
+    async def _fake_send_ok(to, *, summary, previous, failures=None, completions=None):
         return True
 
     monkeypatch.setattr(
@@ -458,7 +463,9 @@ async def test_the_delta_survives_a_failed_send_and_lands_on_the_next_one(monkey
 
     seen = []
 
-    async def _fail_then_succeed(to, *, summary, previous, failures=None):
+    async def _fail_then_succeed(
+        to, *, summary, previous, failures=None, completions=None
+    ):
         seen.append(previous)
         return len(seen) > 1  # first call fails, second succeeds
 
@@ -703,3 +710,92 @@ async def test_internal_tier3_queue_remaining_route_updates_stored_value():
 
     stats = client.get("/internal/transcription-queue-stats", headers=_HEADERS)
     assert stats.json()["tier3_queue_remaining"] == 21
+
+
+# --- WO-1979: the finished-jobs list (2026-11-02) ---------------------------
+#
+# Replaces the per-job "Your transcript's ready" email for self-generated
+# jobs, which used up the Resend quota in October 2026.
+
+
+def _completion(job_id, *, slug, title, platform, priority=0):
+    return {
+        "job_id": job_id,
+        "priority": priority,
+        "total_chunks": 1,
+        "completed_at": None,
+        "slug": slug,
+        "title": title,
+        "platform": platform,
+    }
+
+
+def test_completion_digest_lists_each_job_with_a_link(monkeypatch):
+    monkeypatch.setenv("PUBLIC_BASE_URL", "https://redtaperecordings.com")
+    out = email_utils._render_completion_digest(
+        [
+            _completion(1, slug="a-meeting", title="A Meeting", platform="granicus"),
+            _completion(
+                2, slug="b-meeting", title="B Meeting", platform="legistar", priority=10
+            ),
+        ]
+    )
+    assert "Finished, last 24 hours (2)" in out
+    assert 'href="https://redtaperecordings.com/m/a-meeting"' in out
+    assert "A Meeting" in out and "B Meeting" in out
+    # Only the visitor's job is marked.
+    assert out.count("requested by a visitor") == 1
+
+
+def test_completion_digest_says_so_when_there_were_none():
+    out = email_utils._render_completion_digest([])
+    assert "Finished, last 24 hours" in out
+    assert "None." in out
+
+
+def test_completion_digest_caps_a_long_day_and_says_how_many_it_dropped():
+    many = [
+        _completion(i, slug=f"m-{i}", title=f"Meeting {i}", platform="granicus")
+        for i in range(email_utils.MAX_COMPLETIONS_LISTED + 7)
+    ]
+    out = email_utils._render_completion_digest(many)
+    assert out.count("<li>") == email_utils.MAX_COMPLETIONS_LISTED
+    assert "…and 7 more not listed" in out
+
+
+async def test_daily_report_includes_the_finished_section(monkeypatch):
+    sent = {}
+
+    async def _fake_send(to, subject, html_body, **kwargs):
+        sent["html"] = html_body
+        return True
+
+    monkeypatch.setattr(email_utils, "_send", _fake_send)
+    summary = {
+        "cumulative_chunks_completed_all_time": 10,
+        "cumulative_jobs_completed_all_time": 3,
+        "jobs_completed_last_24h": 1,
+        "segments_added_last_24h": None,
+        "active_jobs": 0,
+        "remaining_chunks_in_active_jobs": 0,
+        "backlog_no_transcript": 0,
+        "tier3_queue_remaining": 0,
+    }
+    await email_utils.send_worker_daily_report(
+        "ops@example.com",
+        summary=summary,
+        previous=None,
+        failures=[],
+        completions=[_completion(5, slug="x", title="X Meeting", platform="cablecast")],
+    )
+    assert "Finished, last 24 hours (1)" in sent["html"]
+    assert "X Meeting" in sent["html"]
+
+
+async def test_recent_completions_lists_a_job_that_just_finished():
+    job_id = await _create_job("recent-completions-1", total_chunks=1)
+    await _drain(job_id)
+    completions = await crud.list_recent_transcription_completions(hours=24)
+    row = next(c for c in completions if c["job_id"] == job_id)
+    assert row["slug"]
+    assert isinstance(row["priority"], int)

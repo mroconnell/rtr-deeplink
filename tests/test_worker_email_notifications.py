@@ -284,3 +284,87 @@ async def test_send_failure_email_also_sends_admin_alert_with_diagnostics(monkey
     assert captured["retry_count"] == 3
     assert captured["failure_history"][0]["chunk_index"] == 1
     assert captured["page_url"] == "https://redtaperecordings.com/m/some-meeting"
+
+
+# --- WO-1979: self-generated jobs send no per-job requester email ---------
+
+
+def _status_for(priority):
+    return {
+        "meeting_page_slug": "some-meeting",
+        "meeting_page_title": "Some Meeting",
+        "transcript_version_id": 7,
+        "requester_email": "ops@example.com",
+        "priority": priority,
+        "source_url": "https://example.gov/meeting",
+        "chunks_completed": 1,
+        "total_chunks": 3,
+        "retry_count": 0,
+        "error_message": "boom",
+        "failure_history": [],
+        "created_at": None,
+    }
+
+
+async def test_completion_email_skipped_for_self_generated_job(monkeypatch):
+    async def _status(job_id):
+        return _status_for(worker.main.crud.PRIORITY_LOW)
+
+    monkeypatch.setattr(worker.main.crud, "get_transcription_job_status", _status)
+    called = False
+
+    async def _fail_if_called(*args, **kwargs):
+        nonlocal called
+        called = True
+
+    monkeypatch.setattr(
+        worker.main.email_utils, "send_completion_email", _fail_if_called
+    )
+    await worker.main._send_completion_email(1)
+    assert called is False
+
+
+async def test_completion_email_still_sent_for_visitor_job(monkeypatch):
+    async def _status(job_id):
+        return _status_for(worker.main.crud.PRIORITY_MEDIUM)
+
+    async def _page(slug):
+        return {"slug": slug, "versions": []}
+
+    monkeypatch.setattr(worker.main.crud, "get_transcription_job_status", _status)
+    monkeypatch.setattr(worker.main.crud, "get_page_by_slug", _page)
+    sent = []
+
+    async def _fake_send(to, **kwargs):
+        sent.append(to)
+        return True
+
+    monkeypatch.setattr(worker.main.email_utils, "send_completion_email", _fake_send)
+    await worker.main._send_completion_email(1)
+    assert sent == ["ops@example.com"]
+
+
+async def test_failure_of_self_generated_job_sends_only_the_admin_alert(monkeypatch):
+    async def _status(job_id):
+        return _status_for(worker.main.crud.PRIORITY_LOW)
+
+    monkeypatch.setattr(worker.main.crud, "get_transcription_job_status", _status)
+    requester_called = False
+    admin_calls = []
+
+    async def _requester(*args, **kwargs):
+        nonlocal requester_called
+        requester_called = True
+        return True
+
+    async def _admin(**kwargs):
+        admin_calls.append(kwargs["job_id"])
+        return True
+
+    monkeypatch.setattr(
+        worker.main.email_utils, "send_transcription_failed_email", _requester
+    )
+    monkeypatch.setattr(worker.main.email_utils, "send_admin_job_failure_alert", _admin)
+    await worker.main._send_failure_email(42)
+    assert requester_called is False
+    assert admin_calls == [42]

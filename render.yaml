@@ -551,7 +551,7 @@ services:
       - key: HF_TOKEN
         sync: false  # optional -- unauthenticated Hugging Face Hub requests work fine today, just at a lower rate limit; see BACKLOG.md
       - key: AUTO_TRANSCRIPTION_REQUESTER_EMAIL
-        sync: false  # optional -- idle-time auto-generation (worker/main.py) is silently disabled when unset; set to receive its completion-email activity digest
+        sync: false  # optional -- idle-time auto-generation (worker/main.py) is silently disabled when unset; these jobs send no per-job email since WO-1979; the daily worker report lists them
       # WO-1148 (2026-09-27): runs worker/main.py's maybe_generate_batch_
       # auto_jobs() -- the batch counterpart to the single-candidate idle
       # trickle above, replacing scripts/bulk_queue_transcription_backlog.py's

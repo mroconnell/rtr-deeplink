@@ -71924,3 +71924,29 @@ The display is the open `BACKLOG.md` entry "Shade the stretches of a Whisper tra
 >   - **Next action**: **Claimed 2026-10-18 (office Mac, A4; Ryan took the recommendation).** Built as a "time-corrected" transcript version rather than an offset map applied at seek time, so the page, its deep links, search, highlights and exports all use the corrected times at once, and the source captions stay one `?version=` away: `scripts/align_page_timing.py` (office Mac: audio, Whisper and `align_windows()`, then a residual check) and `POST /internal/transcript-version/add-time-corrected` (refuses any change but times). After the deploy: run the script on the 13 badly-off pages and the 14 pages with a 5 to 10 s lag (ids in the A4 PR), dry run first, then `--apply`. Then show readers a warning on the two never-matching pages (Dunnellon 3872, Lauderdale-by-the-Sea 10460) with `POST /internal/transcript-version/correct-warnings`. Open question: eScribe agenda-item times may share the captions' clock; they are not moved. **Correction to the audit numbers above (2026-10-18):** the audit, like `align_captions_to_audio.py`'s window lag, dated every word at its caption line's start, so long caption lines read as large lags. Cablecast posts lines covering up to a minute of speech: Cambridge MA 2026-06-18 (page 11396) showed window lags of -6 to -304 s but line offsets of -1 to +2 s, so it is aligned. The new script measures each line from its first matched word. Short-line pages are unaffected: Port Moody (4143) measured +245.6 s (241 to 249) per line, 72 of 73 windows matching, and 0 s after correcting. The line-level re-measure of the other flagged pages is in the A4 PR.
 >   - **Constraint**: needs audio from the city's own host (some serve about 150 KB a second; Granicus wants a normal Referer); the check runs about 12 times faster than real time on a laptop CPU. No YouTube pages from a machine other than the drip Mac. Do not bulk-fetch one host in one go.
 >   - **History**: A4 audit report and CSV on the office Mac, `reports/wo-a4_caption_audit_2026-10-16.{md,csv}` (2026-10-17). Earlier results in rtr-business `research/CAPTION_METHODOLOGY.md` and `data-product/samples/E_annotated_speech/alignment/`.
+
+## [Done 2026-11-02] WO-1979: self-generated transcription jobs stop sending one email each; the daily worker report lists them
+
+**Why.** In October 2026 Resend warned that the team how-to-adu had reached 120% of its 3,000-a-month quota, and on 2026-10-20 it sent the "80%" and "100% of your daily quota" warnings (the plan allows 100 a day). Once a cap is hit, Resend refuses every send, including a real visitor's "ready" email and the admin failure alert.
+
+**What was sending.** A Gmail search of Ryan's inbox for October 2026:
+
+| Email | Who it went to | Source |
+|---|---|---|
+| "Your transcript's ready" | Ryan, one per finished job | `worker/main.py` `_send_completion_email()` |
+| "We hit a snag on your transcript" / "Part of your transcript is ready" | Ryan, CC the reply-to address | `_send_failure_email()`, branded copy |
+| "Transcription job N failed: ..." | Ryan | `_send_failure_email()`, admin alert |
+| Daily reports, search alerts, feed drop | Ryan, about 3 a day | scheduled workflows |
+
+Gmail groups the "ready" emails into a few threads, so it cannot count them directly. Ryan's out-of-office reply, which answers each one, gives a count: about 180 auto-replies on 2026-10-20 alone; in a sample of 50 of them, about half answered "Your transcript's ready" and the rest answered unrelated mail. The scheduled reports are a few a day, about 100 a month.
+
+Every self-generated job is `PRIORITY_LOW` (the idle trickle, the batch top-up and `scripts/bulk_queue_transcription_backlog.py`), and its requester is `AUTO_TRANSCRIPTION_REQUESTER_EMAIL`. A visitor's job is `PRIORITY_MEDIUM`.
+
+**What changed.**
+- `_send_completion_email()` returns early for a `PRIORITY_LOW` job (`_is_self_generated()`; a missing priority counts as a visitor's job).
+- `_send_failure_email()` skips the branded requester email for a `PRIORITY_LOW` job, and still sends the admin alert immediately.
+- `crud._job_dict()` now carries `priority`.
+- The daily worker report gains a "Finished, last 24 hours" list (`crud.list_recent_transcription_completions()`, `email._render_completion_digest()`), newest first, capped at 60 with the rest counted. A visitor's job is marked "requested by a visitor".
+
+**Not deployed when merged.** The worker and Archive services need a deploy before the emails stop.
+

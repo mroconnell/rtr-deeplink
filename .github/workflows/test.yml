@@ -35,7 +35,10 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # Pinned (2026-11-02): ubuntu-latest moved to Ubuntu 26.04, which has
+    # no prebuilt Python 3.12.3, so setup-python failed before any test
+    # ran. 24.04 keeps the 3.12.3 pin that matches render.yaml.
+    runs-on: ubuntu-24.04
     steps:
       # fetch-depth: 0 (full history, not a shallow clone) so the
       # BACKLOG_DONE.md heading-integrity step below can compute a real

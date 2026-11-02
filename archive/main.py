@@ -1060,6 +1060,9 @@ async def internal_send_worker_daily_report(
         # "none" line rather than silently dropping the section -- see
         # send_worker_daily_report()'s own note on the None/[] distinction.
         failures=await crud.list_recent_transcription_failures(hours=24),
+        # WO-1979: the day's finished jobs, replacing the per-job
+        # "Your transcript's ready" email for self-generated jobs.
+        completions=await crud.list_recent_transcription_completions(hours=24),
     )
     # Advance ONLY on a real send (WO-52). Advancing first meant a failed
     # send silently consumed the day's reference point and the next report

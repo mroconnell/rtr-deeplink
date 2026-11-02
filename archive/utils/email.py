@@ -712,6 +712,58 @@ def _render_failure_digest(failures: list) -> str:
     return "".join(parts)
 
 
+# WO-1979: a normal day finishes well over 50 jobs, so the list is capped
+# like the failure digest above, with the dropped count shown.
+MAX_COMPLETIONS_LISTED = 60
+
+
+def _render_completion_digest(completions: list) -> str:
+    """The "Finished" section of the daily worker report: every job that
+    completed in the last 24h, newest first, each linking its Archive page.
+
+    WO-1979 (2026-11-02): this replaces the per-job "Your transcript's
+    ready" email for self-generated jobs (worker/main.py skips it for
+    PRIORITY_LOW). Those emails were nearly all of the Resend account's
+    monthly quota. A visitor's own request is still emailed on its own,
+    and is marked here so it stands out.
+    """
+    if not completions:
+        return '<h2>Finished, last 24 hours</h2><p style="color:#666">None.</p>'
+
+    base_url = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
+    parts = [
+        f"<h2>Finished, last 24 hours ({len(completions):,})</h2>",
+        '<ul style="margin-top:0">',
+    ]
+    for c in completions[:MAX_COMPLETIONS_LISTED]:
+        title = html.escape(c.get("title") or c.get("slug") or "(untitled)")
+        page = (
+            f'<a href="{base_url}/m/{html.escape(c["slug"])}">{title}</a>'
+            if base_url and c.get("slug")
+            else title
+        )
+        requested = (
+            " <strong>(requested by a visitor)</strong>"
+            # 10 is crud.PRIORITY_MEDIUM (not imported here: crud imports
+            # this module's neighbours, and a literal keeps it standalone).
+            if (c.get("priority") or 0) >= 10
+            else ""
+        )
+        parts.append(
+            f"<li>{page}{requested} "
+            f'<span style="color:#666">[{html.escape(c.get("platform") or "?")}, '
+            f"job {c.get('job_id')}]</span></li>"
+        )
+    parts.append("</ul>")
+    dropped = len(completions) - MAX_COMPLETIONS_LISTED
+    if dropped > 0:
+        parts.append(
+            f'<p style="color:#666"><em>…and {dropped:,} more not listed '
+            f"(showing the newest {MAX_COMPLETIONS_LISTED}).</em></p>"
+        )
+    return "".join(parts)
+
+
 def _render_stuck_jobs_section(stuck_jobs: list) -> str:
     """The stuck-job section of the daily worker report (WO-936): a job
     that is still claimed ("in_progress") but hasn't reported a finished
@@ -766,6 +818,7 @@ async def send_worker_daily_report(
     summary: dict,
     previous: Optional[dict],
     failures: Optional[list] = None,
+    completions: Optional[list] = None,
 ) -> bool:
     """Daily activity digest for the transcription worker(s) -- see
     archive/main.py's GET /internal/send-worker-daily-report, triggered by
@@ -846,4 +899,7 @@ async def send_worker_daily_report(
     body += _render_stuck_jobs_section(stuck_jobs)
     if failures is not None:
         body += _render_failure_digest(failures)
+    # WO-1979: same None-vs-[] rule as `failures` above.
+    if completions is not None:
+        body += _render_completion_digest(completions)
     return await _send(to, "Transcription worker daily report", body)

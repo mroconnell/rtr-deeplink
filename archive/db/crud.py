@@ -3514,6 +3514,56 @@ async def list_recent_transcription_failures(hours: int = 24) -> list[dict]:
     ]
 
 
+async def list_recent_transcription_completions(hours: int = 24) -> list[dict]:
+    """Every TranscriptionJob that reached "completed" in the last `hours`
+    -- the "Finished" section of archive/utils/email.py's
+    send_worker_daily_report() (WO-1979, 2026-11-02).
+
+    This list replaces the per-job "Your transcript's ready" email for
+    self-generated (PRIORITY_LOW) jobs. Those emails all went to one
+    address and were most of the Resend account's 3,000-a-month quota.
+    Real visitors' jobs (PRIORITY_MEDIUM) still get their own email and
+    are listed here too, so the digest is the whole day.
+
+    Same cheap columns as list_recent_transcription_failures(): nothing
+    touches `segments`. Newest first; the renderer caps how many it shows.
+    """
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+    async with async_session() as session:
+        rows = (
+            await session.execute(
+                select(
+                    TranscriptionJob.id,
+                    TranscriptionJob.priority,
+                    TranscriptionJob.total_chunks,
+                    TranscriptionJob.updated_at,
+                    MeetingPage.slug,
+                    MeetingPage.title,
+                    MeetingPage.platform,
+                )
+                .join(MeetingPage, MeetingPage.id == TranscriptionJob.meeting_page_id)
+                .where(
+                    TranscriptionJob.status == "completed",
+                    TranscriptionJob.updated_at >= cutoff,
+                )
+                .order_by(TranscriptionJob.updated_at.desc())
+            )
+        ).all()
+
+    return [
+        {
+            "job_id": r[0],
+            "priority": r[1],
+            "total_chunks": r[2],
+            "completed_at": r[3],
+            "slug": r[4],
+            "title": r[5],
+            "platform": r[6],
+        }
+        for r in rows
+    ]
+
+
 async def list_completed_multichunk_transcription_jobs() -> list[dict]:
     """Every completed TranscriptionJob with total_chunks > 1 -- i.e. every
     on-demand transcription that actually went through the real per-chunk
@@ -11563,6 +11613,9 @@ def _job_dict(job: TranscriptionJob, page: Optional[MeetingPage]) -> dict:
         # public status-poll proxy strips this before it ever reaches a
         # browser, no reason to echo a viewer's own email back to them.
         "requester_email": job.requester_email,
+        # WO-1979: worker/main.py reads this to skip the per-job requester
+        # emails for self-generated (PRIORITY_LOW) jobs.
+        "priority": job.priority,
         # Real bug fixed 2026-08-11: this was missing entirely, so
         # worker/main.py's _send_completion_email() always looked up
         # None and every completion email's transcript excerpt rendered
