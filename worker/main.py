@@ -115,11 +115,11 @@ EMAIL_EXCERPT_CHARS = 500
 # otherwise empty.
 AUTO_GENERATION_CHECK_INTERVAL_SECONDS = 300
 
-# Auto-generated jobs need *some* requester_email (the column is required,
-# and the worker emails it on completion -- see _send_completion_email) --
-# decided 2026-08-09 to use a real person's address as a lightweight
-# activity digest rather than building a new "skip the email" code path or
-# a dedicated no-reply mailbox. Auto-generation is simply disabled
+# Auto-generated jobs need *some* requester_email (the column is required)
+# -- decided 2026-08-09 to use a real person's address. It used to double
+# as a per-job activity feed (one "ready" email per job); since WO-1979
+# (2026-11-02) self-generated jobs send no per-job requester email (see
+# _is_self_generated()) and the daily worker report lists them instead. Auto-generation is simply disabled
 # (maybe_generate_auto_job() always returns False) if this isn't set,
 # rather than guessing at a placeholder address.
 AUTO_TRANSCRIPTION_REQUESTER_EMAIL = os.environ.get(
@@ -1070,9 +1070,33 @@ async def _handle_job_failure_result(job_id: int, result: dict) -> None:
         await _send_failure_email(job_id)
 
 
+def _is_self_generated(status: dict) -> bool:
+    """True for a job the system queued for itself (PRIORITY_LOW: the idle
+    trickle, the batch top-up, scripts/bulk_queue_transcription_backlog.py).
+
+    WO-1979 (2026-11-02): those jobs no longer send the requester-facing
+    "ready" / "snag" emails. They all went to one address (Ryan's), and in
+    October 2026 they used up the Resend account's 3,000-a-month quota and
+    hit its 100-a-day cap, which also blocks real visitors' emails. The
+    daily worker report now lists every finished and failed job instead,
+    and the admin failure alert below still goes out at once.
+
+    A missing priority counts as a visitor's job, so the safe default is
+    to keep sending.
+    """
+    return status.get("priority", crud.PRIORITY_MEDIUM) < crud.PRIORITY_MEDIUM
+
+
 async def _send_completion_email(job_id: int) -> None:
     status = await crud.get_transcription_job_status(job_id)
     if status is None or not status.get("meeting_page_slug"):
+        return
+    if _is_self_generated(status):
+        logger.info(
+            "Job %s: self-generated job, no completion email "
+            "(listed in the daily worker report)",
+            job_id,
+        )
         return
 
     excerpt = ""
@@ -1111,12 +1135,8 @@ async def _send_failure_email(job_id: int) -> None:
     # lookup, same "no resolvable meeting page, nothing to email" bail-out
     # (shouldn't happen in practice: a job always belongs to an existing
     # MeetingPage, but matches the defensive style already used above).
-    # Deliberately no auto-transcription filtering here, same as the
-    # completion path: AUTO_TRANSCRIPTION_REQUESTER_EMAIL jobs already
-    # get treated as a real "requester" throughout this module (see that
-    # constant's own docstring -- it doubles as Ryan's activity digest
-    # address), so a failed auto-job reaching him as this same branded
-    # email is existing behavior, not a new side effect of adding this.
+    # Since WO-1979 a self-generated job skips the branded requester
+    # email below but still sends the admin alert (see _is_self_generated()).
     status = await crud.get_transcription_job_status(job_id)
     if status is None or not status.get("meeting_page_slug"):
         return
@@ -1132,17 +1152,23 @@ async def _send_failure_email(job_id: int) -> None:
     partial_coverage = None
     if status.get("transcript_version_id") and status.get("transcribed_seconds"):
         partial_coverage = crud._duration_words(status["transcribed_seconds"])
-    sent = await email_utils.send_transcription_failed_email(
-        status["requester_email"],
-        meeting_title=status.get("meeting_page_title") or "your meeting",
-        page_url=page_url,
-        partial_coverage=partial_coverage,
-    )
-    logger.info(
-        "Job %s: failure email to Resend %s",
-        job_id,
-        "accepted" if sent else "FAILED (see prior log line)",
-    )
+    # WO-1979: a self-generated job skips the branded requester email (it
+    # only ever reached Ryan, with a CC, as a second copy of the admin
+    # alert below). The admin alert still goes out immediately.
+    if _is_self_generated(status):
+        logger.info("Job %s: self-generated job, no requester failure email", job_id)
+    else:
+        sent = await email_utils.send_transcription_failed_email(
+            status["requester_email"],
+            meeting_title=status.get("meeting_page_title") or "your meeting",
+            page_url=page_url,
+            partial_coverage=partial_coverage,
+        )
+        logger.info(
+            "Job %s: failure email to Resend %s",
+            job_id,
+            "accepted" if sent else "FAILED (see prior log line)",
+        )
 
     # Separate operator-facing alert with the real diagnostics (job id,
     # source URL, requester, chunk progress, retry history) the branded

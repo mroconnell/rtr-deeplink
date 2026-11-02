@@ -1930,7 +1930,11 @@ Unsaving is a hard delete; no soft-delete/undo.
 (unsubscribed), a branded "Your transcript's ready" (rewrite of the
 existing completion email, keeping its AI-transcript disclaimer), and "We
 couldn't cook this one" (new — fires when a transcription job gives up
-after repeated chunk failures). The resolver gained its own transactional
+after repeated chunk failures). The last two go only to a visitor who
+asked for the transcript: since WO-1979 (2026-11-02) a job the system
+queued for itself (priority 0) sends neither, and the daily worker report
+lists every finished and failed job instead. The admin failure alert
+still goes out at once for every job. The resolver gained its own transactional
 Resend-send capability for this (`app/main.py`'s `_resend_send()` +
 branded template, duplicated from `archive/utils/email.py`'s equivalent)
 — previously it only ever upserted Resend audience contacts. Saved-search
