@@ -252,18 +252,6 @@ https://liveoakcity.primegov.com/Portal/Meeting?meetingTemplateId=1764	https://l
 https://www.youtube.com/watch?v=1XoLzWJF3Tc	https://www.youtube.com/live/1XoLzWJF3Tc	us:county:06031
 https://www.youtube.com/watch?v=YwhP9Y8Mq9M	https://www.youtube.com/watch?v=YwhP9Y8Mq9M	us:county:34039
 https://vimeo.com/568976671	https://vimeo.com/568976671	us:place:4163650
-https://amherstoh.new.swagit.com/videos/402513		us:place:3901798
-https://thecolony.granicus.com/MediaPlayer.php?view_id=3&clip_id=1524		us:place:4872530
-https://elginvideo.cityofelgin.org/internetchannel/show/694?site=1		us:place:1723074
-https://cityofdeerpark.legistar.com/MeetingDetail.aspx?LEGID=3346&GID=325&G=49659AA2-821F-4242-8BE9-62747C4A02D2		us:place:4819624
-https://lucastx.new.swagit.com/videos/399295		us:place:4845012
-https://canfieldoh.new.swagit.com/videos/392540		us:place:3911360
-https://prairieviewtx.new.swagit.com/videos/360389		us:place:4859336
-https://amblerpa.new.swagit.com/videos/386011		us:place:4202264
-https://codywy.new.swagit.com/videos/401969		us:place:5615760
-https://altavistava.new.swagit.com/videos/387275		us:place:5101528
-https://rockwalltx.new.swagit.com/videos/395048		us:place:4862828
-https://roswellcityga.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3685		us:place:1367284
 https://crestwood.granicus.com/MediaPlayer.php?view_id=1&clip_id=802		us:place:2917218
 https://bonneylakewa.portal.civicclerk.com/event/1259/media		us:place:5307170
 http://vod.mvcc.video:8080/internetchannel/show/20085?site=2&channel=2		us:place:3983090
@@ -1467,3 +1455,14 @@ https://morrisville.granicus.com/MediaPlayer.php?view_id=5&clip_id=383		us:place
 https://highlandvillagetx.new.swagit.com/videos/395828		us:place:4833848
 https://beachwoodoh.new.swagit.com/videos/391053		us:place:3904500
 https://belgrademt.new.swagit.com/videos/396395		us:place:3004975
+https://amherstoh.new.swagit.com/videos/402513		us:place:3901798
+https://thecolony.granicus.com/MediaPlayer.php?view_id=3&clip_id=1524		us:place:4872530
+https://cityofdeerpark.legistar.com/MeetingDetail.aspx?LEGID=3346&GID=325&G=49659AA2-821F-4242-8BE9-62747C4A02D2		us:place:4819624
+https://lucastx.new.swagit.com/videos/399295		us:place:4845012
+https://canfieldoh.new.swagit.com/videos/392540		us:place:3911360
+https://prairieviewtx.new.swagit.com/videos/360389		us:place:4859336
+https://amblerpa.new.swagit.com/videos/386011		us:place:4202264
+https://codywy.new.swagit.com/videos/401969		us:place:5615760
+https://altavistava.new.swagit.com/videos/387275		us:place:5101528
+https://rockwalltx.new.swagit.com/videos/395048		us:place:4862828
+https://roswellcityga.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3685		us:place:1367284
