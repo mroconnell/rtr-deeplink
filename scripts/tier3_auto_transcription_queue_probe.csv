@@ -12461,3 +12461,18 @@ https://www.ci.westfir.or.us/wp-content/uploads/2026/08/August-3-2026-Council-Me
 https://flinttownshipmi.portal.civicclerk.com/event/1297/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.06,2026-11-03T07:17:08+00:00,,0
 https://www.byramtwp.org/useruploads/councilonly/TC_09-15-2026_Recording.MP3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.39,2026-11-03T07:17:11+00:00,,0
 https://taghkanic.gov/zoom/TB/260805 Zoning Review.mp4,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.54,2026-11-03T07:17:13+00:00,,0
+https://cityoflakecity.com/document/04-13-2026-city-council-meeting-video/,unknown,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,1.18,2026-11-03T19:49:36+00:00,,0
+https://lewisberryborough.org/wp-content/uploads/2020/04/2020-04-06-1908-New-Meeting.mp4,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.52,2026-11-03T19:49:39+00:00,,0
+https://reflect-trurotv.cablecast.tv/internetchannel/show/7994?channel=1,cablecast,cablecast-api,2362.00,2026-07-16,,1,accept,,0.40,2026-11-03T19:49:41+00:00,,0
+https://reflect-trurotv.cablecast.tv/internetchannel/show/7994?channel=1,cablecast,cablecast-api,2362.00,2026-07-16,,1,accept,,0.01,2026-11-03T19:49:41+00:00,feed_tier3_auto_transcription,0
+https://vod.lcac.tv/CablecastPublicSite/show/6691?site=1,cablecast,cablecast-api,3698.00,2026-09-16,,1,accept,,0.37,2026-11-03T19:49:44+00:00,,0
+https://vod.lcac.tv/CablecastPublicSite/show/6691?site=1,cablecast,cablecast-api,3698.00,2026-09-16,,1,accept,,0.37,2026-11-03T19:49:45+00:00,feed_tier3_auto_transcription,0
+https://warnernh.gov/meetings/minutes/town/2021-TownMeetingMinutes-v3.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.23,2026-11-03T19:49:47+00:00,,0
+https://mountolivetownshipnj.new.swagit.com/videos/393713,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.04,2026-11-03T19:49:49+00:00,,0
+https://www.boontontownship.com/media/MeetingRecordings/tc_20260713_184325__sel_19-05-05_to_19-25-42.m4a,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.35,2026-11-03T19:49:51+00:00,,0
+https://cloud.castus.tv/vod/pepperell/video/6abeb5170628810002cb2a81?page=HOME,castus,hls-master+variant,6565.00,,,1,accept,,0.64,2026-11-03T19:49:54+00:00,,0
+https://cloud.castus.tv/vod/pepperell/video/6abeb5170628810002cb2a81?page=HOME,castus,hls-master+variant,6565.00,,,1,accept,,0.55,2026-11-03T19:49:55+00:00,feed_tier3_auto_transcription,0
+https://www.edenvt.org/wp-content/uploads/2026/04/Cemetery-4-7-26.m4a?_=1,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.39,2026-11-03T19:49:58+00:00,,0
+https://warringtonpa.new.swagit.com/videos/387621,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-11-03T19:50:00+00:00,,0
+https://williamstownshippa.new.swagit.com/videos/400535,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-11-03T19:50:02+00:00,,0
+https://charlestonil.new.swagit.com/videos/301165,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-11-03T19:50:04+00:00,,0

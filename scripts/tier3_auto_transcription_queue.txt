@@ -263,21 +263,9 @@ https://vimeo.com/949562199?share=copy		us:place:5320645
 https://player.vimeo.com/video/1084066560?h=a09d87caf9		us:place:1714351
 https://vimeo.com/384766771		us:place:2116372
 https://vimeo.com/729707486		us:cousub:3602705452
-https://cityoflakecity.com/document/04-13-2026-city-council-meeting-video/	https://cityoflakecity.com/document/04-13-2026-city-council-meeting-video/	us:place:2644480
-https://lewisberryborough.org/wp-content/uploads/2020/04/2020-04-06-1908-New-Meeting.mp4	https://lewisberryborough.org/residents/meeting-agendas-and-minutes/	us:place:4242968
-https://reflect-trurotv.cablecast.tv/internetchannel/show/7994?channel=1		us:cousub:2500170605
-https://vod.lcac.tv/CablecastPublicSite/show/6691?site=1	https://leicesterma.org/459/Past-Meeting-Recordings	us:cousub:2502734795
-https://warnernh.gov/meetings/minutes/town/2021-TownMeetingMinutes-v3.mp3	https://warnernh.gov/minutes/	us:cousub:3301378580
-https://mountolivetownshipnj.new.swagit.com/videos/393713		us:cousub:3402749080
-https://www.boontontownship.com/media/MeetingRecordings/tc_20260713_184325__sel_19-05-05_to_19-25-42.m4a	https://www.boontontownship.com/meeting-recordings	us:cousub:3402706640
 https://player.vimeo.com/video/268318865?byline=0		us:cousub:3402542990
-https://cloud.castus.tv/vod/pepperell/video/6abeb5170628810002cb2a81?page=HOME		us:cousub:2501752805
 https://player.vimeo.com/video/1150665534?dnt=1&app_id=122963		us:cousub:3602758156
 https://vimeo.com/1220959316		us:place:2723948
-https://www.edenvt.org/wp-content/uploads/2026/04/Cemetery-4-7-26.m4a?_=1	https://www.edenvt.org/boards_commissions/298-2/cemetery-commission/cemetery-commission-minutes-2/	us:cousub:5001523500
-https://warringtonpa.new.swagit.com/videos/387621		us:cousub:4201781048
-https://williamstownshippa.new.swagit.com/videos/400535		us:cousub:4209585256
-https://charlestonil.new.swagit.com/videos/301165		us:place:1712567
 https://www.fairviewnc.gov/upload/page/0043/docs/Council_Meeting_03_10_26.MP3	https://www.fairviewnc.gov/page/council.audiofiles	us:place:3722500
 https://aftonwy.portal.civicclerk.com/event/66/media		us:place:5600245
 https://www.cityofeastdubuque.com/media/cms/06_FE174898FE1FC.mp3	https://www.cityofeastdubuque.com/hopepage/east-dubuque-meeting-videos	us:place:1721683
@@ -1456,3 +1444,7 @@ https://rockwalltx.new.swagit.com/videos/395048		us:place:4862828
 https://roswellcityga.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3685		us:place:1367284
 https://crestwood.granicus.com/MediaPlayer.php?view_id=1&clip_id=802		us:place:2917218
 https://nogalesaz.granicus.com/MediaPlayer.php?view_id=1&clip_id=1778		us:place:0449640
+https://mountolivetownshipnj.new.swagit.com/videos/393713		us:cousub:3402749080
+https://warringtonpa.new.swagit.com/videos/387621		us:cousub:4201781048
+https://williamstownshippa.new.swagit.com/videos/400535		us:cousub:4209585256
+https://charlestonil.new.swagit.com/videos/301165		us:place:1712567
