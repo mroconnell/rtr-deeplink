@@ -252,14 +252,6 @@ https://liveoakcity.primegov.com/Portal/Meeting?meetingTemplateId=1764	https://l
 https://www.youtube.com/watch?v=1XoLzWJF3Tc	https://www.youtube.com/live/1XoLzWJF3Tc	us:county:06031
 https://www.youtube.com/watch?v=YwhP9Y8Mq9M	https://www.youtube.com/watch?v=YwhP9Y8Mq9M	us:county:34039
 https://vimeo.com/568976671	https://vimeo.com/568976671	us:place:4163650
-https://crestwood.granicus.com/MediaPlayer.php?view_id=1&clip_id=802		us:place:2917218
-https://bonneylakewa.portal.civicclerk.com/event/1259/media		us:place:5307170
-http://vod.mvcc.video:8080/internetchannel/show/20085?site=2&channel=2		us:place:3983090
-https://api.clydeohio.org/documents/council/2026-09-01-rs.mp3	https	us:place:3916308
-https://nogalesaz.granicus.com/MediaPlayer.php?view_id=1&clip_id=1778		us:place:0449640
-https://baycitytx.portal.civicclerk.com/event/1202/media		us:place:4805984
-https://lovelandoh.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2038		us:place:3945108
-http://altuscityok.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2242		us:place:4001700
 https://player.vimeo.com/video/205208966		us:place:4238248
 https://vimeo.com/1225414475/f4353a4457		us:cousub:5513328487
 https://vimeo.com/1226952611/624e278e19		us:place:4831928
@@ -271,10 +263,6 @@ https://vimeo.com/949562199?share=copy		us:place:5320645
 https://player.vimeo.com/video/1084066560?h=a09d87caf9		us:place:1714351
 https://vimeo.com/384766771		us:place:2116372
 https://vimeo.com/729707486		us:cousub:3602705452
-https://www.ci.westfir.or.us/wp-content/uploads/2026/08/August-3-2026-Council-Meeting.mp3	https://www.ci.westfir.or.us/?page_id=623	us:place:4179950
-https://flinttownshipmi.portal.civicclerk.com/event/1297/media		us:cousub:2604929020
-https://www.byramtwp.org/useruploads/councilonly/TC_09-15-2026_Recording.MP3	https://www.byramtwp.org/index.php/town_hall/meetings_agendas_minutes	us:cousub:3403709160
-https://taghkanic.gov/zoom/TB/260805 Zoning Review.mp4	https://taghkanic.gov/minutes	us:cousub:3602173077
 https://cityoflakecity.com/document/04-13-2026-city-council-meeting-video/	https://cityoflakecity.com/document/04-13-2026-city-council-meeting-video/	us:place:2644480
 https://lewisberryborough.org/wp-content/uploads/2020/04/2020-04-06-1908-New-Meeting.mp4	https://lewisberryborough.org/residents/meeting-agendas-and-minutes/	us:place:4242968
 https://reflect-trurotv.cablecast.tv/internetchannel/show/7994?channel=1		us:cousub:2500170605
@@ -1466,3 +1454,5 @@ https://codywy.new.swagit.com/videos/401969		us:place:5615760
 https://altavistava.new.swagit.com/videos/387275		us:place:5101528
 https://rockwalltx.new.swagit.com/videos/395048		us:place:4862828
 https://roswellcityga.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3685		us:place:1367284
+https://crestwood.granicus.com/MediaPlayer.php?view_id=1&clip_id=802		us:place:2917218
+https://nogalesaz.granicus.com/MediaPlayer.php?view_id=1&clip_id=1778		us:place:0449640
