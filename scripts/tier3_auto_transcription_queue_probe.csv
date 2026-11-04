@@ -12476,3 +12476,15 @@ https://www.edenvt.org/wp-content/uploads/2026/04/Cemetery-4-7-26.m4a?_=1,direct
 https://warringtonpa.new.swagit.com/videos/387621,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-11-03T19:50:00+00:00,,0
 https://williamstownshippa.new.swagit.com/videos/400535,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-11-03T19:50:02+00:00,,0
 https://charlestonil.new.swagit.com/videos/301165,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-11-03T19:50:04+00:00,,0
+https://www.fairviewnc.gov/upload/page/0043/docs/Council_Meeting_03_10_26.MP3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.14,2026-11-04T06:58:48+00:00,,0
+https://aftonwy.portal.civicclerk.com/event/66/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.25,2026-11-04T06:58:52+00:00,,0
+https://www.cityofeastdubuque.com/media/cms/06_FE174898FE1FC.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.21,2026-11-04T06:58:53+00:00,,0
+https://town.centerville.in.us/wp-content/uploads/2026/09/September-8-2026-Zoom.mp4,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,1.33,2026-11-04T06:58:58+00:00,,0
+https://lysanderny.gov/sites/default/files/2026-05/260402_163419_00.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.20,2026-11-04T06:59:00+00:00,,0
+https://twp.jerusalem.oh.us/wp-content/uploads/2026/06/06232026162400_DN-700R.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.23,2026-11-04T06:59:02+00:00,,0
+https://www.enochcityut.gov/uploads/3/0/3/1/30314955/cc_recording_09-16-2026.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.22,2026-11-04T06:59:04+00:00,,0
+https://washingtonpa.us/wp-content/uploads/2020/04/City-Council-Meeting-4-2-2020-audio.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.03,2026-11-04T06:59:06+00:00,,0
+https://denisonia.com/wp-content/uploads/July_22_2026_Second_Regular_Council_Meeting.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.37,2026-11-04T06:59:08+00:00,,0
+https://irvingtonny.portal.civicclerk.com/event/2040/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.26,2026-11-04T06:59:11+00:00,,0
+https://ferristx.new.swagit.com/videos/400983,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.08,2026-11-04T06:59:13+00:00,,0
+https://northbraddockborough.com/wp-content/uploads/2021/04/Council-MTG-Audio-3-16-21.mp3?_=1,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.30,2026-11-04T06:59:15+00:00,,0

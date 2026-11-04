@@ -266,19 +266,7 @@ https://vimeo.com/729707486		us:cousub:3602705452
 https://player.vimeo.com/video/268318865?byline=0		us:cousub:3402542990
 https://player.vimeo.com/video/1150665534?dnt=1&app_id=122963		us:cousub:3602758156
 https://vimeo.com/1220959316		us:place:2723948
-https://www.fairviewnc.gov/upload/page/0043/docs/Council_Meeting_03_10_26.MP3	https://www.fairviewnc.gov/page/council.audiofiles	us:place:3722500
-https://aftonwy.portal.civicclerk.com/event/66/media		us:place:5600245
-https://www.cityofeastdubuque.com/media/cms/06_FE174898FE1FC.mp3	https://www.cityofeastdubuque.com/hopepage/east-dubuque-meeting-videos	us:place:1721683
-https://town.centerville.in.us/wp-content/uploads/2026/09/September-8-2026-Zoom.mp4	https://town.centerville.in.us/town-council/	us:place:1811836
-https://lysanderny.gov/sites/default/files/2026-05/260402_163419_00.mp3	https://lysanderny.gov/board-meetings	us:cousub:3606744039
 https://vimeo.com/565286481		us:cousub:3607939331
-https://twp.jerusalem.oh.us/wp-content/uploads/2026/06/06232026162400_DN-700R.mp3	https://twp.jerusalem.oh.us/trustees/	us:cousub:3909539116
-https://www.enochcityut.gov/uploads/3/0/3/1/30314955/cc_recording_09-16-2026.mp3	https://www.enochcityut.gov/city-council-agenda--minutes.html	us:place:4923200
-https://washingtonpa.us/wp-content/uploads/2020/04/City-Council-Meeting-4-2-2020-audio.mp3	https://washingtonpa.us/audio-recordings-of-city-council-meetings/	us:place:4281328
-https://denisonia.com/wp-content/uploads/July_22_2026_Second_Regular_Council_Meeting.mp3	https://denisonia.com/?page_id=832	us:place:1919945
-https://irvingtonny.portal.civicclerk.com/event/2040/media		us:place:3637803
-https://ferristx.new.swagit.com/videos/400983		us:place:4825752
-https://northbraddockborough.com/wp-content/uploads/2021/04/Council-MTG-Audio-3-16-21.mp3?_=1	https://northbraddockborough.com/notices-base/council-meeting-audio/	us:place:4254816
 https://vimeo.com/1196671672		us:cousub:4209179136
 https://www.alamoheightstx.gov/wp-content/uploads/6.22.20-Council-Meeting.mp3	https://www.alamoheightstx.gov/government/city-council/meeting-videos/	us:place:4801600
 https://marpletwppa.portal.civicclerk.com/event/1269/media	https://marpletwp.com/217	us:cousub:4204547616
@@ -1448,3 +1436,4 @@ https://mountolivetownshipnj.new.swagit.com/videos/393713		us:cousub:3402749080
 https://warringtonpa.new.swagit.com/videos/387621		us:cousub:4201781048
 https://williamstownshippa.new.swagit.com/videos/400535		us:cousub:4209585256
 https://charlestonil.new.swagit.com/videos/301165		us:place:1712567
+https://ferristx.new.swagit.com/videos/400983		us:place:4825752
