@@ -12488,3 +12488,16 @@ https://denisonia.com/wp-content/uploads/July_22_2026_Second_Regular_Council_Mee
 https://irvingtonny.portal.civicclerk.com/event/2040/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.26,2026-11-04T06:59:11+00:00,,0
 https://ferristx.new.swagit.com/videos/400983,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.08,2026-11-04T06:59:13+00:00,,0
 https://northbraddockborough.com/wp-content/uploads/2021/04/Council-MTG-Audio-3-16-21.mp3?_=1,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.30,2026-11-04T06:59:15+00:00,,0
+https://www.alamoheightstx.gov/wp-content/uploads/6.22.20-Council-Meeting.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.11,2026-11-04T20:02:07+00:00,,0
+https://marpletwppa.portal.civicclerk.com/event/1269/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.08,2026-11-04T20:02:09+00:00,,0
+http://reflect-northwest-access.cablecast.tv/internetchannel/show/22808?site=2,cablecast,cablecast-api,2559.00,2026-07-13,,1,accept,,0.17,2026-11-04T20:02:11+00:00,,0
+http://reflect-northwest-access.cablecast.tv/internetchannel/show/22808?site=2,cablecast,cablecast-api,2559.00,2026-07-13,,1,accept,,0.04,2026-11-04T20:02:11+00:00,feed_tier3_auto_transcription,0
+https://reflect-vsctv.cablecast.tv/internetchannel/show/4964,cablecast,cablecast-api,4335.00,2024-03-27,,1,accept,,0.20,2026-11-04T20:02:14+00:00,,0
+https://reflect-vsctv.cablecast.tv/internetchannel/show/4964,cablecast,cablecast-api,4335.00,2024-03-27,,1,accept,,0.04,2026-11-04T20:02:14+00:00,feed_tier3_auto_transcription,0
+https://videos.files.wordpress.com/R2Th69fp/city-council-may-19th-2026.mov,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,1.07,2026-11-04T20:02:17+00:00,,0
+https://cityofronan.org/city-audio/09-02-2026_special-mtg.mp4,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.14,2026-11-04T20:02:41+00:00,,0
+https://pgcpsmd.new.swagit.com/videos/392681,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.10,2026-11-04T20:02:43+00:00,,0
+https://resources.finalsite.net/videos/v1787173310/detroitk12org/qum4h7qglz0c3doy55mi/BoardMemberAppointmentinterviews81926audio.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.07,2026-11-04T20:02:45+00:00,,0
+https://drive.google.com/file/d/1Agjd9nb21PimL4iOB7qnQ4XNpl7Nj_sy/view?usp=sharing,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,1.12,2026-11-04T20:02:49+00:00,,0
+https://www.snwa.com/app-data/media/audio/snwa/snwa-2026-08-20_7112.mp4,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.16,2026-11-04T20:02:51+00:00,,0
+http://www.fromberg-mt.com/tcmd/202606230000_recording.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.15,2026-11-04T20:02:53+00:00,,0
