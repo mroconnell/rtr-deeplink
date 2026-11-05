@@ -12513,3 +12513,15 @@ http://tv.dsctv.com/CablecastPublicSite/show/5527?channel=3,cablecast,unknown-ac
 http://tv.dsctv.com/CablecastPublicSite/show/5527?channel=3,cablecast,unknown-accepted,,,,0,accept,"length unknown, accepted (Cablecast): Cablecast API fetch failed: ",16.00,2026-11-05T07:26:00+00:00,feed_tier3_auto_transcription,0
 https://pascocofl.portal.civicclerk.com/event/2982/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.07,2026-11-05T07:26:03+00:00,,0
 https://casscoin.portal.civicclerk.com/event/1271/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.05,2026-11-05T07:26:05+00:00,,0
+https://isleofwightcova.portal.civicclerk.com/event/659/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.09,2026-11-05T20:16:17+00:00,,0
+https://desmoinescounty.iowa.gov/files/meetings/audio/2026-09-15_audio_6837.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.34,2026-11-05T20:16:20+00:00,,0
+https://drive.google.com/file/d/1fng7j-rKDCn0XJW__6x6l7eVNnwIGZhm/view?usp=sharing,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.91,2026-11-05T20:16:23+00:00,,0
+http://carrollcounty.us/SiteMedia/audio/2026/2026May19QCMtg.MP3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.11,2026-11-05T20:16:25+00:00,,0
+http://www.co.bertie.nc.us/commissioners/meetings/2025/audio/01-13-25audio.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.44,2026-11-05T20:16:27+00:00,,0
+https://drive.google.com/file/d/1zOsR93keJglYXoh5ZVevik-R43musOgv/view?usp=sharing,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.85,2026-11-05T20:16:30+00:00,,0
+https://charlescitycova.portal.civicclerk.com/event/237/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.09,2026-11-05T20:16:33+00:00,,0
+https://collincountytx.new.swagit.com/videos/355402,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.10,2026-11-05T20:16:35+00:00,,0
+https://crcog.org/wp-content/uploads/2023/10/EV-Event-20231018_081648-Meeting-Recording-1.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.13,2026-11-05T20:16:37+00:00,,0
+https://jamescitycova.portal.civicclerk.com/event/2687/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.06,2026-11-05T20:16:39+00:00,,0
+https://cecilcomd.portal.civicclerk.com/event/5902/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.05,2026-11-05T20:16:42+00:00,,0
+https://www.columbiacountyor.gov/media/Board/BOC/BOC Video/01.02.19_BOC_Meeting.m4v,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.35,2026-11-05T20:16:44+00:00,,0
