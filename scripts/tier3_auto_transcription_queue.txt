@@ -269,18 +269,6 @@ https://vimeo.com/1220959316		us:place:2723948
 https://vimeo.com/565286481		us:cousub:3607939331
 https://vimeo.com/1196671672		us:cousub:4209179136
 https://player.vimeo.com/video/917949521?h=efbc0c4145	http://townofbethelny.gov/town-board-zoom-recording	us:cousub:3610506310
-https://townofheath.org/files/SB_2026-08-11-26_Audio.mp3	https://townofheath.org/p/67/Audio-Recordings	us:cousub:2501129650
-https://franklin-townshipohio.gov/wp-content/uploads/2026/08/July-24th-2026-Tax-Budget-Meeting.mp3	https://franklin-townshipohio.gov/government/	us:cousub:3904928280
-https://milantownship.org/wp-content/uploads/2022/03/gmt20210212-003805_milan-town_640x360.mp4	https://milantownship.org/agenda-and-minutes/	us:cousub:2611553900	Board of Trustees
-https://townofcrownpointny.gov/wp-content/uploads/2026/08/Town-Board-meeting-08132026.mp3	https://townofcrownpointny.gov/board-meetings-minutes/	us:cousub:3603119246
-https://townofcorningny.gov/public-hearing-january-30th-joint-fire-district-video/	https://townofcorningny.gov/public-hearing-january-30th-joint-fire-district-video/	us:cousub:3610118267
-https://colonieny.portal.civicclerk.com/event/101/media		us:cousub:3600117343
-https://toledoor.portal.civicclerk.com/event/710/media		us:place:4174000
-https://drive.google.com/file/d/1wTmxlcMak0A3kh5H8Ri06yI3nGtly3HY/view?usp=sharing	https://www.rushcity.k12.mn.us/apps/pages/index.jsp?uREC_ID=4433742&type=d&pREC_ID=2674229	us:sd:2732550	Board Meeting: Work Session	2026-08-05
-https://loganschools.org/37273_3	https://loganschools.org/37273_3	us:sd:4900510	Board Audio Recordings
-http://tv.dsctv.com/CablecastPublicSite/show/5527?channel=3	http://tv.dsctv.com/CablecastPublicSite/search?channel=3&query=school%20committee	us:sd:2504290	Dover School Committee Meeting	2026-09-22
-https://pascocofl.portal.civicclerk.com/event/2982/media		us:county:12101
-https://casscoin.portal.civicclerk.com/event/1271/media		us:county:18017
 https://isleofwightcova.portal.civicclerk.com/event/659/media		us:county:51093
 https://desmoinescounty.iowa.gov/files/meetings/audio/2026-09-15_audio_6837.mp3	https://desmoinescounty.iowa.gov/board_of_supervisors/meetings_minutes/	us:county:19057
 https://drive.google.com/file/d/1fng7j-rKDCn0XJW__6x6l7eVNnwIGZhm/view?usp=sharing	https://www.wascocountyor.gov/departments/board_of_county_commissioners/agendas,_board_packets,_minutes.php	us:county:41065
@@ -1426,3 +1414,4 @@ https://williamstownshippa.new.swagit.com/videos/400535		us:cousub:4209585256
 https://charlestonil.new.swagit.com/videos/301165		us:place:1712567
 https://ferristx.new.swagit.com/videos/400983		us:place:4825752
 https://pgcpsmd.new.swagit.com/videos/392681	https://www.pgcps.org/offices/board-of-education/video	us:sd:2400510	Board Business Meeting	2026-06-11	Board of Education
+https://toledoor.portal.civicclerk.com/event/710/media		us:place:4174000
