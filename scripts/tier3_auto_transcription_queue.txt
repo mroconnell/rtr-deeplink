@@ -269,18 +269,6 @@ https://vimeo.com/1220959316		us:place:2723948
 https://vimeo.com/565286481		us:cousub:3607939331
 https://vimeo.com/1196671672		us:cousub:4209179136
 https://player.vimeo.com/video/917949521?h=efbc0c4145	http://townofbethelny.gov/town-board-zoom-recording	us:cousub:3610506310
-https://isleofwightcova.portal.civicclerk.com/event/659/media		us:county:51093
-https://desmoinescounty.iowa.gov/files/meetings/audio/2026-09-15_audio_6837.mp3	https://desmoinescounty.iowa.gov/board_of_supervisors/meetings_minutes/	us:county:19057
-https://drive.google.com/file/d/1fng7j-rKDCn0XJW__6x6l7eVNnwIGZhm/view?usp=sharing	https://www.wascocountyor.gov/departments/board_of_county_commissioners/agendas,_board_packets,_minutes.php	us:county:41065
-http://carrollcounty.us/SiteMedia/audio/2026/2026May19QCMtg.MP3	http://carrollcounty.us/QuorumCourt/Agenda	us:county:05015
-http://www.co.bertie.nc.us/commissioners/meetings/2025/audio/01-13-25audio.mp3	http://www.co.bertie.nc.us/commissioners/meetings/minutes.html	us:county:37015
-https://drive.google.com/file/d/1zOsR93keJglYXoh5ZVevik-R43musOgv/view?usp=sharing	https://keithcountyne.gov/residents/2026_board_meeting_minutes-agendas-claims-audio.php	us:county:31101
-https://charlescitycova.portal.civicclerk.com/event/237/media		us:county:51036	Board of Supervisors Work Session
-https://collincountytx.new.swagit.com/videos/355402		us:county:48085
-https://crcog.org/wp-content/uploads/2023/10/EV-Event-20231018_081648-Meeting-Recording-1.mp3	https://crcogct.gov/meetings-and-events/	us:county:09110
-https://jamescitycova.portal.civicclerk.com/event/2687/media		us:county:51095	Board of Supervisors Regular Meeting
-https://cecilcomd.portal.civicclerk.com/event/5902/media		us:county:24015	County Council Work Session
-https://www.columbiacountyor.gov/media/Board/BOC/BOC Video/01.02.19_BOC_Meeting.m4v	https://www.columbiacountyor.gov/board-of-commissioner-meeting-videos	us:county:41009
 https://play.champds.com/shenandoahcova/event/229		us:county:51171
 https://s3.us-east-1.amazonaws.com/BZA/BZA+2026/August+26%2C+2026+BZA+Recording.MP3	https://browncounty-in.gov/182/County-Council	us:county:18013	County Council
 https://video.wixstatic.com/video/7a3db8_1a1221f91cc5445dabd8ad351d46140d/720p/mp4/file.mp4	https://www.bensoncountynd.com/government	us:county:38005
@@ -1415,3 +1403,4 @@ https://charlestonil.new.swagit.com/videos/301165		us:place:1712567
 https://ferristx.new.swagit.com/videos/400983		us:place:4825752
 https://pgcpsmd.new.swagit.com/videos/392681	https://www.pgcps.org/offices/board-of-education/video	us:sd:2400510	Board Business Meeting	2026-06-11	Board of Education
 https://toledoor.portal.civicclerk.com/event/710/media		us:place:4174000
+https://collincountytx.new.swagit.com/videos/355402		us:county:48085
