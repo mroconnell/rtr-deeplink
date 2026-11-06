@@ -270,20 +270,8 @@ https://vimeo.com/565286481		us:cousub:3607939331
 https://vimeo.com/1196671672		us:cousub:4209179136
 https://player.vimeo.com/video/917949521?h=efbc0c4145	http://townofbethelny.gov/town-board-zoom-recording	us:cousub:3610506310
 https://vimeo.com/499615398		us:county:51063
-https://littleelmisdtx.new.swagit.com/videos/391803		us:sd:4827720
 https://player.vimeo.com/video/66344864		us:sd:4827030	Learn more about the Board Elections
-https://ccsdschools.granicus.com/MediaPlayer.php?view_id=1&clip_id=132		us:sd:4501440
-https://resources.finalsite.net/videos/t_video_mp4_1080/v1746806883/claytonk12gaus/rafcnvp3lwowhbgybtci/GMT20250507-230038_Recording_1920x1080.mp4	https://www.clayton.k12.ga.us/administration/board-of-education	us:sd:1301230	Board of Education
-https://video.collierschools.com/Panopto/Content/Sessions/3ca0ec12-f333-4cd2-955c-b4c701394dea/e6bf5779-32c6-4f1b-818b-b4c701394df8-615517a7-8997-4376-b676-b4c70147bae7.mp4	https://www.collierschools.com/exploreccps/school-board	us:sd:1200330	School Board
-https://www.tempeunion.org/about-tuhsd/governing-board/governing-board-long-term-budget-planning-committee-meetings	https://www.tempeunion.org/about-tuhsd/governing-board/governing-board-long-term-budget-planning-committee-meetings	us:sd:0408340	Governing Board Long-Term Budget Planning Committee Meetings
-https://gastoncoschools.cablecast.tv/show/826		us:sd:3701620	Televised Board Meetings
-https://irvingisdtx.new.swagit.com/videos/401720		us:sd:4824420
-https://drive.google.com/file/d/1kT412mlgwo6zJEF9REdcJqheEvMUwq-n/view?usp=drive_link	https://www.washk12.org/district/board-of-education/	us:sd:4901140	Board of Education
-https://pusd.granicus.com/MediaPlayer.php?view_id=15&clip_id=986		us:sd:0629940
 https://player.vimeo.com/video/1065982250?badge=0&autopause=0&player_id=0&app_id=58479		us:sd:4703150
-https://resources.finalsite.net/videos/t_video_mp4_480/v1717521584/puyallupk12waus/ayqpddxsmt7yrizmbhve/BoardMeetingSCUTReport-June32024.mp4	https://www.puyallupsd.org/about-us/departments/capital-projects/community-participation/school-capacity-and-utilization-task-force-scut/school-capacity-and-utilization-task-force-scut-meetings	us:sd:5306960
-https://drive.google.com/file/d/1OIrMxRwKwVLL2ZLlHEP9DPWDeXHFQ8ly/view?usp=sharing	https://www.fcboe.org/departments/public-relations/board-meeting-recordings	us:sd:1302130	Board Meeting Recordings(opens in new window/tab)
-https://wichitafallsisdtx.new.swagit.com/videos/401663		us:sd:4845780	School Board
 https://player.vimeo.com/video/1181201857?badge=0&autopause=0&player_id=0&app_id=58479		us:sd:2508610	Meeting Materials, Budget, Fiscal & Operations, & Archived Reports
 https://www.jsd.k12.ca.us/files/user/21/file/Board-Audio-Files/02_26_20-(audio).MP3	https://www.jsd.k12.ca.us/District/147214-Board-Actions-Meeting-Recordings.html	us:sd:0618870	Board Actions
 https://drive.google.com/file/d/1FKVRKSJ9SlREsVCHgAUUfB7GyBjnFsY2/view?usp=sharing	https://www.sd129.org/district/board-of-education	us:sd:1704710	Board of Education
@@ -1398,3 +1386,8 @@ https://sandovalcountynm.new.swagit.com/videos/402685		us:county:35043
 https://wallercountytx.new.swagit.com/videos/402671		us:county:48473
 https://taoscounty.granicus.com/MediaPlayer.php?view_id=4&clip_id=807		us:county:35055
 https://ycusd.granicus.com/MediaPlayer.php?view_id=1&clip_id=310		us:sd:0643470
+https://littleelmisdtx.new.swagit.com/videos/391803		us:sd:4827720
+https://ccsdschools.granicus.com/MediaPlayer.php?view_id=1&clip_id=132		us:sd:4501440
+https://irvingisdtx.new.swagit.com/videos/401720		us:sd:4824420
+https://pusd.granicus.com/MediaPlayer.php?view_id=15&clip_id=986		us:sd:0629940
+https://wichitafallsisdtx.new.swagit.com/videos/401663		us:sd:4845780	School Board
