@@ -12525,3 +12525,15 @@ https://crcog.org/wp-content/uploads/2023/10/EV-Event-20231018_081648-Meeting-Re
 https://jamescitycova.portal.civicclerk.com/event/2687/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.06,2026-11-05T20:16:39+00:00,,0
 https://cecilcomd.portal.civicclerk.com/event/5902/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.05,2026-11-05T20:16:42+00:00,,0
 https://www.columbiacountyor.gov/media/Board/BOC/BOC Video/01.02.19_BOC_Meeting.m4v,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.35,2026-11-05T20:16:44+00:00,,0
+https://s3.us-east-1.amazonaws.com/BZA/BZA+2026/August+26%2C+2026+BZA+Recording.MP3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.07,2026-11-06T07:24:44+00:00,,0
+https://video.wixstatic.com/video/7a3db8_1a1221f91cc5445dabd8ad351d46140d/720p/mp4/file.mp4,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.03,2026-11-06T07:24:45+00:00,,0
+https://eriecountyny.new.swagit.com/videos/402767,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.14,2026-11-06T07:24:47+00:00,,0
+https://bellcountytx.new.swagit.com/videos/396877,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-11-06T07:24:49+00:00,,0
+https://sandovalcountynm.new.swagit.com/videos/402685,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-11-06T07:24:51+00:00,,0
+https://wallercountytx.new.swagit.com/videos/402671,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-11-06T07:24:53+00:00,,0
+https://modoccountyca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3830,iqm2,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.09,2026-11-06T07:24:55+00:00,,0
+https://www.indianacountypa.gov/wp-content/uploads/CommMtg92326.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.12,2026-11-06T07:24:57+00:00,,0
+https://boxcast.tv/view/jackson-county-board-of-supervisors-special-meeting-91426-ajw3wocv7sixvpkl6oaf,boxcast,hls-master+variant,2189.61,,,1,accept,,0.12,2026-11-06T07:24:59+00:00,,0
+https://boxcast.tv/view/jackson-county-board-of-supervisors-special-meeting-91426-ajw3wocv7sixvpkl6oaf,boxcast,hls-master+variant,2189.61,,,1,accept,,0.08,2026-11-06T07:25:00+00:00,feed_tier3_auto_transcription,0
+https://taoscounty.granicus.com/MediaPlayer.php?view_id=4&clip_id=807,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-11-06T07:25:03+00:00,,0
+https://ycusd.granicus.com/MediaPlayer.php?view_id=1&clip_id=310,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-11-06T07:25:06+00:00,,0

@@ -269,19 +269,7 @@ https://vimeo.com/1220959316		us:place:2723948
 https://vimeo.com/565286481		us:cousub:3607939331
 https://vimeo.com/1196671672		us:cousub:4209179136
 https://player.vimeo.com/video/917949521?h=efbc0c4145	http://townofbethelny.gov/town-board-zoom-recording	us:cousub:3610506310
-https://play.champds.com/shenandoahcova/event/229		us:county:51171
-https://s3.us-east-1.amazonaws.com/BZA/BZA+2026/August+26%2C+2026+BZA+Recording.MP3	https://browncounty-in.gov/182/County-Council	us:county:18013	County Council
-https://video.wixstatic.com/video/7a3db8_1a1221f91cc5445dabd8ad351d46140d/720p/mp4/file.mp4	https://www.bensoncountynd.com/government	us:county:38005
-https://eriecountyny.new.swagit.com/videos/402767		us:county:36029
-https://bellcountytx.new.swagit.com/videos/396877		us:county:48027
-https://sandovalcountynm.new.swagit.com/videos/402685		us:county:35043
-https://wallercountytx.new.swagit.com/videos/402671		us:county:48473
-https://modoccountyca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3830		us:county:06049
-https://www.indianacountypa.gov/wp-content/uploads/CommMtg92326.mp3	https://www.indianacountypa.gov/forms/	us:county:42063
-https://boxcast.tv/view/jackson-county-board-of-supervisors-special-meeting-91426-ajw3wocv7sixvpkl6oaf		us:county:28059
 https://vimeo.com/499615398		us:county:51063
-https://taoscounty.granicus.com/MediaPlayer.php?view_id=4&clip_id=807		us:county:35055
-https://ycusd.granicus.com/MediaPlayer.php?view_id=1&clip_id=310		us:sd:0643470
 https://littleelmisdtx.new.swagit.com/videos/391803		us:sd:4827720
 https://player.vimeo.com/video/66344864		us:sd:4827030	Learn more about the Board Elections
 https://ccsdschools.granicus.com/MediaPlayer.php?view_id=1&clip_id=132		us:sd:4501440
@@ -1404,3 +1392,9 @@ https://ferristx.new.swagit.com/videos/400983		us:place:4825752
 https://pgcpsmd.new.swagit.com/videos/392681	https://www.pgcps.org/offices/board-of-education/video	us:sd:2400510	Board Business Meeting	2026-06-11	Board of Education
 https://toledoor.portal.civicclerk.com/event/710/media		us:place:4174000
 https://collincountytx.new.swagit.com/videos/355402		us:county:48085
+https://eriecountyny.new.swagit.com/videos/402767		us:county:36029
+https://bellcountytx.new.swagit.com/videos/396877		us:county:48027
+https://sandovalcountynm.new.swagit.com/videos/402685		us:county:35043
+https://wallercountytx.new.swagit.com/videos/402671		us:county:48473
+https://taoscounty.granicus.com/MediaPlayer.php?view_id=4&clip_id=807		us:county:35055
+https://ycusd.granicus.com/MediaPlayer.php?view_id=1&clip_id=310		us:sd:0643470
