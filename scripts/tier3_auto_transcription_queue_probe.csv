@@ -12550,3 +12550,16 @@ https://pusd.granicus.com/MediaPlayer.php?view_id=15&clip_id=986,granicus,hls-ma
 https://resources.finalsite.net/videos/t_video_mp4_480/v1717521584/puyallupk12waus/ayqpddxsmt7yrizmbhve/BoardMeetingSCUTReport-June32024.mp4,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.06,2026-11-06T19:42:11+00:00,,0
 https://drive.google.com/file/d/1OIrMxRwKwVLL2ZLlHEP9DPWDeXHFQ8ly/view?usp=sharing,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.89,2026-11-06T19:42:14+00:00,,0
 https://wichitafallsisdtx.new.swagit.com/videos/401663,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-11-06T19:42:16+00:00,,0
+https://www.jsd.k12.ca.us/files/user/21/file/Board-Audio-Files/02_26_20-(audio).MP3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.38,2026-11-07T06:36:43+00:00,,0
+https://drive.google.com/file/d/1FKVRKSJ9SlREsVCHgAUUfB7GyBjnFsY2/view?usp=sharing,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,1.11,2026-11-07T06:36:47+00:00,,0
+https://mankatoaps.new.swagit.com/videos/401668,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.10,2026-11-07T06:36:49+00:00,,0
+https://www.magnoliaisd.org/district/school-board/board-elections,vimeo,vimeo-oembed,1336.00,2013-05-16,,1,accept,,0.11,2026-11-07T06:37:05+00:00,,0
+https://www.magnoliaisd.org/district/school-board/board-elections,vimeo,vimeo-oembed,1336.00,2013-05-16,,1,accept,,0.05,2026-11-07T06:37:05+00:00,feed_tier3_auto_transcription,0
+https://skschools.org/school-board,vimeo,vimeo-oembed,4918.00,2026-11-05,,1,accept,,0.18,2026-11-07T06:37:14+00:00,,0
+https://skschools.org/school-board,vimeo,vimeo-oembed,4918.00,2026-11-05,,1,accept,,0.04,2026-11-07T06:37:14+00:00,feed_tier3_auto_transcription,0
+https://alamedausdca.new.swagit.com/videos/259035,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-11-07T06:37:17+00:00,,0
+https://drive.google.com/file/d/1hkQKCDZnjE3yFRCyKKvZQjz42oJNtynv/view?usp=drive_link,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.63,2026-11-07T06:37:20+00:00,,0
+https://drive.google.com/file/d/1CkueunHAZX4vlDUQ4-HNHRHBwKBWY_Uf/view?usp=sharing,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.80,2026-11-07T06:37:22+00:00,,0
+https://resources.finalsite.net/videos/t_video_mp4_480/v1765313769/edenprorg/m1jxn6qredzzqvzavkzv/ALCSchoolBoard.mp4,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.12,2026-11-07T06:37:24+00:00,,0
+https://hamden.org/boe-meeting-agendas-minutes-2020,unknown,ranged-get+ffprobe,,,,0,reject-dead,HEAD/ranged-GET on the media file returned HTTP 403,0.02,2026-11-07T06:37:27+00:00,,0
+https://drive.google.com/file/d/1K3kT_MNQsazHJ8Ju42HCplF03v3ykqPc/view?usp=sharing,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.75,2026-11-07T06:37:30+00:00,,0

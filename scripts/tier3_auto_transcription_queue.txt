@@ -273,23 +273,11 @@ https://vimeo.com/499615398		us:county:51063
 https://player.vimeo.com/video/66344864		us:sd:4827030	Learn more about the Board Elections
 https://player.vimeo.com/video/1065982250?badge=0&autopause=0&player_id=0&app_id=58479		us:sd:4703150
 https://player.vimeo.com/video/1181201857?badge=0&autopause=0&player_id=0&app_id=58479		us:sd:2508610	Meeting Materials, Budget, Fiscal & Operations, & Archived Reports
-https://www.jsd.k12.ca.us/files/user/21/file/Board-Audio-Files/02_26_20-(audio).MP3	https://www.jsd.k12.ca.us/District/147214-Board-Actions-Meeting-Recordings.html	us:sd:0618870	Board Actions
-https://drive.google.com/file/d/1FKVRKSJ9SlREsVCHgAUUfB7GyBjnFsY2/view?usp=sharing	https://www.sd129.org/district/board-of-education	us:sd:1704710	Board of Education
-https://mankatoaps.new.swagit.com/videos/401668		us:sd:2718780	School Board
-https://www.magnoliaisd.org/district/school-board/board-elections	https://www.magnoliaisd.org/district/school-board/board-elections	us:sd:4828740	Board Elections
-https://skschools.org/school-board	https://skschools.org/school-board	us:sd:5308160	School Board
-https://alamedausdca.new.swagit.com/videos/259035		us:sd:0601770	A group of community members at a public meeting
-https://drive.google.com/file/d/1hkQKCDZnjE3yFRCyKKvZQjz42oJNtynv/view?usp=drive_link	https://www.mcisd.net/apps/pages/index.jsp?uREC_ID=217519&type=d&pREC_ID=526112	us:sd:4831040
 https://vimeo.com/1223404594		us:sd:0622110
 https://vimeo.com/1203684350/36740eaa6a		us:sd:2708190	School Board
-https://drive.google.com/file/d/1CkueunHAZX4vlDUQ4-HNHRHBwKBWY_Uf/view?usp=sharing	https://haverhill-ps.org/consentino-school-building-committe	us:sd:2505970
-https://resources.finalsite.net/videos/t_video_mp4_480/v1765313769/edenprorg/m1jxn6qredzzqvzavkzv/ALCSchoolBoard.mp4	https://team.edenpr.org/careers	us:sd:2714220	Job Board
 https://vimeo.com/1200185258/15024681b7		us:sd:3904445	Board of Education
-https://hamden.org/boe-meeting-agendas-minutes-2020	https://hamden.org/boe-meeting-agendas-minutes-2020	us:sd:0901860
-https://drive.google.com/file/d/1K3kT_MNQsazHJ8Ju42HCplF03v3ykqPc/view?usp=sharing	https://www.gcssk12.net/board-of-education	us:sd:1302310	Board of Education
 https://vimeo.com/1226794798/7146e7ed27		us:sd:2625740	School Board
 https://vimeo.com/1210517080		us:sd:0621690	Board Meeting Recordings
-https://www.winonaschools.org/school-board/board-committees	https://www.winonaschools.org/school-board/board-committees	us:sd:2744070	Board Committees
 https://drive.google.com/file/d/18y7v1kxpgWxl_EbS0hv5O0APo5F06zYy/view?usp=sharing	https://www.whitehallcoplay.org/departments/food-service/wellness-committee-meeting-minutes	us:sd:4226250
 https://drive.google.com/file/d/1n6SCuIee0ZHuHk6OKzU5eqekiulHuWnp/view?usp=drive_link	https://www.hssdschools.org/district/board-of-education	us:sd:5506630	Board of Education
 https://vimeo.com/652083906/721342eeb9		us:sd:4219290
@@ -1391,3 +1379,6 @@ https://ccsdschools.granicus.com/MediaPlayer.php?view_id=1&clip_id=132		us:sd:45
 https://irvingisdtx.new.swagit.com/videos/401720		us:sd:4824420
 https://pusd.granicus.com/MediaPlayer.php?view_id=15&clip_id=986		us:sd:0629940
 https://wichitafallsisdtx.new.swagit.com/videos/401663		us:sd:4845780	School Board
+https://mankatoaps.new.swagit.com/videos/401668		us:sd:2718780	School Board
+https://alamedausdca.new.swagit.com/videos/259035		us:sd:0601770	A group of community members at a public meeting
+https://hamden.org/boe-meeting-agendas-minutes-2020	https://hamden.org/boe-meeting-agendas-minutes-2020	us:sd:0901860
