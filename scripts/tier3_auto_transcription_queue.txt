@@ -278,22 +278,10 @@ https://vimeo.com/1203684350/36740eaa6a		us:sd:2708190	School Board
 https://vimeo.com/1200185258/15024681b7		us:sd:3904445	Board of Education
 https://vimeo.com/1226794798/7146e7ed27		us:sd:2625740	School Board
 https://vimeo.com/1210517080		us:sd:0621690	Board Meeting Recordings
-https://drive.google.com/file/d/18y7v1kxpgWxl_EbS0hv5O0APo5F06zYy/view?usp=sharing	https://www.whitehallcoplay.org/departments/food-service/wellness-committee-meeting-minutes	us:sd:4226250
-https://drive.google.com/file/d/1n6SCuIee0ZHuHk6OKzU5eqekiulHuWnp/view?usp=drive_link	https://www.hssdschools.org/district/board-of-education	us:sd:5506630	Board of Education
 https://vimeo.com/652083906/721342eeb9		us:sd:4219290
-https://drive.google.com/file/d/1lGpK-s2T6x1AZ3OYgFuiLxO3f8c7oOPI/view?usp=sharing	https://www.normandysc.org/about-nsc/jegb/board-meeting-recordings	us:sd:2922650	Board Meeting Recordings
 https://vimeo.com/1209877446		us:sd:2715030	School Board
-https://www.wlake.org/uploaded/Board_of_Education/2020_Recordings/Track_001_01-13-20_Org_.MP3	https://www.wlake.org/board-of-education/meeting-schedule	us:sd:3904506
 https://vimeo.com/1208629392		us:sd:0634290
-https://drive.google.com/file/d/19Bdaz_KUkzBNB7ijRKOpmNsVyvPLT6QS/view?usp=sharing	https://www.halifax.k12.nc.us/about/board-of-education	us:sd:3701950	Board of Education
-https://spusd.granicus.com/MediaPlayer.php?view_id=2&clip_id=387		us:sd:0637500	Board of Education
-https://boxcast.tv/view/district-special-called-meeting-bbcdv1b0xz2lujdpkpdw		us:sd:2800198	Board Members
 https://vimeo.com/963645675/b12ae62e00		us:sd:1719290	Board of Education
-https://www.stma.k12.mn.us/our-district-new/school-board/election-information/vote2025	https://www.stma.k12.mn.us/our-district-new/school-board/election-information/vote2025	us:sd:2733790	2025 Special Election
-https://resources.finalsite.net/videos/v1786456790/hersheyk12paus/lhifwayhl9qeqdgo6dyg/08102026-BoardMeeting.m4a	https://www.hershey.k12.pa.us/school-board/board-meetings/board-minutes-and-recordings/2026-2027-school-board-meeting-minutes	us:sd:4207590
-https://drive.google.com/file/d/1joxXIO9ObnCubpa7kesq3h0eDGl2SCnn/view?usp=sharing	https://www.willardschools.net/leadership/board-of-education/board-meeting-recordings	us:sd:2932010	Board Meeting Recordings
-https://www.d57.org/Podcasts/District%2057%20Board%20of%20Education%20Meeting%201_7_2021.m4a	https://www.d57.org/BoardofEducation.aspx	us:sd:1727210	Board of Education
-https://drive.google.com/file/d/1dcYSaumotBIM3BlcNrq4iCxTvBJK3KN2/view?usp=sharing	https://www.cortez.k12.co.us/our-district/board-of-education/index	us:sd:0803090	Board of Education
 https://vimeo.com/1208112286		us:sd:3613620	Board of Education
 https://drive.google.com/file/d/1gRPMRPTtWYtwI--i6AEjqtIqWiLsv1JH/view?usp=sharing	https://www.smasd.org/apps/pages/index.jsp?uREC_ID=450807&type=d&pREC_ID=972159	us:sd:4220640
 https://drive.google.com/file/d/11gKrj_CzLgdpM44QhyxYkGSjxxCqrNPQ/view?usp=sharing	https://www.talladega-cs.net/apps/pages/index.jsp?uREC_ID=779043&type=d&pREC_ID=1588441	us:sd:0103150
@@ -1382,3 +1370,4 @@ https://wichitafallsisdtx.new.swagit.com/videos/401663		us:sd:4845780	School Boa
 https://mankatoaps.new.swagit.com/videos/401668		us:sd:2718780	School Board
 https://alamedausdca.new.swagit.com/videos/259035		us:sd:0601770	A group of community members at a public meeting
 https://hamden.org/boe-meeting-agendas-minutes-2020	https://hamden.org/boe-meeting-agendas-minutes-2020	us:sd:0901860
+https://spusd.granicus.com/MediaPlayer.php?view_id=2&clip_id=387		us:sd:0637500	Board of Education
