@@ -286,20 +286,8 @@ https://vimeo.com/1208112286		us:sd:3613620	Board of Education
 https://vimeo.com/672636196/6d763e448f		us:sd:3626370	BUDGET
 https://vimeo.com/1226697028		us:sd:4824630	Board of Trustees
 https://vimeo.com/440063667		us:sd:1715630
-https://drive.google.com/file/d/1e6JsPLreMHwWgYB9ZJMmrJPb-mr3smrU/view?usp=sharing	https://www.gallatin.kyschools.us/our-district/board-of-education	us:sd:2102130	Board of Education
-https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/3783/Sisd/03e1f6e4-69a1-4af3-b244-10dd739dd0b0/SHAC_Meeting_2-20231018_084547-Meeting_Recordi.mp4?disposition=inline	https://www.sisd.net/documents/about-us/district-transparency/school-health-advisory-council-/meeting-recordings/483845	us:sd:4840710
-https://drive.google.com/file/d/19M3LfscTrJCM_it0ZXp1oxBZ6O3hQzkS/view?usp=drive_link	https://www.camphillsd.k12.pa.us/board/board-meeting-information	us:sd:4204860
-https://provo.edu/january-13-2026-timpview-high-study-session-video/	https://provo.edu/january-13-2026-timpview-high-study-session-video/	us:sd:4900810
 https://vimeo.com/1138505216		us:sd:4502580	See All Posts
 https://vimeo.com/1221950774/c16ddef869		us:sd:5100270	Speak at a School Board Meeting
-https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/4557/Aisd/118236d9-28a1-41e2-ae7e-4349899f43ad/2.2.26-SLAC-Meeting-Recording.mp3?disposition=inline	https://www.abileneisd.org/documents/departments/library-services/slac/recordings/861535	us:sd:4807440
-https://www.nhvweb.net/wp-content/uploads/2020/01/DPM-0115.mp3	https://www.nhvweb.net/index.php/boe-agendas-minutes-and-recordings/	us:sd:3411610
-https://cvisd.new.swagit.com/videos/394211		us:sd:4813590
-https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/3116/Rgccisd/9a9ad80c-c078-4bc1-a7b2-26244d6e45af/rgccisd_special_board_meeting_1-28-2019.mp4?disposition=inline	https://www.myrgcgisd.org/documents/board/board-meeting-videos-archive/2018-2019/353882	us:sd:4837140
-https://drive.google.com/file/d/1h4rMRhl4nsIBc92OYukjSIeNoo_-IBjW/view?usp=sharing	https://www.lawrence.org/live-feed/	us:sd:3616830	See All Posts
-https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/2418/Mhsd/35c64f4f-82d9-4656-a4b5-0166fd0e4e22/06.27.23_Special_Work_Session.mp3?disposition=inline	https://www.mhbombers.com/documents/website-required-documents/school-board-meeting-recordings/2022-2023/405058	us:sd:0500043
-https://www.ortn.edu/audio/01_08_24.mp3	https://www.ortn.edu/central-office/board-of-education/audio/	us:sd:4703240	Meeting Audio
-https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/5468/Clsd/50ff8a64-d5d9-4a9b-aa50-a420113496fc/Open_Enrollment_Meeting_RX_nGO-Meeting_Recordi.mp4?disposition=inline	https://www.clsd.k12.pa.us/documents/human-resources/videos/852711	us:sd:4206840
 https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/3707/Swsd/765362d6-8793-4622-86eb-bca53986c508/10.8.24_Special_Board_Meeting_Recording.mp4?disposition=inline	https://www.swsd.k12.wa.us/documents/district/school-board-information/2024-2025-board-documents/2024-2025-board-meeting-recording/694276	us:sd:5307740
 https://drive.google.com/file/d/1DTbUEcy7o4u84TN76Ivxd5VO8IB66M0h/view?usp=sharing	https://scsd2.com/board-meeting-minutes	us:sd:5605695
 https://drive.google.com/file/d/19F4gJas0QcSt8h1bex8n6wR8xHEv8vfd/view?usp=sharing	https://www.dist102.k12.il.us/page/board-of-information	us:sd:1721600	Board of Education
@@ -1347,3 +1335,4 @@ https://mankatoaps.new.swagit.com/videos/401668		us:sd:2718780	School Board
 https://alamedausdca.new.swagit.com/videos/259035		us:sd:0601770	A group of community members at a public meeting
 https://hamden.org/boe-meeting-agendas-minutes-2020	https://hamden.org/boe-meeting-agendas-minutes-2020	us:sd:0901860
 https://spusd.granicus.com/MediaPlayer.php?view_id=2&clip_id=387		us:sd:0637500	Board of Education
+https://cvisd.new.swagit.com/videos/394211		us:sd:4813590
