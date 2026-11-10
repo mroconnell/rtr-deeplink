@@ -1,5 +1,37 @@
 # Backlog — done
 
+## [Done 2026-11-10] WO-1980: one chunk that killed its worker every time took both workers down
+
+**What happened.** From about 2026-11-05 the two cloud workers kept
+restarting. Render suspended `rtr-transcription-worker-2` on 2026-11-06
+(02:53 UTC) and `rtr-transcription-worker` on 2026-11-08 (04:08 UTC) for
+"persistent startup failures". The daily report of 2026-11-10 showed 0
+chunks completed in 24 hours, 7 active jobs and 2 stuck jobs.
+
+**Cause.** The worker log from 2026-11-08 shows the same cycle every
+~7 minutes: load the model, claim job 12410 (Portage MI, Cablecast,
+chunk 9 of 9, 6m49s of audio), start transcribing, then the instance
+restarts about 6 minutes later with no error line. Render's
+memory-limit emails arrived daily from 2026-10-31. A stale claim was
+reclaimed with no limit, and `claim_next_chunk()` orders by priority
+then age, so the oldest job always came back first. One chunk that
+kills its worker therefore crash-loops the whole pool. Why this
+particular chunk uses so much memory is not yet known.
+
+**Fix.** `claim_next_chunk()` now counts a stale claim as one failed
+chunk attempt (`consecutive_chunk_failures`, a `failure_history` entry,
+`error_message`). At `MAX_CONSECUTIVE_CHUNK_FAILURES` (3) the job gets
+the same outcome as one whose chunks report errors: "failed" with its
+finished chunks published, or "retry_scheduled" for a reader's own
+request with retries left. The same call then claims the next job. A
+successful chunk resets the count, so a single redeploy mid-chunk costs
+nothing. No schema change. Tests: `tests/test_claim_heartbeat.py`
+(WO-1980 block).
+
+**Caution.** A job retired this way sends no failure email, because the
+worker that would send it is the one that died. It still shows in the
+daily report's failures list.
+
 ## [Done 2026-10-19] WO-1978: PyAV 19 broke every cloud transcription job ("unexpected keyword argument 'metadata_errors'")
 
 **What happened.** From 2026-10-08 every cloud transcription job failed on

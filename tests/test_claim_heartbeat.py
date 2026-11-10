@@ -449,3 +449,119 @@ async def test_the_heartbeat_stops_after_its_stuck_job_ceiling(monkeypatch):
 
     assert task.done(), "heartbeat loop kept running past its own ceiling"
     assert len(beats) >= 1, "no real heartbeats landed before the ceiling"
+
+
+# WO-1980: a chunk that kills its worker every time must not be reclaimed
+# forever. On 2026-11-07/08 job 12410's last chunk (a 6m49s Cablecast
+# slice) was claimed, started, and killed every ~7 minutes until Render
+# suspended both workers for "persistent startup failures".
+
+
+async def _job_row(job_id: int):
+    from archive.db.engine import async_session
+    from archive.db.models import TranscriptionJob
+
+    async with async_session() as session:
+        return await session.get(TranscriptionJob, job_id)
+
+
+async def _set_job(job_id: int, **values) -> None:
+    from archive.db.engine import async_session
+    from archive.db.models import TranscriptionJob
+
+    async with async_session() as session:
+        row = await session.get(TranscriptionJob, job_id)
+        for key, value in values.items():
+            setattr(row, key, value)
+        await session.commit()
+
+
+async def _abandon(job_id: int) -> None:
+    """The worker holding this job died: its claim is past the window."""
+    await _set_claimed_at(
+        job_id,
+        datetime.now(timezone.utc) - crud.STALE_CLAIM_AFTER - timedelta(minutes=1),
+    )
+
+
+async def test_a_chunk_that_keeps_killing_its_worker_is_retired():
+    job = await _job_for("hb-poison")
+    await _set_job(job["job_id"], priority=crud.PRIORITY_LOW)
+    first = await crud.claim_next_chunk()
+    assert first["job_id"] == job["job_id"]
+
+    # The worker dies on this chunk again and again. The first
+    # MAX_CONSECUTIVE_CHUNK_FAILURES - 1 reclaims still hand the job out.
+    for attempt in range(1, crud.MAX_CONSECUTIVE_CHUNK_FAILURES):
+        await _abandon(job["job_id"])
+        again = await crud.claim_next_chunk()
+        assert again is not None and again["job_id"] == job["job_id"]
+        row = await _job_row(job["job_id"])
+        assert row.consecutive_chunk_failures == attempt
+
+    # The next abandoned claim uses up the budget: the job is retired, not
+    # handed out a fourth time.
+    await _abandon(job["job_id"])
+    assert await crud.claim_next_chunk() is None
+    row = await _job_row(job["job_id"])
+    assert row.status == "failed"
+    assert row.claimed_at is None
+    assert row.error_message == crud.ABANDONED_CLAIM_ERROR
+    assert row.failure_history[-1]["chunk_index"] == first["chunk_index"]
+
+
+async def test_a_retired_job_does_not_block_the_next_one():
+    poison = await _job_for("hb-poison-first")
+    await _set_job(
+        poison["job_id"],
+        priority=crud.PRIORITY_LOW,
+        created_at=datetime.now(timezone.utc) - timedelta(days=1),
+    )
+    healthy = await _job_for("hb-poison-next")
+    await _set_job(healthy["job_id"], priority=crud.PRIORITY_LOW)
+    assert (await crud.claim_next_chunk())["job_id"] == poison["job_id"]
+    for _ in range(crud.MAX_CONSECUTIVE_CHUNK_FAILURES - 1):
+        await _abandon(poison["job_id"])
+        assert (await crud.claim_next_chunk())["job_id"] == poison["job_id"]
+
+    # The same call that retires the poison job claims the healthy one.
+    await _abandon(poison["job_id"])
+    claim = await crud.claim_next_chunk()
+    assert claim is not None and claim["job_id"] == healthy["job_id"]
+    # Leave nothing claimable behind for later tests.
+    await _set_job(healthy["job_id"], status="failed", claimed_at=None)
+
+
+async def test_a_readers_request_gets_a_scheduled_retry_instead():
+    job = await _job_for("hb-poison-reader")
+    await _set_job(job["job_id"], priority=crud.PRIORITY_MEDIUM)
+
+    await crud.claim_next_chunk()
+    for _ in range(crud.MAX_CONSECUTIVE_CHUNK_FAILURES):
+        await _abandon(job["job_id"])
+        await crud.claim_next_chunk()
+
+    row = await _job_row(job["job_id"])
+    assert row.status == "retry_scheduled"
+    assert row.retry_count == 1
+    assert row.consecutive_chunk_failures == 0
+    assert row.next_retry_at is not None
+
+
+async def test_a_successful_chunk_resets_the_abandoned_count():
+    # One chunk, so the success below also finishes the job and leaves
+    # nothing claimable behind for later tests.
+    job = await _job_for("hb-poison-recovers", total_seconds=900)
+    first = await crud.claim_next_chunk()
+    await _abandon(job["job_id"])
+    again = await crud.claim_next_chunk()
+    assert (await _job_row(job["job_id"])).consecutive_chunk_failures == 1
+
+    await crud.report_chunk_result(
+        job_id=job["job_id"],
+        success=True,
+        shifted_segments=[{"start": 0.0, "end": 1.0, "text": "hello"}],
+        chunk_index=again["chunk_index"],
+    )
+    assert first["chunk_index"] == again["chunk_index"]
+    assert (await _job_row(job["job_id"])).consecutive_chunk_failures == 0
