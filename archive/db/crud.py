@@ -11214,6 +11214,50 @@ async def confirm_transcription_job(token: str) -> Optional[dict]:
         return _job_dict(job, page)
 
 
+# How many jobs one claim_next_chunk() call may retire for abandoned
+# claims before giving up for this poll. Only bounds the loop; in practice
+# it is 0 or 1.
+_MAX_ABANDONED_JOBS_PER_CLAIM = 5
+ABANDONED_CLAIM_ERROR = (
+    "The worker stopped partway through this chunk without reporting "
+    "(likely out of memory or a crash)."
+)
+
+
+async def _count_abandoned_claim(session, job, now) -> bool:
+    """Record a stale claim on `job` as one failed chunk attempt (WO-1980).
+    Returns True when that used up the job's failure budget, so the job is
+    no longer claimable now ("failed", or "retry_scheduled" for a reader's
+    own request with retries left), the same outcomes report_chunk_result()
+    gives a chunk that reports an error."""
+    job.consecutive_chunk_failures += 1
+    job.error_message = ABANDONED_CLAIM_ERROR
+    job.failure_history = [
+        *job.failure_history,
+        {
+            "chunk_index": job.chunks_completed,
+            "error": ABANDONED_CLAIM_ERROR,
+            "at": now.isoformat(),
+        },
+    ]
+    if job.consecutive_chunk_failures < MAX_CONSECUTIVE_CHUNK_FAILURES:
+        return False
+    job.claimed_at = None
+    job.last_progress_at = now
+    if job.priority >= PRIORITY_MEDIUM and job.retry_count < MAX_JOB_RETRIES:
+        job.retry_count += 1
+        job.status = "retry_scheduled"
+        job.next_retry_at = now + min(
+            JOB_RETRY_BASE_DELAY * (2 ** (job.retry_count - 1)),
+            JOB_RETRY_MAX_DELAY,
+        )
+        job.consecutive_chunk_failures = 0
+    else:
+        job.status = "failed"
+        await _publish_partial_transcript(session, job)
+    return True
+
+
 async def claim_next_chunk() -> Optional[dict]:
     """Atomically claims the oldest queued/in_progress job with no live
     claim, marking it in_progress and stamping claimed_at so a second
@@ -11259,8 +11303,26 @@ async def claim_next_chunk() -> Optional[dict]:
         )
         if session.bind.dialect.name == "postgresql":
             stmt = stmt.with_for_update(skip_locked=True)
-        job = (await session.execute(stmt)).scalars().first()
-        if job is None:
+        # A stale claim means the worker that held this job stopped
+        # mid-chunk without reporting: a crash, an out-of-memory kill or a
+        # redeploy. Count that as a chunk failure. Without this, a chunk
+        # that kills its worker every time is reclaimed forever, and the
+        # pool crash-loops on it. On 2026-11-07/08 job 12410's last chunk
+        # did exactly that every ~7 minutes until Render suspended both
+        # workers (WO-1980). A job that reaches the failure limit this way
+        # gets the same retry/fail outcome as one whose chunks report
+        # errors, and the claim moves on to the next job.
+        for _ in range(_MAX_ABANDONED_JOBS_PER_CLAIM + 1):
+            job = (await session.execute(stmt)).scalars().first()
+            if job is None:
+                await session.commit()
+                return None
+            if job.claimed_at is None or not await _count_abandoned_claim(
+                session, job, now
+            ):
+                break
+            await session.commit()
+        else:
             return None
 
         job.status = "in_progress"
