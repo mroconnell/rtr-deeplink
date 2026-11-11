@@ -289,19 +289,7 @@ https://vimeo.com/440063667		us:sd:1715630
 https://vimeo.com/1138505216		us:sd:4502580	See All Posts
 https://vimeo.com/1221950774/c16ddef869		us:sd:5100270	Speak at a School Board Meeting
 https://player.vimeo.com/video/1129030971?h=4e0a44e244		us:sd:5000398	School Board
-https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/196/District/349e1b65-466d-41b1-873d-a4797f023fab/SHAC_Meeting_11.13.23AudioReccording__2_.mp3?disposition=inline	https://www.nixonsmiley.net/documents/departments/health-and-wellness/shac-minutes-and-recordings/shac-meetings-2023-2024/543805	us:sd:4832740
-https://midlandschools.org/wp-content/uploads/2021/03/February-Meeting.mp3	https://midlandschools.org/board-recordings/	us:sd:0500020
-https://drive.google.com/file/d/1c3KijWuk48iEwIGgN21h4YIMAjl2ZM_B/view?usp=sharing	https://www.frankstonisd.net/boardoftrustees	us:sd:4819770	Board of Trustees
-https://townhallstreams.com/stream.php?location_id=78&id=75544	https://www.richmondpk12.org/documents/24-25-school-commitee-meeting-agendas-%26-minutes/684286	us:sd:2314844
-https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/4083/Csd/8a37349d-2322-4030-ad3c-4fb80ac28df2/CSC_Zoom_December_8__2021.mp4?disposition=inline	https://www.calaisschools.org/page/school-board	us:sd:2303870	School board
-https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/613/Crosbyton_Cisd/bba54e5b-d506-4da1-ab16-baa658126d6b/GMT20200512-172822_Special-Me_640x360.mp4?disposition=inline	https://www.crosbyton.k12.tx.us/documents/board-meeting-videos/124876	us:sd:4800001
 https://vimeo.com/1164402752/c7fcc95910		us:sd:3021850	School Board
-https://drive.google.com/file/d/1GEnQbHNS7pDo-AMfOZpmKTKgj5obrQYK/view?usp=sharing	https://www.amsterdamschool.org/board-meetings	us:sd:3001980
-https://drive.google.com/file/d/1WAeRdjx2dWjZK9-xg-OKwRjRxeZBidkQ/view?ts=6a343c1a	https://www.isd100.org/school-board	us:sd:2744190	School Board
-https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/5705/Scisd/fa562d9e-a4d7-486f-825c-53858a957aac/April_5__2024_Meeting_Recording.mp3?disposition=inline	https://www.sterlingcityisd.net/documents/our-district/required-postings/shac/shac-agendas,-minutes,-and-meeting-recordings/834466	us:sd:4841550
-https://drive.google.com/file/d/1PVI8cDZGRbyFt5aJ2_owJB-SsjXmCxT4/view?usp=sharing	https://www.potomacschoolmontana.us/general-5-1	us:sd:3021330
-https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/3702/Exsu19/835166c8-8066-4719-a95c-7e529c23b678/NEK_spec_meeting_2025-01-23.mp3?disposition=inline	https://www.ensuvt.org/documents/school-boards/nek-choice-board/board-meeting-recordings/661777	us:sd:5000415
-http://loraine.esc14.net/uploads/1/0/5/2/105225727/september_22_2025.mp3	http://loraine.esc14.net/board-agendasminutes.html	us:sd:4828170
 https://drive.google.com/file/d/1lyDpxBL7HsN61jURil3Peqjd2mNRlqh8/view?usp=sharing	https://dossccsd.org/board-of-trustees/	us:sd:4817400	Board of Trustees
 https://wacatv.cablecast.tv/internetchannel/show/8316?site=1		us:sd:2502100
 https://www.orchardparkny.gov/wp-content/uploads/2020/04/Orchard-Park-Work-Session_04_01_20.mp4		us:place:3655266
