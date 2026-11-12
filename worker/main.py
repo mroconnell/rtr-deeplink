@@ -431,7 +431,19 @@ async def _generate_one_candidate(candidate: dict) -> str:
         skip_confirmation=True,
         priority=crud.PRIORITY_LOW,
         chunk_plan=chunk_plan,
+        auto_candidate_page_id=candidate.get("meeting_page_id"),
     )
+    if job.get("error") == "resolved_page_cooling_down":
+        # WO-1981: the re-resolve landed on a different page that is busy
+        # or cooling down. crud recorded a failure on the candidate page,
+        # so it cools down too instead of being re-picked every poll.
+        logger.info(
+            "Auto-generation: %s resolves to page %s, which is busy or "
+            "cooling down -- no job made, candidate cools down",
+            slug,
+            job.get("slug"),
+        )
+        return _RESULT_FAILED
     # WO-1148: only reachable in practice via maybe_generate_batch_auto_jobs()
     # -- the single-candidate caller only ever runs when run_forever() has
     # already confirmed the active job table is empty, so this can't fire
