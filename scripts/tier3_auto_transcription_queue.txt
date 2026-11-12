@@ -290,18 +290,6 @@ https://vimeo.com/1138505216		us:sd:4502580	See All Posts
 https://vimeo.com/1221950774/c16ddef869		us:sd:5100270	Speak at a School Board Meeting
 https://player.vimeo.com/video/1129030971?h=4e0a44e244		us:sd:5000398	School Board
 https://vimeo.com/1164402752/c7fcc95910		us:sd:3021850	School Board
-https://hidalgocountytx.new.swagit.com/videos/355589		us:county:48215
-https://play.champds.com/lakezurichil/event/206	https://lakezurich.org/260/On-Demand-Meeting-Recordings	us:place:1741742
-https://floresvilletx.portal.civicclerk.com/event/161/media		us:place:4826160	Special City Council Meeting	2026-10-02	City Council
-https://cms.washingtoncopa.gov/uploads/08_28_2025_BOC_SPECIAL_Mtg_No_1214_aedd9fce16.mp3	https://www.washcopa.gov/board-of-commissioners	us:county:42125
-https://butlercountyoh.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=2831&Format=Agenda	https://butlercountyoh.iqm2.com/Citizens/Default.aspx	us:county:39017
-https://roanokecountyva.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1280&Format=Agenda	https://roanokecountyva.iqm2.com/Citizens/Default.aspx	us:county:51161
-https://alpinecountyca.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=3412&Format=Agenda	https://alpinecountyca.iqm2.com/Citizens/Default.aspx	us:county:06003
-https://haymarkettownva.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=2137&Format=Agenda	https://haymarkettownva.iqm2.com/Citizens/Default.aspx	us:place:5135976
-https://bartlettcitytn.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1973&Format=Agenda	https://bartlettcitytn.iqm2.com/Citizens/Default.aspx	us:place:4703440
-https://mundeleinvillageil.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=3518&Format=Agenda	https://mundeleinvillageil.iqm2.com/Citizens/Default.aspx	us:place:1751349
-https://vod.easthamptonmedia.org/internetchannel/show/23773?site=4	http://www.easthamptonmedia.org	us:cousub:2501562745
-https://videoplayer.telvue.com/player/FcqTL0OYMCGU6WlccUApyUL3twz4dm9V/media/1034504	https://eastrochesterny.gov/Government/board-meetings	us:place:3622865
 https://newrochelle.granicus.com/MediaPlayer.php?clip_id=2784&view_id=2	https://newrochelle.granicus.com/	us:place:3650617
 https://cablecast.lmcc-tv.org/CablecastPublicSite/show/57565?site=1	https://cablecast.lmcc-tv.org/CablecastPublicSite/?channel=2	us:place:2767130
 https://townhallstreams.com/stream.php?location_id=98&id=76634	https://townhallstreams.com/town.php?id=98	us:cousub:3301360020
@@ -1253,3 +1241,6 @@ https://hamden.org/boe-meeting-agendas-minutes-2020	https://hamden.org/boe-meeti
 https://spusd.granicus.com/MediaPlayer.php?view_id=2&clip_id=387		us:sd:0637500	Board of Education
 https://cvisd.new.swagit.com/videos/394211		us:sd:4813590
 https://yolocountyca.new.swagit.com/videos/389312		us:county:06113
+https://hidalgocountytx.new.swagit.com/videos/355589		us:county:48215
+https://butlercountyoh.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=2831&Format=Agenda	https://butlercountyoh.iqm2.com/Citizens/Default.aspx	us:county:39017
+https://roanokecountyva.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1280&Format=Agenda	https://roanokecountyva.iqm2.com/Citizens/Default.aspx	us:county:51161

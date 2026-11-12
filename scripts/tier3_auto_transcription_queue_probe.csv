@@ -12699,3 +12699,17 @@ https://videoplayer.telvue.com/player/nLAw9JV5_hXZrsKc9WFG0XWqFD8TOSoq/media/101
 https://reflect-portchesterny.cablecast.tv/internetchannel/show/948,cablecast,cablecast-api,2167.00,2026-09-17,,1,accept,,0.20,2026-11-11T19:52:32+00:00,,0
 https://reflect-portchesterny.cablecast.tv/internetchannel/show/948,cablecast,cablecast-api,2167.00,2026-09-17,,1,accept,,0.04,2026-11-11T19:52:32+00:00,feed_tier3_auto_transcription,0
 https://yolocountyca.new.swagit.com/videos/389312,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.13,2026-11-11T19:52:36+00:00,,0
+https://hidalgocountytx.new.swagit.com/videos/355589,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.12,2026-11-12T07:44:31+00:00,,0
+https://play.champds.com/lakezurichil/event/206,champds,hls-master+variant,,,,0,reject-dead,HLS variant playlist returned HTTP 404,0.63,2026-11-12T07:44:33+00:00,,0
+https://floresvilletx.portal.civicclerk.com/event/161/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.26,2026-11-12T07:44:36+00:00,,0
+https://cms.washingtoncopa.gov/uploads/08_28_2025_BOC_SPECIAL_Mtg_No_1214_aedd9fce16.mp3,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.18,2026-11-12T07:44:38+00:00,,0
+https://butlercountyoh.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=2831&Format=Agenda,iqm2,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.03,2026-11-12T07:44:41+00:00,,0
+https://roanokecountyva.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1280&Format=Agenda,iqm2,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.03,2026-11-12T07:44:44+00:00,,0
+https://alpinecountyca.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=3412&Format=Agenda,iqm2,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.58,2026-11-12T07:44:47+00:00,,0
+https://haymarkettownva.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=2137&Format=Agenda,iqm2,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.63,2026-11-12T07:44:51+00:00,,0
+https://bartlettcitytn.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1973&Format=Agenda,iqm2,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.26,2026-11-12T07:44:54+00:00,,0
+https://mundeleinvillageil.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=3518&Format=Agenda,iqm2,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.62,2026-11-12T07:44:57+00:00,,0
+https://vod.easthamptonmedia.org/internetchannel/show/23773?site=4,cablecast,cablecast-api,2233.00,2026-09-02,,1,accept,,0.92,2026-11-12T07:45:00+00:00,,0
+https://vod.easthamptonmedia.org/internetchannel/show/23773?site=4,cablecast,cablecast-api,2233.00,2026-09-02,,1,accept,,0.38,2026-11-12T07:45:01+00:00,feed_tier3_auto_transcription,0
+https://videoplayer.telvue.com/player/FcqTL0OYMCGU6WlccUApyUL3twz4dm9V/media/1034504,telvue,telvue-page-json,2018.00,,,1,accept,,0.34,2026-11-12T07:45:03+00:00,,0
+https://videoplayer.telvue.com/player/FcqTL0OYMCGU6WlccUApyUL3twz4dm9V/media/1034504,telvue,telvue-page-json,2018.00,,,1,accept,,0.31,2026-11-12T07:45:04+00:00,feed_tier3_auto_transcription,0
