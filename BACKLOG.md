@@ -178,8 +178,9 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (31)
   `[IMPROVEMENT-ROUND]` Full Context entries on YouTube-backed meetings…
   [IMPROVEMENT-ROUND] Lifecycle-triggered transactional emails (Resend)…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (78)
-  [NEEDS-AUDIT] Idle auto-transcription re-picks the same meeting every…
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (79)
+  [NEEDS-AUDIT] One Portage MI chunk runs a 2 GB cloud worker out of…
+  [NEEDS-AUDIT] Two pages for one Portage MI meeting: auto-generation's…
   [NEEDS-AUDIT] Tampa deep links assume the video starts at the first…
   [NEEDS-AUDIT] Caption timing: 13 pages corrected; the rest of the…
   [NEEDS-AUDIT] Meeting Finder picks the wrong clip from a Granicus…
@@ -1208,12 +1209,19 @@ of human step they need.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
 
-- **[NEEDS-AUDIT] Idle auto-transcription re-picks the same meeting every 5 minutes after it fails (found 2026-10-19, WO-1978).**
-  - **Issue**: while PyAV 19 broke every chunk (WO-1978), the worker's idle auto-generation created a new job for City of Hamilton's "City Council Meeting 8-12-26" (`tvhamilton.cablecast.tv/show/528`) about every 5 minutes, jobs 9723-9811 and earlier; Portage's "City Council Meeting 8-11-2026" did the same 2026-10-08 to 10-12. `_cooldown_active()` should hold a page for at least a day after one failed job, so something gets past it.
-  - **Impact**: about 290 failed jobs and failure emails a day on one meeting, and no other backlog page got a turn.
-  - **Next action**: in the worker's Render log, compare the slug in "Auto-generation: trying candidate ..." with the page each new job lands on. If they differ, the re-resolve files the job on a different page, so the candidate page never gets a failed job and never cools down (a guess, not checked). Then make the failure count against the candidate page.
-  - **Constraint**: reading production jobs needs the Archive token or the Render shell; this sandbox has neither.
-  - **History**: `BACKLOG_DONE.md` WO-1978.
+- **[NEEDS-AUDIT] One Portage MI chunk runs a 2 GB cloud worker out of memory every time (found 2026-11-08, WO-1980/WO-1981).**
+  - **Issue**: job 12410 and then job 12555, both Portage MI "City Council Meeting 8-11-2026" (`portagemi.cablecast.tv/internetchannel/show/305`), chunk 9 of 9, 6m49s of audio. The worker logs "Detected language 'en'" and then restarts about 90 seconds later with no error line. Render says "Ran out of memory (used over 2GB)". Unknown whether the memory goes to Whisper itself or to the last-chunk work that follows it (the early-end tail sample in `_finished_transcript_warnings()`, an ffmpeg cut). Hamilton ON (`tvhamilton.cablecast.tv/show/528`, job 12556) may be the same case.
+  - **Impact**: with WO-1981 each such meeting now costs 3 crashes per cooldown cycle (1, 2, 4... days) instead of crashing the pool around the clock. The meeting never gets a transcript.
+  - **Next action**: on the office Mac, run the worker's chunk path for show 305 chunk 9 under `/usr/bin/time -l`, once with the early-end check off (`RTR_PARTIAL_TRANSCRIPT_CHECK=0`) and once on. That tells which half uses the memory.
+  - **Constraint**: Cablecast only, no YouTube, so the office Mac may fetch it.
+  - **History**: `BACKLOG_DONE.md` WO-1980 and WO-1981.
+
+- **[NEEDS-AUDIT] Two pages for one Portage MI meeting: auto-generation's re-resolve lands on a different page than its candidate (found 2026-11-12, WO-1981).**
+  - **Issue**: the candidate search kept offering `2026-08-11-city-council-meeting-8-11-2026` while job 12555 was live, so job 12555 sits on another page (the search skips a page with a live job). `_find_existing_page()` matches by URL alias, then `platform`+`external_id`, then `source_url_normalized`; one of those sends the re-resolve to the second page. Not checked which, or which page is the right one.
+  - **Impact**: a duplicate page in the Archive; WO-1981 stops it from looping the workers, but the candidate page still never gets a transcript.
+  - **Next action**: from the Render shell, read job 12555's `meeting_page_id` and both pages' `external_id`, `source_url_normalized` and `platform`; then merge or alias the duplicate.
+  - **Constraint**: needs the Render shell or the Archive token.
+  - **History**: `BACKLOG_DONE.md` WO-1981.
 
 - **[NEEDS-AUDIT] Tampa deep links assume the video starts at the first caption (found 2026-10-09, WO-1960).**
   - **Issue**: Tampa's transcript stamps are wall-clock times of day (for example 5:04:14 PM), not positions in the video. `app/platforms/tampa.py` turns the first caption's clock time into video 0:00 (`t0 = raw_entries[0][0]`, line 422) and nothing checks it. On meeting 2698 (2026-08-20) the page header gives a 5:01 PM start and the first caption is at 5:04:14 PM, a 3 minute 14 second gap; whether the video starts at the first caption was never measured. There is also no midnight handling: a line stamped after midnight gives a negative offset and `max(0, seconds - t0)` (line 425) clamps it to 0.

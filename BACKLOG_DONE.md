@@ -1,5 +1,41 @@
 # Backlog — done
 
+## [Done 2026-11-12] WO-1981: auto-generation kept re-queuing a meeting whose job landed on a different page
+
+**What happened.** On 2026-11-11 both cloud workers restarted about 94
+times in 30 hours ("Ran out of memory (used over 2GB)"). WO-1980 retired
+a job after 3 crashes, but a new job for the same Portage MI meeting
+appeared each time, and its chunk 9 of 9 crashed the worker again.
+
+**Cause.** The worker log of 2026-11-12 00:51-00:56 UTC shows the
+candidate search offering Portage's
+`2026-08-11-city-council-meeting-8-11-2026` while job 12555 was live, and
+each create call handing back job 12555. The search skips a page whose
+newest job is live (WO-1169), so job 12555 was on a different page: the
+re-resolve lands on a second page for the same meeting. Every failure
+counted against that second page. The candidate page never got a failed
+job, so it never cooled down, and `create_transcription_job()` does not
+check cooldown. A retired job was replaced at once. This also closes
+the 2026-10-19 entry "Idle auto-transcription re-picks the same meeting
+every 5 minutes after it fails"; its guess (the job files on a different
+page) was right.
+
+**Fix.** The worker passes its candidate's page id as
+`auto_candidate_page_id`. When the re-resolve lands on a different page
+that is live or cooling down (`_cooldown_active()`), no job is made. A
+failed job is recorded on the candidate page instead, so it cools down
+on the usual 1, 2, 4... day schedule. Same page, or a different page
+with no recent failure, behaves as before. Tests:
+`tests/test_auto_job_other_page.py`.
+
+**Still open.** Why that chunk needs more than 2 GB, and the duplicate
+page itself: two `BACKLOG.md` entries.
+
+**Not the cause.** The Render alert that started this named the Archive
+web service, `rtr-deeplink-archive`. The workers write to the database
+directly and send it no requests. The graph and logs read for this fix
+were the workers'. The Archive alert is unexplained.
+
 ## [Done 2026-11-10] WO-1980: one chunk that killed its worker every time took both workers down
 
 **What happened.** From about 2026-11-05 the two cloud workers kept

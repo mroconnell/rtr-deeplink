@@ -10778,6 +10778,7 @@ async def create_transcription_job(
     skip_confirmation: bool,
     priority: int = PRIORITY_MEDIUM,
     chunk_plan: Optional[list[dict]] = None,
+    auto_candidate_page_id: Optional[int] = None,
 ) -> dict:
     """Find-or-create the MeetingPage (a request can be the very first thing
     that ever creates a permanent page for a meeting -- the ephemeral
@@ -10807,12 +10808,58 @@ async def create_transcription_job(
     _flag_default_transcript_if_truncated_early()) -- runs regardless of
     which branch below actually creates a new job, since it only depends
     on the page and the duration, not on job creation succeeding.
+
+    `auto_candidate_page_id` (WO-1981): the page the worker's
+    auto-generation picked. The re-resolve can land on a DIFFERENT page
+    (a duplicate page for the same meeting). The candidate search applies
+    the failure cooldown to the candidate page only, so before this check
+    every job and every failure landed on the other page, the candidate
+    never cooled down, and a new job was made the moment the last one was
+    retired. When the landed-on page is live or cooling down, no job is
+    made; a failed job is recorded on the candidate page instead, so the
+    candidate cools down on the same schedule as any other failure.
     """
     async with async_session() as session:
         page, _ = await _find_or_create_page(session, payload, input_url_normalized)
         await _flag_default_transcript_if_truncated_early(
             session, page, probed_duration_seconds
         )
+
+        if auto_candidate_page_id is not None and page.id != auto_candidate_page_id:
+            history = (
+                await session.execute(
+                    select(TranscriptionJob.status, TranscriptionJob.updated_at)
+                    .where(TranscriptionJob.meeting_page_id == page.id)
+                    .order_by(TranscriptionJob.created_at.desc())
+                )
+            ).all()
+            if _cooldown_active(
+                [tuple(r) for r in history], datetime.now(timezone.utc)
+            ):
+                session.add(
+                    TranscriptionJob(
+                        meeting_page_id=auto_candidate_page_id,
+                        requester_email=requester_email,
+                        status="failed",
+                        media_url="",
+                        media_kind="video",
+                        probed_duration_seconds=0,
+                        chunk_size_seconds=1,
+                        total_chunks=1,
+                        error_message=(
+                            f"This meeting resolves to another page ({page.slug}), "
+                            "which already has a job running or is cooling down "
+                            "after a failure."
+                        ),
+                        priority=PRIORITY_LOW,
+                    )
+                )
+                await session.commit()
+                return {
+                    "error": "resolved_page_cooling_down",
+                    "slug": page.slug,
+                    "meeting_page_id": page.id,
+                }
 
         not_expired_pending = or_(
             TranscriptionJob.status.in_(SPENDING_JOB_STATUSES),
