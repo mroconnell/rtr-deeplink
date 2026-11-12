@@ -290,18 +290,6 @@ https://vimeo.com/1138505216		us:sd:4502580	See All Posts
 https://vimeo.com/1221950774/c16ddef869		us:sd:5100270	Speak at a School Board Meeting
 https://player.vimeo.com/video/1129030971?h=4e0a44e244		us:sd:5000398	School Board
 https://vimeo.com/1164402752/c7fcc95910		us:sd:3021850	School Board
-https://newrochelle.granicus.com/MediaPlayer.php?clip_id=2784&view_id=2	https://newrochelle.granicus.com/	us:place:3650617
-https://cablecast.lmcc-tv.org/CablecastPublicSite/show/57565?site=1	https://cablecast.lmcc-tv.org/CablecastPublicSite/?channel=2	us:place:2767130
-https://townhallstreams.com/stream.php?location_id=98&id=76634	https://townhallstreams.com/town.php?id=98	us:cousub:3301360020
-https://ectorcountyisdtx.new.swagit.com/videos/264402		us:sd:4818000
-https://allenisd.new.swagit.com/videos/400821		us:sd:4807890
-https://chisd.new.swagit.com/videos/399576		us:sd:4813230
-https://pbtisd.new.swagit.com/videos/400943		us:sd:4834550
-https://eanesisdtx.new.swagit.com/videos/401933		us:sd:4817760
-https://mountpleasantisdtx.new.swagit.com/videos/398878		us:sd:4831760
-https://nvusd.granicus.com/MediaPlayer.php?view_id=2&clip_id=703		us:sd:0626640
-https://pitkincounty.granicus.com/MediaPlayer.php?view_id=2&clip_id=691		us:county:08097
-https://harrisonburg-va.granicus.com/MediaPlayer.php?view_id=4&clip_id=1374		rtr:us:va:harrisonburg-redevelopment-and-housing-authority
 https://richardsonisdtx.new.swagit.com/videos/402097		us:sd:4837020
 https://sciotownship.granicus.com/MediaPlayer.php?view_id=28&clip_id=2103		rtr:us:mi:loch-alpine-sanitary-authority
 https://sitka.legistar.com/MeetingDetail.aspx?LEGID=7712&GID=98&G=3C3263A1-439F-4A7D-8F9E-B05DD1696EAC	https://cityofsitka.com/	us:county:02220
