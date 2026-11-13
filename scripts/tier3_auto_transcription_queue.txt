@@ -290,18 +290,6 @@ https://vimeo.com/1138505216		us:sd:4502580	See All Posts
 https://vimeo.com/1221950774/c16ddef869		us:sd:5100270	Speak at a School Board Meeting
 https://player.vimeo.com/video/1129030971?h=4e0a44e244		us:sd:5000398	School Board
 https://vimeo.com/1164402752/c7fcc95910		us:sd:3021850	School Board
-https://richardsonisdtx.new.swagit.com/videos/402097		us:sd:4837020
-https://sciotownship.granicus.com/MediaPlayer.php?view_id=28&clip_id=2103		rtr:us:mi:loch-alpine-sanitary-authority
-https://sitka.legistar.com/MeetingDetail.aspx?LEGID=7712&GID=98&G=3C3263A1-439F-4A7D-8F9E-B05DD1696EAC	https://cityofsitka.com/	us:county:02220
-https://vvuhsd.new.swagit.com/videos/395521		us:sd:0636972
-https://cityofstamford.granicus.com/MediaPlayer.php?view_id=3&clip_id=16235		us:sd:0904320
-https://samtrans.granicus.com/MediaPlayer.php?view_id=3&clip_id=1538		rtr:us:ca:peninsula-corridor-joint-powers-board	JPB Technology, Operations, Planning, and Safety (TOPS) Committee	2026-09-23	Peninsula Corridor Joint Powers Board TOPS Committee
-https://samtrans.granicus.com/MediaPlayer.php?view_id=1&clip_id=1540		rtr:us:ca:san-mateo-county-transit-district	SamTrans Citizens Advisory Committee	2026-10-01	SamTrans Citizens Advisory Committee
-https://samtrans.granicus.com/MediaPlayer.php?view_id=2&clip_id=1542		rtr:us:ca:san-mateo-county-transportation-authority	SMCTA Board of Directors	2026-10-02	SMCTA Board of Directors
-https://alamedactc.granicus.com/MediaPlayer.php?view_id=1&clip_id=1004		rtr:us:ca:alameda-county-transportation-commission	Alameda County Transportation Commission (Commission)	2026-09-24	Alameda CTC Commission
-https://marin.granicus.com/MediaPlayer.php?view_id=31&clip_id=13304		rtr:us:ca:marin-county-transit-district	Marin Transit Board	2026-09-14	Marin Transit Board
-https://marin.granicus.com/MediaPlayer.php?view_id=24&clip_id=13316		rtr:us:ca:transportation-authority-of-marin	TAM Board of Commissioners Meeting	2026-09-24	TAM Board of Commissioners
-https://pinole.granicus.com/MediaPlayer.php?view_id=2&clip_id=2185		rtr:us:ca:western-contra-costa-transit-authority	Westcat Board of Directors Meeting	2024-05-09	WestCAT Board of Directors
 https://santamonica.granicus.com/MediaPlayer.php?view_id=5&clip_id=5597		us:sd:0635700
 https://lake-citymn.granicus.com/MediaPlayer.php?view_id=1&clip_id=201
 https://landercountynv.granicus.com/MediaPlayer.php?view_id=1&clip_id=95
@@ -1232,3 +1220,14 @@ https://yolocountyca.new.swagit.com/videos/389312		us:county:06113
 https://hidalgocountytx.new.swagit.com/videos/355589		us:county:48215
 https://butlercountyoh.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=2831&Format=Agenda	https://butlercountyoh.iqm2.com/Citizens/Default.aspx	us:county:39017
 https://roanokecountyva.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1280&Format=Agenda	https://roanokecountyva.iqm2.com/Citizens/Default.aspx	us:county:51161
+https://richardsonisdtx.new.swagit.com/videos/402097		us:sd:4837020
+https://sciotownship.granicus.com/MediaPlayer.php?view_id=28&clip_id=2103		rtr:us:mi:loch-alpine-sanitary-authority
+https://sitka.legistar.com/MeetingDetail.aspx?LEGID=7712&GID=98&G=3C3263A1-439F-4A7D-8F9E-B05DD1696EAC	https://cityofsitka.com/	us:county:02220
+https://vvuhsd.new.swagit.com/videos/395521		us:sd:0636972
+https://cityofstamford.granicus.com/MediaPlayer.php?view_id=3&clip_id=16235		us:sd:0904320
+https://samtrans.granicus.com/MediaPlayer.php?view_id=3&clip_id=1538		rtr:us:ca:peninsula-corridor-joint-powers-board	JPB Technology, Operations, Planning, and Safety (TOPS) Committee	2026-09-23	Peninsula Corridor Joint Powers Board TOPS Committee
+https://samtrans.granicus.com/MediaPlayer.php?view_id=1&clip_id=1540		rtr:us:ca:san-mateo-county-transit-district	SamTrans Citizens Advisory Committee	2026-10-01	SamTrans Citizens Advisory Committee
+https://samtrans.granicus.com/MediaPlayer.php?view_id=2&clip_id=1542		rtr:us:ca:san-mateo-county-transportation-authority	SMCTA Board of Directors	2026-10-02	SMCTA Board of Directors
+https://alamedactc.granicus.com/MediaPlayer.php?view_id=1&clip_id=1004		rtr:us:ca:alameda-county-transportation-commission	Alameda County Transportation Commission (Commission)	2026-09-24	Alameda CTC Commission
+https://marin.granicus.com/MediaPlayer.php?view_id=31&clip_id=13304		rtr:us:ca:marin-county-transit-district	Marin Transit Board	2026-09-14	Marin Transit Board
+https://marin.granicus.com/MediaPlayer.php?view_id=24&clip_id=13316		rtr:us:ca:transportation-authority-of-marin	TAM Board of Commissioners Meeting	2026-09-24	TAM Board of Commissioners
