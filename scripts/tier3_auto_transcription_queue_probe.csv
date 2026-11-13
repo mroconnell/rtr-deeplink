@@ -12734,3 +12734,15 @@ https://pitkincounty.granicus.com/MediaPlayer.php?view_id=2&clip_id=691,granicus
 https://pitkincounty.granicus.com/MediaPlayer.php?view_id=2&clip_id=691,granicus,hls-master+variant,3910.20,,,1,accept,,0.58,2026-11-12T20:28:15+00:00,feed_tier3_auto_transcription,0
 https://harrisonburg-va.granicus.com/MediaPlayer.php?view_id=4&clip_id=1374,granicus,hls-master+variant,4417.76,,,1,accept,,4.47,2026-11-12T20:28:24+00:00,,0
 https://harrisonburg-va.granicus.com/MediaPlayer.php?view_id=4&clip_id=1374,granicus,hls-master+variant,4417.76,,,1,accept,,0.18,2026-11-12T20:28:24+00:00,feed_tier3_auto_transcription,0
+https://richardsonisdtx.new.swagit.com/videos/402097,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.07,2026-11-13T07:19:04+00:00,,0
+https://sciotownship.granicus.com/MediaPlayer.php?view_id=28&clip_id=2103,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-11-13T07:19:06+00:00,,0
+https://sitka.legistar.com/MeetingDetail.aspx?LEGID=7712&GID=98&G=3C3263A1-439F-4A7D-8F9E-B05DD1696EAC,legistar,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-11-13T07:19:10+00:00,,0
+https://vvuhsd.new.swagit.com/videos/395521,swagit,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-11-13T07:19:12+00:00,,0
+https://cityofstamford.granicus.com/MediaPlayer.php?view_id=3&clip_id=16235,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-11-13T07:19:14+00:00,,0
+https://samtrans.granicus.com/MediaPlayer.php?view_id=3&clip_id=1538,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-11-13T07:19:17+00:00,,0
+https://samtrans.granicus.com/MediaPlayer.php?view_id=1&clip_id=1540,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-11-13T07:19:19+00:00,,0
+https://samtrans.granicus.com/MediaPlayer.php?view_id=2&clip_id=1542,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.03,2026-11-13T07:19:21+00:00,,0
+https://alamedactc.granicus.com/MediaPlayer.php?view_id=1&clip_id=1004,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.02,2026-11-13T07:19:24+00:00,,0
+https://marin.granicus.com/MediaPlayer.php?view_id=31&clip_id=13304,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-11-13T07:19:26+00:00,,0
+https://marin.granicus.com/MediaPlayer.php?view_id=24&clip_id=13316,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-11-13T07:19:28+00:00,,0
+https://pinole.granicus.com/MediaPlayer.php?view_id=2&clip_id=2185,granicus,range-asf-header,,,,0,reject-dead,ranged GET on the media file returned HTTP 403,0.10,2026-11-13T07:19:31+00:00,,0
