@@ -290,18 +290,6 @@ https://vimeo.com/1138505216		us:sd:4502580	See All Posts
 https://vimeo.com/1221950774/c16ddef869		us:sd:5100270	Speak at a School Board Meeting
 https://player.vimeo.com/video/1129030971?h=4e0a44e244		us:sd:5000398	School Board
 https://vimeo.com/1164402752/c7fcc95910		us:sd:3021850	School Board
-https://santamonica.granicus.com/MediaPlayer.php?view_id=5&clip_id=5597		us:sd:0635700
-https://lake-citymn.granicus.com/MediaPlayer.php?view_id=1&clip_id=201
-https://landercountynv.granicus.com/MediaPlayer.php?view_id=1&clip_id=95
-https://lex-co.granicus.com/MediaPlayer.php?view_id=1&clip_id=1887
-https://lindstrom.granicus.com/MediaPlayer.php?view_id=1&clip_id=400
-https://mcdonough.granicus.com/MediaPlayer.php?view_id=1&clip_id=353
-https://cityofpilotpoint.granicus.com/MediaPlayer.php?view_id=1&clip_id=210
-https://princegeorgescountymd.granicus.com/MediaPlayer.php?view_id=2&clip_id=5241
-https://cityofringgoldga.granicus.com/MediaPlayer.php?view_id=1&clip_id=228
-https://rocklin-ca.granicus.com/MediaPlayer.php?view_id=1&clip_id=415
-https://sanmiguelcountyco.granicus.com/MediaPlayer.php?view_id=1&clip_id=597
-https://southwhitehall.granicus.com/MediaPlayer.php?view_id=1&clip_id=54
 https://play.champds.com/northmiamifl/event/620		us:place:1249450
 https://www.lac-sainte-marie.com/images/proces-verbaux-videos/2026-01-14-pv-video.mp4	https://www.lac-sainte-marie.com/le-conseil/calendrier-des-seances	ca:csd:2483020	Calendrier des séances
 https://saintgabrieldebrandon.com/storage/app/media/municipalite/seances-du-conseil/Dictaphone-14-02-2022.m4a	https://saintgabrieldebrandon.com/municipalite/conseil-municipal/seances-du-conseil-et-proces-verbaux	ca:csd:2452085
@@ -1231,3 +1219,14 @@ https://samtrans.granicus.com/MediaPlayer.php?view_id=2&clip_id=1542		rtr:us:ca:
 https://alamedactc.granicus.com/MediaPlayer.php?view_id=1&clip_id=1004		rtr:us:ca:alameda-county-transportation-commission	Alameda County Transportation Commission (Commission)	2026-09-24	Alameda CTC Commission
 https://marin.granicus.com/MediaPlayer.php?view_id=31&clip_id=13304		rtr:us:ca:marin-county-transit-district	Marin Transit Board	2026-09-14	Marin Transit Board
 https://marin.granicus.com/MediaPlayer.php?view_id=24&clip_id=13316		rtr:us:ca:transportation-authority-of-marin	TAM Board of Commissioners Meeting	2026-09-24	TAM Board of Commissioners
+https://santamonica.granicus.com/MediaPlayer.php?view_id=5&clip_id=5597		us:sd:0635700
+https://lake-citymn.granicus.com/MediaPlayer.php?view_id=1&clip_id=201
+https://landercountynv.granicus.com/MediaPlayer.php?view_id=1&clip_id=95
+https://lex-co.granicus.com/MediaPlayer.php?view_id=1&clip_id=1887
+https://lindstrom.granicus.com/MediaPlayer.php?view_id=1&clip_id=400
+https://mcdonough.granicus.com/MediaPlayer.php?view_id=1&clip_id=353
+https://cityofpilotpoint.granicus.com/MediaPlayer.php?view_id=1&clip_id=210
+https://cityofringgoldga.granicus.com/MediaPlayer.php?view_id=1&clip_id=228
+https://rocklin-ca.granicus.com/MediaPlayer.php?view_id=1&clip_id=415
+https://sanmiguelcountyco.granicus.com/MediaPlayer.php?view_id=1&clip_id=597
+https://southwhitehall.granicus.com/MediaPlayer.php?view_id=1&clip_id=54
