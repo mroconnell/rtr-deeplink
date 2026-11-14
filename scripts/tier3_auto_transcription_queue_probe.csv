@@ -12770,3 +12770,16 @@ https://files.smartsites.parentsquare.com/4718/board-audio_reg-exec_09-21-2026.m
 https://stlouispark.granicus.com/MediaPlayer.php?view_id=1&clip_id=473,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.17,2026-11-14T07:03:09+00:00,,0
 https://sunvalley.granicus.com/MediaPlayer.php?view_id=2&clip_id=1251,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.05,2026-11-14T07:03:48+00:00,,0
 https://westspringfieldma.granicus.com/MediaPlayer.php?view_id=1&clip_id=476,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.04,2026-11-14T07:04:00+00:00,,0
+https://windhamweb.granicus.com/MediaPlayer.php?view_id=2&clip_id=1169,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.11,2026-11-14T18:29:47+00:00,,0
+https://transylvaniacounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=8,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-11-14T18:29:49+00:00,,0
+https://treasureislandfl.granicus.com/MediaPlayer.php?view_id=1&clip_id=1019,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-11-14T18:29:53+00:00,,0
+https://unioncountync.granicus.com/MediaPlayer.php?view_id=1&clip_id=474,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-11-14T18:29:55+00:00,,0
+https://vicksburg-ms.granicus.com/MediaPlayer.php?view_id=2&clip_id=1787,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-11-14T18:29:59+00:00,,0
+https://laramiecounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=444,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-11-14T18:30:01+00:00,,0
+https://cityofpowell.granicus.com/MediaPlayer.php?view_id=2&clip_id=1089,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-11-14T18:30:05+00:00,,0
+https://cityofracine.granicus.com/MediaPlayer.php?view_id=1&clip_id=797,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-11-14T18:30:08+00:00,,0
+https://tustin.granicus.com/MediaPlayer.php?view_id=2&clip_id=2960,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-11-14T18:30:11+00:00,,0
+https://windsor-ca.granicus.com/MediaPlayer.php?view_id=2&clip_id=1861,granicus,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 403,0.01,2026-11-14T18:30:16+00:00,,0
+https://reflect-trurotv.cablecast.tv/internetchannel/show/9033?channel=1,cablecast,cablecast-api,823.00,2026-09-21,,1,accept,,0.20,2026-11-14T18:30:18+00:00,,0
+https://reflect-trurotv.cablecast.tv/internetchannel/show/9033?channel=1,cablecast,cablecast-api,823.00,2026-09-21,,1,accept,,0.03,2026-11-14T18:30:18+00:00,feed_tier3_auto_transcription,0
+https://cowleycoks.portal.civicclerk.com/event/1069/media,civicclerk,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.09,2026-11-14T18:30:21+00:00,,0
