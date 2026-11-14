@@ -293,18 +293,6 @@ https://vimeo.com/1164402752/c7fcc95910		us:sd:3021850	School Board
 https://vimeo.com/1223529996		us:place:3644787
 https://vimeo.com/1233006487		us:place:2018250
 https://vimeo.com/1233494766		us:place:2633420
-https://drive.google.com/file/d/1vWXko92M3MLgnwLlMNxbQUmrjEM20ctt/view?usp=sharing	https://wyomissingboro.org/188/Borough-Council	us:place:4286880
-https://4.files.edl.io/01f7/08/20/26/220238-98c33165-721d-48e7-863a-e5cb33c21efa.m4a		us:sd:0200570		2026-08-11
-https://content.myconnectsuite.com/api/documents/068bd87981c4441b9429de36e9047a2f.m4a	https://www.ezzellisd.org/boardoftrustees	us:sd:4818890
-https://rosebudcountymt.gov/video-minutes/6-2-2026-2/	https://rosebudcountymt.gov/video-minutes/6-2-2026-2/	us:county:30087
-https://drive.google.com/file/d/1kdi-UYPXA5gCP5srrmFj2f6wSe3HjA70/view	https://orangebeachal.gov/292/Council-Recordings	us:place:0157144
-https://johnqit.com/coc/7-28-26.MP3	https://www.cityofcolstrip.com/citycouncil	us:place:3016525
-http://reflect-northwest-access.cablecast.tv/internetchannel/show/22480?site=2		us:place:5061675
-https://bcms-files.s3.amazonaws.com/J5p0q5O049-1715/docs/board/select-board/03-27-2026-SB-Meeting-3.m4a	https://www.weld-maine.org/municipal-meetings	us:cousub:2300781300
-https://drive.google.com/file/d/1L3TNlQ-s8B581_Wa6SWdgOtLXGKkO6Jf/view?usp=sharing	https://www.donaldoregon.gov/councilmeetings	us:place:4120100
-https://drive.google.com/file/d/12UEfUVFJWGJcLI9hL6b4kaktoOaDAT-H/view?usp=sharing	https://whitingindiana.com/government/agendas_minutes/board_of_public_works_and_safety.php	us:place:1884122
-https://www.guildhallvt.org/uploads/5/8/4/0/5840249/sb-mtg-26-09-15-dw_c0132.mp3	https://www.guildhallvt.org/select-board.html	us:cousub:5000930775
-https://drive.google.com/file/d/1IMm1eZTobxYw5l-waW_4rcBJZyaalT_W/view?usp=drive_web	http://www.bensonvermont.gov/select-board-meeting-voice-recordings-added-to-documents-page/	us:cousub:5002105200
 https://drive.google.com/file/d/1Bfo3VB4UTOcQCnWPC3g4tTqBx9zBVxWf/view?usp=sharing	https://cityofottawa.org/AgendaCenter	us:place:1756926
 https://static1.squarespace.com/static/606342d01f37ad2029c30ca8/t/6909f960f610160cdecb2570/1762261370459/November+3%2C+2025.mp3	https://www.gibsonvillenc.org/mayor-board-of-aldermen	us:place:3725980
 https://drive.google.com/file/d/1Pjj3EgJ8L6jIJQ6bAohQUspPcM9ETt2w/view?usp=drive_link	https://cityofkrum.com/government/agendas-and-minutes/	us:place:4839928
