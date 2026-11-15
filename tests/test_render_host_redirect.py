@@ -67,6 +67,7 @@ def test_no_redirect_loop_when_public_base_url_is_render(monkeypatch):
 def locked(monkeypatch):
     monkeypatch.setenv("PUBLIC_BASE_URL", PUBLIC)
     monkeypatch.setenv("ORIGIN_SHARED_SECRET", "s3cret")
+    monkeypatch.setenv("ORIGIN_LOCK_MODE", "enforce")
     return TestClient(app.main.app, follow_redirects=False)
 
 
@@ -101,3 +102,45 @@ def test_render_host_pages_still_redirect_when_locked(locked):
 
 def test_no_lock_without_secret(client):
     assert client.get(f"{PUBLIC}/robots.txt").status_code == 200
+
+
+def test_stray_whitespace_on_either_side_still_matches(monkeypatch, locked):
+    monkeypatch.setenv("ORIGIN_SHARED_SECRET", "s3cret\n")
+    r = locked.get(f"{PUBLIC}/robots.txt", headers={"X-Origin-Auth": " s3cret "})
+    assert r.status_code == 200
+
+
+@pytest.fixture
+def check_only(monkeypatch):
+    monkeypatch.setenv("PUBLIC_BASE_URL", PUBLIC)
+    monkeypatch.setenv("ORIGIN_SHARED_SECRET", "s3cret")
+    monkeypatch.delenv("ORIGIN_LOCK_MODE", raising=False)
+    monkeypatch.setenv("ADMIN_STATS_TOKEN", "admintok")
+    for key in list(app.main._origin_lock_counts):
+        monkeypatch.setitem(app.main._origin_lock_counts, key, 0)
+    return TestClient(app.main.app, follow_redirects=False)
+
+
+def test_check_only_mode_serves_and_counts(check_only):
+    assert check_only.get(f"{PUBLIC}/robots.txt").status_code == 200
+    r = check_only.get(f"{PUBLIC}/robots.txt", headers={"X-Origin-Auth": "nope"})
+    assert r.status_code == 200
+    r = check_only.get(f"{PUBLIC}/robots.txt", headers={"X-Origin-Auth": "s3cret"})
+    assert r.status_code == 200
+    report = check_only.get(
+        f"{RENDER}/admin/origin-lock-check",
+        headers={"Authorization": "Bearer admintok"},
+    ).json()
+    assert report["mode"] == "check-only"
+    assert report["secret_set"] is True
+    assert report["counts"] == {
+        "match": 1,
+        "missing": 1,
+        "mismatch": 1,
+        "last_mismatch_length": 4,
+    }
+    assert "s3cret" not in str(report)
+
+
+def test_lock_check_needs_admin_token(check_only):
+    assert check_only.get(f"{RENDER}/admin/origin-lock-check").status_code == 404
