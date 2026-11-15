@@ -295,18 +295,6 @@ https://vimeo.com/1233006487		us:place:2018250
 https://vimeo.com/1233494766		us:place:2633420
 https://vimeo.com/1231005435		us:place:2970000
 https://player.vimeo.com/video/784792836?h=e33e8fbaac&byline=0		us:county:13247
-http://media2.co.stanislaus.ca.us/ondemand/planning/2026/planning-meeting-01-15-2026.mp4	https://www.stancounty.com/bos/index.shtm	us:county:06099
-https://schedule.hanoverctv.org/internetchannel/show/4005?channel=2		us:sd:2505790
-https://resources.finalsite.net/videos/t_video_h265_480/v1751035881/smsdorg/apsua5izcf8lnz3nqfot/BOE62325.mp4	https://www.smsd.org/about/board-of-education	us:sd:2011640
-https://svusdorg.finalsite.com/uploaded/SVUSD_Department_Files/Board_of_Education/Videos/08-05-26_Board_Meeting_1.mp3	https://www.svusd.org/board/meeting-recordings	us:sd:0633860
-https://4.files.edl.io/480d/08/03/23/001006-f389d078-f34a-4d9f-b509-d45034c14d1c.mp3	https://www.rowlandschools.org/apps/pages/index.jsp?uREC_ID=40406&type=d&pREC_ID=2758188	us:sd:0633750
-https://drive.google.com/file/d/1fJ3RSpw8npthfIw75i_aJMlvLFY5t0st/view	https://www.eesd.org/district/board-of-trustees/board-meetings/schedule	us:sd:0613140
-https://resources.finalsite.net/videos/t_video_mp4_720/v1769211280/wsdk8us/cgb7hblcxqdll2gpkaub/BoardMeetingJanuary222026.mp4	https://www.wsdk8.us/aboutboard-of-education/board-meeting-archives	us:sd:0642150
-https://pgsk12.new.swagit.com/videos/394547		us:sd:5103090
-https://drive.google.com/file/d/10nrjv7irK00ws47c18DbwdiDFwMpR6Ud/view?usp=drive_link	https://bethel.k12.or.us/52367_3	us:sd:4102040
-https://resources.finalsite.net/videos/v1740371669/bbhcsdorg/sq8o3lxbu5ukzt1cvf2i/BOE2014-06-04-Special-Meeting.mp3	https://www.bbhcsd.org/board-of-education/board-meetings/2014-meetings/public-meeting-june-4-2014	us:sd:3904364	Public Meeting – June 4, 2014	2014-06-04
-https://files.smartsites.parentsquare.com/4278/boardmeeting_091426.mp4	https://vidorisd.org/70282_2	us:sd:4844160
-https://drive.google.com/file/d/1PUmrr7hDjBNAC6O53ONa2e6dUz3qJP8R/view?usp=sharing	https://www.rrcs.org/BoardofEducation.aspx	us:sd:3904470
 https://files.smartsites.parentsquare.com/7134/gilmer-isd-regular-board-meeting-09-15-2025_2025-09-15_1.mp3	https://gilmerisd.org/schoolboard	us:sd:4820700
 https://files.smartsites.parentsquare.com/10005/june_30_2026_special_meeting.mp3	https://greencastle.k12.in.us/board-documents	us:sd:1803990
 https://drive.google.com/file/d/1c1lrAEh2QVdcyZnTxnKfZEqDT22Whdmh/view	https://pilotpointisd.com/school-board-recording	us:sd:4834920
@@ -1195,3 +1183,4 @@ https://cityofpowell.granicus.com/MediaPlayer.php?view_id=2&clip_id=1089
 https://cityofracine.granicus.com/MediaPlayer.php?view_id=1&clip_id=797
 https://tustin.granicus.com/MediaPlayer.php?view_id=2&clip_id=2960
 https://windsor-ca.granicus.com/MediaPlayer.php?view_id=2&clip_id=1861
+https://pgsk12.new.swagit.com/videos/394547		us:sd:5103090
