@@ -3519,6 +3519,20 @@ this:
    `match`, `missing`, `mismatch`, and the length of the last wrong
    value. It never returns the secret.
 
+**The lock does not work on Render (confirmed 2026-11-15). Do not
+turn on `enforce`.** In check-only mode, 705 of 705 requests arrived
+with no `X-Origin-Auth` at all, including test requests that went
+through our Cloudflare zone. The Transform Rule itself was correct.
+`GET /admin/request-headers` (admin token, PR #2172) then showed that a
+request through our zone and a request straight to Render
+(`curl --resolve redtaperecordings.com:443:216.24.57.1`) arrive
+identical: the same 16 header names, `CDN-Loop: cloudflare; loops=1`,
+and 2 X-Forwarded-For hops. Render serves custom domains behind its
+own Cloudflare, and nothing our zone adds survives to the app. So the
+app cannot tell the two paths apart. The steps below are kept as a
+record only. See BACKLOG.md, "A scraper copies the Archive by reaching
+Render directly".
+
 **First try failed (2026-11-15).** The lock went straight to blocking.
 Requests through Cloudflare then got 403 too: the header Cloudflare sent
 did not match the value in Render. It was rolled back within minutes. The

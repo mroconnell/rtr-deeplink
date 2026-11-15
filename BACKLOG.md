@@ -262,7 +262,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (79)
   16 pins in `tenant_overrides.csv` name a minted id with no registry…
   Four TelVue pages for special bodies would be re-keyed to a town or…
 
-Reliability, ops & cost  (6)
+Reliability, ops & cost  (7)
   `[BIG]` Make BACKLOG.md a generated doc: one file per entry
   `[WAIT]` Run the local Whisper recovery on the ~159 Granicus/Swagit…  (1)
     [NEEDS-AUDIT] `rtr-deeplink-archive`'s "HTTP health check failed"…
@@ -273,6 +273,7 @@ Reliability, ops & cost  (6)
   Search Console, structured data & SEO plumbing  (1)
     [NEEDS-AUDIT] Search Console "Missing field" flags (Videos…
   `/coverage` as a QA surface
+  A scraper copies the Archive by reaching Render directly, and the app…
 
 Trust, safety & data quality  (12)
   Shade the stretches of a Whisper transcript where Whisper itself was…
@@ -2084,6 +2085,14 @@ actionability sections above.
   - **History**: `BACKLOG_DONE.md` "Search Console dashboard walkthrough" (2026-08-29); dashboard checklist #1338.
 
 ### `/coverage` as a QA surface
+
+### A scraper copies the Archive by reaching Render directly, and the app cannot tell it from Cloudflare traffic
+
+- **Issue**: from 2026-11-11 to 14, about 3,150 of 7,203 GA views came from a scraper. Each visit loaded one `/m/` page, came direct, and used Chrome at 1280x1200, mostly from Singapore. GA logged them on redtaperecordings.com, but our Cloudflare zone saw almost none of them. Render's own address now redirects page loads (PR #2169). The public domain does not, because Render answers it directly (216.24.57.1).
+- **Impact**: the public pages get copied, and GA counts are inflated. There is no load or cost harm: Render's daily requests stayed in their normal range.
+- **Next action**: none in code for now. Filter GA (exclude Singapore, China, "(not set)" city). Revisit only if load or cost rises.
+- **Constraint**: a header-based origin lock cannot work on Render. Our zone's Transform Rule header never reaches the app (`/admin/origin-lock-check`: 705 missing, 0 match). `/admin/request-headers` (PR #2172) showed identical headers through our Cloudflare and direct to Render (CDN-Loop `loops=1`, same 16 names, 2 forwarding hops). Never set `ORIGIN_LOCK_MODE=enforce`: on 2026-11-15 it refused every visitor until it was rolled back.
+- **History**: README "Cloudflare and the origin lock"; PRs #2169, #2170, #2172.
 
 ## Trust, safety & data quality
 
