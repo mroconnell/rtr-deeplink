@@ -3491,6 +3491,42 @@ worker/
                            there too
 ```
 
+## Cloudflare and the origin lock
+
+redtaperecordings.com, `www` and `test` are on Cloudflare (free plan),
+proxied, pointing at the `rtr-deeplink` Render service. This was set up
+in the Cloudflare dashboard and was not written down here until
+2026-11-15.
+
+Render also answers directly, on `rtr-deeplink.onrender.com` and on its
+public IP. Traffic that goes there skips Cloudflare. On 2026-11-11 to 14
+a scraper loaded about 3,200 different `/m/` pages that way (GA counted
+them; Cloudflare saw almost none). Two checks in `app/main.py` close
+this:
+
+1. `redirect_render_host_to_public`: a GET/HEAD page load on any
+   `*.onrender.com` host gets a 301 to `PUBLIC_BASE_URL`. `/api/*` and
+   `/admin/*` stay on the Render address, because UptimeRobot, the
+   Render health check and the GitHub Actions jobs (`RESOLVER_BASE_URL`)
+   use it.
+2. `require_cloudflare_for_public_host`: when `ORIGIN_SHARED_SECRET` is
+   set, any other host must send `X-Origin-Auth` with that value, or it
+   gets a 403. Only `/api/health` is exempt.
+
+To turn the lock on (order matters, or the site goes down):
+
+1. Make a long random value.
+2. In Cloudflare: zone redtaperecordings.com, Rules, then Transform
+   Rules, then "Modify Request Header". Create a rule for all incoming
+   requests that **sets** the header `X-Origin-Auth` to that value.
+   Deploy it.
+3. In Render: `rtr-deeplink` service, Environment. Add
+   `ORIGIN_SHARED_SECRET` with the same value. Save; that redeploys.
+4. Check: the site loads in a browser, and UptimeRobot stays green.
+
+To turn it off, delete `ORIGIN_SHARED_SECRET` in Render first, then the
+Cloudflare rule.
+
 ## Known limitations
 
 Governments that publish meeting video only on a channel, playlist or

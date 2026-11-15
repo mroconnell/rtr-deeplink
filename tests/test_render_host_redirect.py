@@ -58,3 +58,46 @@ def test_no_redirect_loop_when_public_base_url_is_render(monkeypatch):
     monkeypatch.setenv("PUBLIC_BASE_URL", RENDER)
     c = TestClient(app.main.app, follow_redirects=False)
     assert c.get(f"{RENDER}/robots.txt").status_code == 200
+
+
+# --- Origin lock: the public domain must arrive through Cloudflare ---
+
+
+@pytest.fixture
+def locked(monkeypatch):
+    monkeypatch.setenv("PUBLIC_BASE_URL", PUBLIC)
+    monkeypatch.setenv("ORIGIN_SHARED_SECRET", "s3cret")
+    return TestClient(app.main.app, follow_redirects=False)
+
+
+def test_public_host_without_header_is_refused(locked):
+    assert locked.get(f"{PUBLIC}/robots.txt").status_code == 403
+
+
+def test_public_host_with_wrong_header_is_refused(locked):
+    r = locked.get(f"{PUBLIC}/robots.txt", headers={"X-Origin-Auth": "nope"})
+    assert r.status_code == 403
+
+
+def test_public_host_with_header_is_served(locked):
+    r = locked.get(f"{PUBLIC}/robots.txt", headers={"X-Origin-Auth": "s3cret"})
+    assert r.status_code == 200
+
+
+def test_health_check_needs_no_header(locked):
+    assert locked.get(f"{PUBLIC}/api/health").status_code != 403
+
+
+def test_render_host_admin_and_api_need_no_header(locked):
+    assert locked.get(f"{RENDER}/admin/version").status_code != 403
+    assert locked.get(f"{RENDER}/api/health").status_code != 403
+
+
+def test_render_host_pages_still_redirect_when_locked(locked):
+    r = locked.get(f"{RENDER}/about")
+    assert r.status_code == 301
+    assert r.headers["location"] == f"{PUBLIC}/about"
+
+
+def test_no_lock_without_secret(client):
+    assert client.get(f"{PUBLIC}/robots.txt").status_code == 200

@@ -1,5 +1,6 @@
 import asyncio
 import csv
+import hmac
 import html
 import io
 import json
@@ -209,6 +210,42 @@ async def redirect_render_host_to_public(request: Request, call_next):
             if request.url.query:
                 target += "?" + request.url.query
             return RedirectResponse(target, status_code=301)
+    return await call_next(request)
+
+
+# Header Cloudflare adds to every request it forwards (a Transform Rule on
+# the redtaperecordings.com zone), carrying ORIGIN_SHARED_SECRET.
+_ORIGIN_AUTH_HEADER = "x-origin-auth"
+
+
+@app.middleware("http")
+async def require_cloudflare_for_public_host(request: Request, call_next):
+    """Turn away requests for the public domain that skipped Cloudflare.
+
+    Why (2026-11-15): from Nov 11-14 a scraper loaded ~3,200 different
+    /m/ meeting pages, one per visit (Chrome, 1280x1200, direct, mostly
+    Singapore). GA recorded every view on redtaperecordings.com, yet
+    Cloudflare saw almost none of them, so the scraper reached Render
+    with Host: redtaperecordings.com without passing through Cloudflare.
+
+    When ORIGIN_SHARED_SECRET is set, a request on any host other than
+    *.onrender.com must carry the matching header, which only Cloudflare
+    adds. *.onrender.com is handled by redirect_render_host_to_public
+    above (its /api/* and /admin/* stay reachable for health checks and
+    GitHub Actions). /api/health stays open on every host for Render's
+    own health check. Unset secret means no check (local runs, tests).
+    """
+    secret = os.environ.get("ORIGIN_SHARED_SECRET", "")
+    host = (request.url.hostname or "").lower()
+    if (
+        secret
+        and not host.endswith(".onrender.com")
+        and request.url.path != "/api/health"
+        and not hmac.compare_digest(
+            request.headers.get(_ORIGIN_AUTH_HEADER, "").encode(), secret.encode()
+        )
+    ):
+        return Response("Forbidden", status_code=403, media_type="text/plain")
     return await call_next(request)
 
 
