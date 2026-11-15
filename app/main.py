@@ -173,6 +173,45 @@ async def handle_head_requests(request: Request, call_next):
     )
 
 
+# Paths that keep answering on the Render address. Health checks
+# (UptimeRobot watches rtr-deeplink.onrender.com/api/health/resolve-check,
+# render.yaml's healthCheckPath is /api/health), webhooks, and the
+# /admin/* calls GitHub Actions makes with RESOLVER_BASE_URL all use it.
+_RENDER_HOST_EXEMPT_PREFIXES = ("/api/", "/admin/")
+
+
+@app.middleware("http")
+async def redirect_render_host_to_public(request: Request, call_next):
+    """Send page visits on the *.onrender.com address to the public domain.
+
+    Why (2026-11-15): redtaperecordings.com sits behind Cloudflare, but
+    this service also answers on Render's own rtr-deeplink.onrender.com
+    address, with the full site and the GA tag. Anything using that
+    address skips Cloudflare entirely, so Cloudflare can neither see nor
+    filter it. Cloudflare counted about 35K requests in a week while
+    Render served about 70K a day.
+
+    Only GET/HEAD page loads move, with a 301 that keeps path and query.
+    /api/* and /admin/* stay put (see the prefixes above). Does nothing
+    when PUBLIC_BASE_URL is unset (local runs, tests) or itself points at
+    onrender.com, so it can never loop.
+    """
+    host = (request.url.hostname or "").lower()
+    if host.endswith(".onrender.com") and request.method in ("GET", "HEAD"):
+        public = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
+        path = request.url.path
+        if (
+            public
+            and ".onrender.com" not in public
+            and not path.startswith(_RENDER_HOST_EXEMPT_PREFIXES)
+        ):
+            target = public + path
+            if request.url.query:
+                target += "?" + request.url.query
+            return RedirectResponse(target, status_code=301)
+    return await call_next(request)
+
+
 # /api/resolve is public and unauthenticated, and every call fans out to
 # fetch a real government meeting site -- rate limiting protects both that
 # site (being a good citizen about how hard we hit it) and this app's own
