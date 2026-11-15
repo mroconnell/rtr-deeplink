@@ -144,3 +144,31 @@ def test_check_only_mode_serves_and_counts(check_only):
 
 def test_lock_check_needs_admin_token(check_only):
     assert check_only.get(f"{RENDER}/admin/origin-lock-check").status_code == 404
+
+
+def test_request_headers_reports_names_and_only_safe_values(check_only):
+    r = check_only.get(
+        f"{PUBLIC}/admin/request-headers",
+        headers={
+            "Authorization": "Bearer admintok",
+            "CDN-Loop": "cloudflare; loops=1, cloudflare; loops=1",
+            "X-Forwarded-For": "203.0.113.5, 198.51.100.7",
+            "X-Origin-Auth": "s3cret",
+            "Cookie": "session=abc",
+        },
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["host"] == "redtaperecordings.com"
+    assert {"cdn-loop", "cookie", "x-origin-auth", "authorization"} <= set(
+        body["header_names"]
+    )
+    assert body["values"] == {"cdn-loop": ["cloudflare; loops=1, cloudflare; loops=1"]}
+    assert body["x_forwarded_for_hops"] == 2
+    text = r.text
+    for secret in ("admintok", "s3cret", "session=abc", "203.0.113.5"):
+        assert secret not in text
+
+
+def test_request_headers_needs_admin_token(check_only):
+    assert check_only.get(f"{RENDER}/admin/request-headers").status_code == 404
