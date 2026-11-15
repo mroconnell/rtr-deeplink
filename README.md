@@ -3510,22 +3510,43 @@ this:
    Render health check and the GitHub Actions jobs (`RESOLVER_BASE_URL`)
    use it.
 2. `require_cloudflare_for_public_host`: when `ORIGIN_SHARED_SECRET` is
-   set, any other host must send `X-Origin-Auth` with that value, or it
-   gets a 403. Only `/api/health` is exempt.
+   set, every request on any other host is checked for `X-Origin-Auth`
+   with that value (surrounding spaces and line breaks ignored on both
+   sides). Only `ORIGIN_LOCK_MODE=enforce` turns a failing request away
+   with a 403. Without it the check is **check-only**: everything is
+   served and counted. Only `/api/health` is exempt.
+   `GET /admin/origin-lock-check` (admin token) returns the counts:
+   `match`, `missing`, `mismatch`, and the length of the last wrong
+   value. It never returns the secret.
+
+**First try failed (2026-11-15).** The lock went straight to blocking.
+Requests through Cloudflare then got 403 too: the header Cloudflare sent
+did not match the value in Render. It was rolled back within minutes. The
+cause was not confirmed; a stray line break in one pasted copy is the
+leading guess, which the whitespace stripping now covers. The Cloudflare
+Transform Rule "Origin lock header" was left in place.
 
 To turn the lock on (order matters, or the site goes down):
 
-1. Make a long random value.
+1. Make a long random value (`openssl rand -hex 32`).
 2. In Cloudflare: zone redtaperecordings.com, Rules, then Transform
-   Rules, then "Modify Request Header". Create a rule for all incoming
-   requests that **sets** the header `X-Origin-Auth` to that value.
-   Deploy it.
+   Rules, then "Modify Request Header". The rule "Origin lock header"
+   (all incoming requests, **Set static** `X-Origin-Auth`) exists; put
+   the value in it. Deploy it.
 3. In Render: `rtr-deeplink` service, Environment. Add
-   `ORIGIN_SHARED_SECRET` with the same value. Save; that redeploys.
-4. Check: the site loads in a browser, and UptimeRobot stays green.
+   `ORIGIN_SHARED_SECRET` with the same value. Leave `ORIGIN_LOCK_MODE`
+   unset (check-only). Save and deploy.
+4. Load a few pages, then call `/admin/origin-lock-check` through
+   redtaperecordings.com. Go on only if `match` is climbing and
+   `mismatch` is 0. (`missing` counts the scraper and anything else that
+   skipped Cloudflare.)
+5. Add `ORIGIN_LOCK_MODE=enforce` in Render. Save and deploy.
+6. Check: the site loads in a browser, a direct request to Render
+   (`curl --resolve redtaperecordings.com:443:216.24.57.1 ...`) gets 403,
+   and UptimeRobot stays green.
 
-To turn it off, delete `ORIGIN_SHARED_SECRET` in Render first, then the
-Cloudflare rule.
+To turn it off, delete `ORIGIN_LOCK_MODE` (or `ORIGIN_SHARED_SECRET`)
+in Render and redeploy. Leave the Cloudflare rule; it is harmless.
 
 ## Known limitations
 

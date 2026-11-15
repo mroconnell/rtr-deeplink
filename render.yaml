@@ -248,6 +248,10 @@ services:
       # the origin lock".
       - key: ORIGIN_SHARED_SECRET
         sync: false
+      # "enforce" turns away requests whose header doesn't match. Unset =
+      # check-only (counted at /admin/origin-lock-check, nobody refused).
+      - key: ORIGIN_LOCK_MODE
+        sync: false
       - key: RESEND_API_KEY
         sync: false
       - key: RESEND_AUDIENCE_ID

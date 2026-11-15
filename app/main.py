@@ -234,19 +234,46 @@ async def require_cloudflare_for_public_host(request: Request, call_next):
     above (its /api/* and /admin/* stay reachable for health checks and
     GitHub Actions). /api/health stays open on every host for Render's
     own health check. Unset secret means no check (local runs, tests).
+
+    ORIGIN_LOCK_MODE: only the exact value "enforce" turns requests away.
+    Anything else (the default) is check-only: every request is served
+    and only counted, so the header can be proven on real traffic before
+    blocking. The first try (2026-11-15) went straight to blocking and
+    refused real visitors for a few minutes. Both values are stripped of
+    surrounding whitespace, since a pasted secret can carry a stray line
+    break in one dashboard and not the other.
     """
-    secret = os.environ.get("ORIGIN_SHARED_SECRET", "")
+    secret = os.environ.get("ORIGIN_SHARED_SECRET", "").strip()
     host = (request.url.hostname or "").lower()
     if (
-        secret
-        and not host.endswith(".onrender.com")
-        and request.url.path != "/api/health"
-        and not hmac.compare_digest(
-            request.headers.get(_ORIGIN_AUTH_HEADER, "").encode(), secret.encode()
-        )
+        not secret
+        or host.endswith(".onrender.com")
+        or request.url.path == "/api/health"
     ):
-        return Response("Forbidden", status_code=403, media_type="text/plain")
+        return await call_next(request)
+    sent = request.headers.get(_ORIGIN_AUTH_HEADER)
+    if sent is None:
+        outcome = "missing"
+    elif hmac.compare_digest(sent.strip().encode(), secret.encode()):
+        outcome = "match"
+    else:
+        outcome = "mismatch"
+    _origin_lock_counts[outcome] += 1
+    if outcome != "match":
+        if outcome == "mismatch":
+            _origin_lock_counts["last_mismatch_length"] = len(sent)
+        if os.environ.get("ORIGIN_LOCK_MODE", "").strip().lower() == "enforce":
+            return Response("Forbidden", status_code=403, media_type="text/plain")
     return await call_next(request)
+
+
+# In-memory, per process, reset on deploy. Read via /admin/origin-lock-check.
+_origin_lock_counts: dict[str, int] = {
+    "match": 0,
+    "missing": 0,
+    "mismatch": 0,
+    "last_mismatch_length": 0,
+}
 
 
 # /api/resolve is public and unauthenticated, and every call fans out to
@@ -2504,6 +2531,25 @@ async def admin_version(authorization: Optional[str] = Header(None)):
         "branch": os.environ.get("RENDER_GIT_BRANCH"),
         "service_name": os.environ.get("RENDER_SERVICE_NAME"),
         "instance_id": os.environ.get("RENDER_INSTANCE_ID"),
+    }
+
+
+@app.get("/admin/origin-lock-check")
+async def admin_origin_lock_check(authorization: Optional[str] = Header(None)):
+    """How many public-domain requests carried the right Cloudflare header
+    since this instance started (see require_cloudflare_for_public_host).
+    Never returns the secret, only counts and the length of the last
+    wrong value. Counts are per process and reset on every deploy."""
+    if not _admin_token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    return {
+        "secret_set": bool(os.environ.get("ORIGIN_SHARED_SECRET", "").strip()),
+        "mode": (
+            "enforce"
+            if os.environ.get("ORIGIN_LOCK_MODE", "").strip().lower() == "enforce"
+            else "check-only"
+        ),
+        "counts": dict(_origin_lock_counts),
     }
 
 
