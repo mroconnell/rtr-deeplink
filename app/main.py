@@ -2553,6 +2553,53 @@ async def admin_origin_lock_check(authorization: Optional[str] = Header(None)):
     }
 
 
+# Headers whose values are safe and useful for telling a visit through
+# our Cloudflare zone from one that went straight to Render. Every other
+# header is reported by name only.
+_HEADER_DIAG_VALUES = (
+    "cdn-loop",
+    "cf-ray",
+    "cf-visitor",
+    "cf-worker",
+    "via",
+    "x-forwarded-proto",
+    "x-forwarded-host",
+)
+
+
+@app.get("/admin/request-headers")
+async def admin_request_headers(
+    request: Request, authorization: Optional[str] = Header(None)
+):
+    """What this very request looked like on arrival (2026-11-15).
+
+    The origin lock's X-Origin-Auth header, added by a Cloudflare
+    Transform Rule on the redtaperecordings.com zone, never reached the
+    app (705 of 705 requests "missing"). Render serves custom domains
+    behind its own Cloudflare, so a visit through our zone likely
+    crosses two Cloudflare layers and a direct visit to Render one.
+    Calling this once through redtaperecordings.com and once via
+    `curl --resolve redtaperecordings.com:443:216.24.57.1` shows which
+    headers differ. Values are shown only for _HEADER_DIAG_VALUES;
+    everything else (Authorization, cookies, IP lists) is name-only, and
+    X-Forwarded-For is reduced to its hop count."""
+    if not _admin_token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    names = sorted({k.lower() for k in request.headers.keys()})
+    values = {
+        k: request.headers.getlist(k)
+        for k in _HEADER_DIAG_VALUES
+        if k in request.headers
+    }
+    xff = request.headers.get("x-forwarded-for", "")
+    return {
+        "host": request.url.hostname,
+        "header_names": names,
+        "values": values,
+        "x_forwarded_for_hops": len([p for p in xff.split(",") if p.strip()]),
+    }
+
+
 @app.get("/admin/daily-report")
 async def admin_daily_report(
     dry_run: bool = False, authorization: Optional[str] = Header(None)
