@@ -242,6 +242,12 @@ services:
       # PUBLIC_BASE_URL: https://redtaperecordings.com.
       - key: PUBLIC_BASE_URL
         sync: false
+      # Origin lock (2026-11-15): when set, requests for the public domain
+      # must carry X-Origin-Auth with this value, which a Cloudflare
+      # Transform Rule adds. Unset = no lock. See README "Cloudflare and
+      # the origin lock".
+      - key: ORIGIN_SHARED_SECRET
+        sync: false
       - key: RESEND_API_KEY
         sync: false
       - key: RESEND_AUDIENCE_ID

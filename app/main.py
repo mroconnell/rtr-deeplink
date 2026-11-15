@@ -1,5 +1,6 @@
 import asyncio
 import csv
+import hmac
 import html
 import io
 import json
@@ -171,6 +172,81 @@ async def handle_head_requests(request: Request, call_next):
         headers=dict(response.headers),
         media_type=response.media_type,
     )
+
+
+# Paths that keep answering on the Render address. Health checks
+# (UptimeRobot watches rtr-deeplink.onrender.com/api/health/resolve-check,
+# render.yaml's healthCheckPath is /api/health), webhooks, and the
+# /admin/* calls GitHub Actions makes with RESOLVER_BASE_URL all use it.
+_RENDER_HOST_EXEMPT_PREFIXES = ("/api/", "/admin/")
+
+
+@app.middleware("http")
+async def redirect_render_host_to_public(request: Request, call_next):
+    """Send page visits on the *.onrender.com address to the public domain.
+
+    Why (2026-11-15): redtaperecordings.com sits behind Cloudflare, but
+    this service also answers on Render's own rtr-deeplink.onrender.com
+    address, with the full site and the GA tag. Anything using that
+    address skips Cloudflare entirely, so Cloudflare can neither see nor
+    filter it. Cloudflare counted about 35K requests in a week while
+    Render served about 70K a day.
+
+    Only GET/HEAD page loads move, with a 301 that keeps path and query.
+    /api/* and /admin/* stay put (see the prefixes above). Does nothing
+    when PUBLIC_BASE_URL is unset (local runs, tests) or itself points at
+    onrender.com, so it can never loop.
+    """
+    host = (request.url.hostname or "").lower()
+    if host.endswith(".onrender.com") and request.method in ("GET", "HEAD"):
+        public = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
+        path = request.url.path
+        if (
+            public
+            and ".onrender.com" not in public
+            and not path.startswith(_RENDER_HOST_EXEMPT_PREFIXES)
+        ):
+            target = public + path
+            if request.url.query:
+                target += "?" + request.url.query
+            return RedirectResponse(target, status_code=301)
+    return await call_next(request)
+
+
+# Header Cloudflare adds to every request it forwards (a Transform Rule on
+# the redtaperecordings.com zone), carrying ORIGIN_SHARED_SECRET.
+_ORIGIN_AUTH_HEADER = "x-origin-auth"
+
+
+@app.middleware("http")
+async def require_cloudflare_for_public_host(request: Request, call_next):
+    """Turn away requests for the public domain that skipped Cloudflare.
+
+    Why (2026-11-15): from Nov 11-14 a scraper loaded ~3,200 different
+    /m/ meeting pages, one per visit (Chrome, 1280x1200, direct, mostly
+    Singapore). GA recorded every view on redtaperecordings.com, yet
+    Cloudflare saw almost none of them, so the scraper reached Render
+    with Host: redtaperecordings.com without passing through Cloudflare.
+
+    When ORIGIN_SHARED_SECRET is set, a request on any host other than
+    *.onrender.com must carry the matching header, which only Cloudflare
+    adds. *.onrender.com is handled by redirect_render_host_to_public
+    above (its /api/* and /admin/* stay reachable for health checks and
+    GitHub Actions). /api/health stays open on every host for Render's
+    own health check. Unset secret means no check (local runs, tests).
+    """
+    secret = os.environ.get("ORIGIN_SHARED_SECRET", "")
+    host = (request.url.hostname or "").lower()
+    if (
+        secret
+        and not host.endswith(".onrender.com")
+        and request.url.path != "/api/health"
+        and not hmac.compare_digest(
+            request.headers.get(_ORIGIN_AUTH_HEADER, "").encode(), secret.encode()
+        )
+    ):
+        return Response("Forbidden", status_code=403, media_type="text/plain")
+    return await call_next(request)
 
 
 # /api/resolve is public and unauthenticated, and every call fans out to
