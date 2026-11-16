@@ -295,18 +295,6 @@ https://vimeo.com/1233006487		us:place:2018250
 https://vimeo.com/1233494766		us:place:2633420
 https://vimeo.com/1231005435		us:place:2970000
 https://player.vimeo.com/video/784792836?h=e33e8fbaac&byline=0		us:county:13247
-https://files.smartsites.parentsquare.com/7134/gilmer-isd-regular-board-meeting-09-15-2025_2025-09-15_1.mp3	https://gilmerisd.org/schoolboard	us:sd:4820700
-https://files.smartsites.parentsquare.com/10005/june_30_2026_special_meeting.mp3	https://greencastle.k12.in.us/board-documents	us:sd:1803990
-https://drive.google.com/file/d/1c1lrAEh2QVdcyZnTxnKfZEqDT22Whdmh/view	https://pilotpointisd.com/school-board-recording	us:sd:4834920
-https://drive.google.com/file/d/1cXZJQ9XwiwkhAzAI_MG_D7ARgw2O6OCo/view	https://www.austinisd.org:443/board	us:sd:4808940
-https://drive.google.com/file/d/1BuXptY3F__FP5nF_71icXlPhJbzHOdZI/view?usp=sharing	https://www.howellschools.com/services/board_of_education/board_of_education_video	us:sd:2618720
-https://drive.google.com/file/d/1zr114yI_Ff1IdNYoZ7efhNZ_y8ysSL1W/view?usp=sharing	https://www.vernonpublicschools.org/page/minutes	us:sd:0904680
-https://drive.google.com/file/d/1qiBTXzfZx9jVZO87q-mEDUCPfnhsarR8/view?usp=sharing	https://www.threeriversschools.org/departments/board-of-education-2/video-stream-archives-74/	us:sd:3904739
-https://drive.google.com/file/d/1sJrGY_h-z5XuydS9Z45M1qoidPAe1xZo/view?usp=sharing	https://lacenterschools.org/school-board-minutes-and-agendas/	us:sd:5304170
-https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/963/Pinckneyville_Chsd/cb79c0f5-18d5-4486-bfa2-893c14de1bbe/August_24_2020_Bd_Mtg.mp4?disposition=inline	https://www.pchspanthers.com/documents/board-of-education/board-meeting-agenda/2020/082420-meeting-video/162845	us:sd:1731620
-https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/231/Bchs/4696b569-012c-4961-a0af-99d90f652223/09.08.2025_Special_Board_Meeting.mp4?disposition=inline	https://www.bchsmt.com/documents/school-board/school-board-2025/board-meeting-videos/852806	us:sd:3003090
-https://drive.google.com/file/d/1o8i8J_FYw3QJv60tTMtvrsRAfcMhjht4/view?usp=sharing	https://www.lakecountyschools.net/meetings-and-minutes/	us:sd:0805190
-https://files.smartsites.parentsquare.com/6230/boe-7-10-19.mp3	https://cmschools.org/28767_1	us:sd:3606840
 https://4.files.edl.io/56b9/02/02/26/155611-0f88cded-5db3-41c2-a366-5b619c632146.mp4	https://www.bsd29j.com/apps/pages/index.jsp?uREC_ID=1300858&type=d&pREC_ID=2163059	us:sd:0802430
 https://files.smartsites.parentsquare.com/3463/7-23-26_board_meeting.mp4	https://gvisd.org/21276_2	us:sd:4821540
 https://drive.google.com/file/d/1N_Rqkh7apBRaC9fw6Lc0uOI2D-t24PZz/view?usp=sharing	https://www.wem.k12.mn.us/school-board/	us:sd:2700013
