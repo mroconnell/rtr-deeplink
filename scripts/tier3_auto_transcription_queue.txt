@@ -295,18 +295,6 @@ https://vimeo.com/1233006487		us:place:2018250
 https://vimeo.com/1233494766		us:place:2633420
 https://vimeo.com/1231005435		us:place:2970000
 https://player.vimeo.com/video/784792836?h=e33e8fbaac&byline=0		us:county:13247
-https://4.files.edl.io/56b9/02/02/26/155611-0f88cded-5db3-41c2-a366-5b619c632146.mp4	https://www.bsd29j.com/apps/pages/index.jsp?uREC_ID=1300858&type=d&pREC_ID=2163059	us:sd:0802430
-https://files.smartsites.parentsquare.com/3463/7-23-26_board_meeting.mp4	https://gvisd.org/21276_2	us:sd:4821540
-https://drive.google.com/file/d/1N_Rqkh7apBRaC9fw6Lc0uOI2D-t24PZz/view?usp=sharing	https://www.wem.k12.mn.us/school-board/	us:sd:2700013
-https://4.files.edl.io/be4a/09/01/26/165604-f0830d56-3170-4176-b6ce-f42158cd4aa1.mp3	https://www.troupisd.org/apps/pages/index.jsp?uREC_ID=1580549&type=d&pREC_ID=2695174	us:sd:4843230
-https://drive.google.com/file/d/1qd5Vw-Jiw2iWXgNXtj6YeXN7sSVHGJOk/view?usp=sharing	https://www.marlborough.k12.ct.us/district1/board-of-education/minutes	us:sd:0902370
-https://files.smartsites.parentsquare.com/7281/11_17_25_board_meeting_1.mp3	https://buffaloisd.net/374182_2	us:sd:4811990
-https://drive.google.com/file/d/1B5to8QvCLLzPV9e5ZW6mLrKwDsaTBoxX/view?usp=sharing	https://www.shepherd.k12.mt.us/athletics/ad-page/nfhs-live-streaming-information	us:sd:3023970
-https://files.smartsites.parentsquare.com/4432/8-17-2026_board_meeting.mp4	https://www.ccisdtx.com/43635_2	us:sd:4815300
-https://files.smartsites.parentsquare.com/6735/april222020-board_mtg.mp4	https://cpisd.net/96044_3	us:sd:4813350
-https://files.smartsites.parentsquare.com/5980/video1126079219.mp4	https://srlions.com/97048_2	us:sd:3502400
-https://files.smartsites.parentsquare.com/7403/special_board_meeting_828.mp3	https://flatoniaisd.net/152817_2	us:sd:4819280
-https://drive.google.com/file/d/1tKIIgysI0lh5eENOQ15zrOm_ciYGTupj/view?usp=sharing	https://www.gastonk12.org/district/school-board/agendas-and-minutes	us:sd:4105430
 https://files.smartsites.parentsquare.com/5582/board_meeting_1-8-2026_part_2.mp3		us:sd:4843560
 https://files.smartsites.parentsquare.com/12448/ccs_board_meeting_3_23_20.mp4	https://ccsknights.org/406682_2	us:sd:3608280
 https://files.smartsites.parentsquare.com/13694/nov-17-2025-board-mtg-recording.mp3	https://worthamisd.org/board-of-education	us:sd:4846470
