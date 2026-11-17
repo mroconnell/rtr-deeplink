@@ -295,18 +295,6 @@ https://vimeo.com/1233006487		us:place:2018250
 https://vimeo.com/1233494766		us:place:2633420
 https://vimeo.com/1231005435		us:place:2970000
 https://player.vimeo.com/video/784792836?h=e33e8fbaac&byline=0		us:county:13247
-https://files.smartsites.parentsquare.com/5582/board_meeting_1-8-2026_part_2.mp3		us:sd:4843560
-https://files.smartsites.parentsquare.com/12448/ccs_board_meeting_3_23_20.mp4	https://ccsknights.org/406682_2	us:sd:3608280
-https://files.smartsites.parentsquare.com/13694/nov-17-2025-board-mtg-recording.mp3	https://worthamisd.org/board-of-education	us:sd:4846470
-https://files.smartsites.parentsquare.com/8908/2112026_budget_workshop_and_regular_boe_meeting.mp4	https://andovercsd.org/board-of-education	us:sd:3603030
-https://drive.google.com/file/d/1r08w2LOR9CuhUDFBsicArW-S7d_joD_G/view	https://bridgehampton.k12.ny.us/71291_3	us:sd:3605370
-https://files.smartsites.parentsquare.com/7955/special_board_meeting_recording_july_21_2025.mp4	http://www.loganschool.net/school-board	us:sd:3501590
-https://drive.google.com/file/d/1XZZeFbTkNXnFjkp1wVq0esVm_jxssKkI/view?usp=sharing	https://www.annex.k12.or.us/school-board	us:sd:4101350
-https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/1440/Rsd/d2d0b748-91d1-4b5e-a7b5-afecdacfd23a/Sep-24-25_SB_Meeting.wav?disposition=inline	https://www.republic309.org/documents/school-board/board-meeting-recordings/recordings-2025-2026/855227	us:sd:5307260
-https://drive.google.com/file/d/1vMBu8K0kTMRNwCUf2hFqPCYjav0_yBVe/view?usp=drive_link	https://www.epc.k12.ar.us/live-feed/	us:sd:0500048
-https://boxcast.tv/view/common-council---october-05-2026-pd7njzfutjd3pamytpja		us:place:1880306
-https://files.heygov.com/fairgrove.org/meetings/me_01m25qa2vvget02e8ewxny5r53/09152026draftminutes.m4a	https://www.fairgrove.org/government/boards-commisssions/planning-zoning-commission/	us:place:2923338
-https://resources.finalsite.net/videos/t_video_mp4_480/v1775142475/monticellok12mnus/f6ucozmpbijav2z5gwnt/2026CitizenCommentVideo_v1.mp4	https://www.monticello.k12.mn.us/school-board	us:sd:2721390
 https://wgtntv3.isd518.net/internetchannel/show/5292?channel=1&query=city+council		us:place:2771734
 https://townofconcordny.gov/files/zoom_0.mp4	https://townofconcordny.gov/town-board.php	us:cousub:3602917585
 https://videos.files.wordpress.com/IFL44wVB/111021video.mp4	https://videos.files.wordpress.com/IFL44wVB/111021video.mp4	us:place:3602902
