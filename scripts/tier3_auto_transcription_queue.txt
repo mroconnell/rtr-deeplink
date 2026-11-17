@@ -295,18 +295,6 @@ https://vimeo.com/1233006487		us:place:2018250
 https://vimeo.com/1233494766		us:place:2633420
 https://vimeo.com/1231005435		us:place:2970000
 https://player.vimeo.com/video/784792836?h=e33e8fbaac&byline=0		us:county:13247
-https://wgtntv3.isd518.net/internetchannel/show/5292?channel=1&query=city+council		us:place:2771734
-https://townofconcordny.gov/files/zoom_0.mp4	https://townofconcordny.gov/town-board.php	us:cousub:3602917585
-https://videos.files.wordpress.com/IFL44wVB/111021video.mp4	https://videos.files.wordpress.com/IFL44wVB/111021video.mp4	us:place:3602902
-https://static.wixstatic.com/mp3/b667a0_c3003d8e977e4ccea0f3ed9005179722.mp3	https://www.nelsonvilleny.gov/boards-and-meetings	us:place:3649781
-https://www.dropbox.com/scl/fi/0jg5bvdr3jh21fteww5nm/Audio-September-16-2026.mp3?rlkey=z3ix6tpihfwev1yk6thrso987&st=ti3g8ac8&dl=0	https://www.orangetwp.org/meeting-center/	us:cousub:3904158618
-https://www.middlefieldohio.com/wp-content/uploads/2021/08/08.12.2021.mp3	https://www.middlefieldohio.com/government/agendas-minutes/	us:place:3949700
-https://westminstersc.org/wp-content/uploads/2026/09/260917_0342.mp3	https://westminstersc.org/calendar/	us:place:4576165
-https://www.dropbox.com/scl/fi/cxkbopeodzf3gm522jyx4/video1589909638.mp4?rlkey=jb7y7gvt81bsa1y2mt78qj522&e=3&st=xjqvb8h7&dl=0	https://www.lyndonvt.org/?page_id=18	us:cousub:5000541725
-https://s3.amazonaws.com/lcatv-lqm/FSEL07202617.mp4	https://fairfax-vt.gov/boards___commissions/selectboard/agendas___minutes.php	us:cousub:5001124925
-https://cabotvt.us/wp-content/uploads/2025/12/GMT20251211-222107_Recording_1920x1020.mp4	https://cabotvt.us/streambank-project-materials-equipment-notice/	us:cousub:5002311125
-https://townofstrattonvt.com/data/BCA Audio 20260713.mp3	https://townofstrattonvt.com/town-meeting-report	us:cousub:5002570750
-https://maidstone-vt.org/wp-content/uploads/GMT20260615-215455_Recording.m4a	https://maidstone-vt.org/boards/board-of-civil-authority-2/	us:cousub:5000942475
 https://roxburyvt.gov/wp-content/uploads/2026/05/05182026.mp4	https://roxburyvt.gov/governance-roxbury-vt/agendas-and-minutes/roxbury-selectboard-agendas-minutes/#selectboard-updates	us:cousub:5002360625
 https://static1.squarespace.com/static/65723b07c1d88f60821f9fe0/t/69c2b69cf1a41c78d33cbdf3/1774368429825/260316_002_1.mp3	https://www.newcastlewyoming.com/agendas-minutes	us:place:5656215
 https://videos.files.wordpress.com/HCV4wir4/gmt20250513-231119_recording_640x360.mp4	https://videos.files.wordpress.com/HCV4wir4/gmt20250513-231119_recording_640x360.mp4	us:place:2432900
