@@ -295,18 +295,6 @@ https://vimeo.com/1233006487		us:place:2018250
 https://vimeo.com/1233494766		us:place:2633420
 https://vimeo.com/1231005435		us:place:2970000
 https://player.vimeo.com/video/784792836?h=e33e8fbaac&byline=0		us:county:13247
-https://roxburyvt.gov/wp-content/uploads/2026/05/05182026.mp4	https://roxburyvt.gov/governance-roxbury-vt/agendas-and-minutes/roxbury-selectboard-agendas-minutes/#selectboard-updates	us:cousub:5002360625
-https://static1.squarespace.com/static/65723b07c1d88f60821f9fe0/t/69c2b69cf1a41c78d33cbdf3/1774368429825/260316_002_1.mp3	https://www.newcastlewyoming.com/agendas-minutes	us:place:5656215
-https://videos.files.wordpress.com/HCV4wir4/gmt20250513-231119_recording_640x360.mp4	https://videos.files.wordpress.com/HCV4wir4/gmt20250513-231119_recording_640x360.mp4	us:place:2432900
-https://www.gslr.ca/wp-content/uploads/2026/09/260901_001.mp3	https://www.gslr.ca/ma-municipalite/vie-democratique/seances-du-conseil/	ca:csd:2476052
-https://cmsv2-assets.apptegy.net/uploads/30481/file/6433338/fdc11be3-21f3-48fe-b5fc-ed8ffe3b5aa9.mp4	https://www.d214.org/page/agendas-minutes	us:sd:1704170
-https://resources.finalsite.net/videos/t_video_mp4_480/v1730496737/district196org/rlguchk5t9b3izostvec/196PolicyGovernanceSchoolBoard.mp4	https://www.district196.org/about/school-board	us:sd:2732390
-https://resources.finalsite.net/videos/t_video_mp4_480/v1789427635/omsdnet/lddziheq8qvms1uitgtn/260813FacilitiesMeasureKUpdate.mp4	https://www.omsd.net/board/agendas-minutes	us:sd:0628470
-https://resources.finalsite.net/videos/t_video_mp4_1080/v1689791988/sowashcok12mnus/u0304ajau8bsrywi1awa/SchoolBoardGovernanceSouthWashingtonCounty.mp4	https://www.sowashco.org/about-us/school-board	us:sd:2733810
-https://resources.finalsite.net/videos/t_video_vp9_1080/v1781723157/tooeleschoolsorg/nafsplugxn5kvosxa5yp/download14.webm	https://www.tooeleschools.org/board-of-education	us:sd:4901050
-https://resources.finalsite.net/videos/t_video_mp4_480/v1771962907/pontiack12mius/jue27audjzl9gg9agyrj/2026PSD-StateoftheDistrict.mp4	https://www.pontiac.k12.mi.us/about-us/board-of-education	us:sd:2628740
-https://resources.finalsite.net/videos/t_video_mp4_720/v1752600339/bcscschoolsorg/cxx47vgcrzxtcncpixjw/2025FamilyEngagementVideo.mp4	https://www.bcscschools.org/district-information/school-board	us:sd:1800360
-https://4.files.edl.io/089f/06/15/19/135804-fd6c2f80-86d0-4549-8919-7455fc78d217.mp4	https://www.tipton-county.com/apps/pages/index.jsp?uREC_ID=652060&type=d&pREC_ID=1107810	us:sd:4704080
 https://4.files.edl.io/6423/08/11/26/225933-e7b9c1c8-4cea-493d-83e8-f46d8de43f51.mp3	https://www.k12k.com/apps/pages/index.jsp?uREC_ID=4471142&type=d&pREC_ID=2746860	us:sd:4702190
 https://4.files.edl.io/5c27/09/13/23/175617-a09f45f6-e0c3-48c3-a83f-33242c30aba3.mp4	https://www.fcsk12.net/apps/pages/index.jsp?uREC_ID=309456&type=d&pREC_ID=738459	us:sd:4701170
 https://4.files.edl.io/6b18/09/10/26/190934-456c4d09-8375-4b1c-8217-a2792fe17fa8.mp3	https://www.nohum.org/apps/pages/index.jsp?uREC_ID=1476087&type=d&pREC_ID=1626233	us:sd:0603030
