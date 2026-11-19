@@ -295,18 +295,6 @@ https://vimeo.com/1233006487		us:place:2018250
 https://vimeo.com/1233494766		us:place:2633420
 https://vimeo.com/1231005435		us:place:2970000
 https://player.vimeo.com/video/784792836?h=e33e8fbaac&byline=0		us:county:13247
-https://cmsv2-assets.apptegy.net/uploads/6198/file/6283338/0720b96e-93af-424b-95fd-d9104e310a07.mp4	https://www.d83.org/browse/182080	us:sd:1724330
-https://4.files.edl.io/f994/08/22/25/143308-5b57276a-c19f-4c4d-9479-750e3f964213.mp4	https://www.dist159.com/apps/pages/index.jsp?uREC_ID=861658&type=d&pREC_ID=2120225	us:sd:1736300
-https://cmsv2-assets.apptegy.net/uploads/29130/file/6177661/df2b255b-5c24-442c-ba1a-f80ca2ce30de.mp4	https://www.woodbridgeblueraiders.com/page/board-meetings	us:sd:1001850
-https://resources.finalsite.net/videos/t_video_vp9_720/v1730383941/northscottk12iaus/rafirreyk8tws0hv8czz/IMG_2324.webm	https://www.north-scott.k12.ia.us/~board/home-page/post/fostering-leadership-teamwork	us:sd:1920940
-http://cable9.dyndns.org/CablecastPublicSite/show/9420?site=1	https://www.seekonkschools.org/school-committee	us:sd:2510590
-https://4.files.edl.io/2c98/05/08/26/195237-d3102132-c4c5-4618-a743-ea1a85d4e17e.mp4	https://www.pycsd.org/apps/pages/index.jsp?uREC_ID=952459&type=d&pREC_ID=1278747	us:sd:3622740
-https://resources.finalsite.net/videos/t_video_h265_480/v1755104215/ashlandk12wius/nrc7bsnvqgc8a2c8z4ia/BOEBoardDocsNavigationShortVideo.mp4	https://www.ashland.k12.wi.us/district/board-of-education	us:sd:5500510
-https://4.files.edl.io/ba4f/09/12/25/135621-e210e3ee-1d7d-494a-9a2a-4eb01307f9de.mp4	https://www.jacksoncoschools.com/apps/pages/index.jsp?uREC_ID=1394515&type=d&pREC_ID=1572795	us:sd:4702070
-https://4.files.edl.io/0f30/04/27/20/181411-d2aeab88-1a25-49af-97f8-b251cab730cd.mp3	https://www.alcoaschools.net/apps/pages/index.jsp?uREC_ID=1364994&type=d&pREC_ID=1565365	us:sd:4700060
-https://cmsv2-assets.apptegy.net/uploads/1846/file/6308361/ab5f88da-7366-44ba-8c20-6a8bd19d0eae.mp4	https://www.saltcreek48.org/page/archived-board-meetings	us:sd:1735220
-https://cmsv2-assets.apptegy.net/uploads/18183/file/6494150/2b6b44ae-4108-43cb-b216-6387848ade08.mp4	https://www.dpsk12.org/o/dps/page/board-of-education	us:sd:0803360
-https://dts.podtrac.com/redirect.mp3/media.blubrry.com/4586470/content.blubrry.com/4586470/345_How_Pony_Races_Track_Progress_in_Standardized_Science_Testing.mp3?_=1	https://jordandistrict.org/board/meetings/	us:sd:4900420
 https://files.smartsites.parentsquare.com/5912/september_7_2022_1.mp3	https://www.cisdtx.net/shac-recordings-home	us:sd:4812510
 https://cmsv2-assets.apptegy.net/uploads/20817/file/6402311/65909208-b4bf-492c-ae7d-10064543bc51.mp4	https://www.springisd.org/page/2026-board-meetings	us:sd:4841220
 https://cmsv2-assets.apptegy.net/uploads/21556/file/6433388/10b9c168-3daa-452c-ba18-c10565d6eb5d.mp4	https://www.rsd66.org/page/governing-board	us:sd:0407080
