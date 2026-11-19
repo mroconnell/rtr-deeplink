@@ -295,18 +295,6 @@ https://vimeo.com/1233006487		us:place:2018250
 https://vimeo.com/1233494766		us:place:2633420
 https://vimeo.com/1231005435		us:place:2970000
 https://player.vimeo.com/video/784792836?h=e33e8fbaac&byline=0		us:county:13247
-https://files.smartsites.parentsquare.com/5912/september_7_2022_1.mp3	https://www.cisdtx.net/shac-recordings-home	us:sd:4812510
-https://cmsv2-assets.apptegy.net/uploads/20817/file/6402311/65909208-b4bf-492c-ae7d-10064543bc51.mp4	https://www.springisd.org/page/2026-board-meetings	us:sd:4841220
-https://cmsv2-assets.apptegy.net/uploads/21556/file/6433388/10b9c168-3daa-452c-ba18-c10565d6eb5d.mp4	https://www.rsd66.org/page/governing-board	us:sd:0407080
-https://cmsv2-assets.apptegy.net/uploads/4506/file/6449989/7b0ad40b-054d-4db6-ad22-9aab8823b4bb.mp4	https://www.robeson.k12.nc.us/page/board-of-education	us:sd:3703930
-https://cmsv2-assets.apptegy.net/uploads/27988/file/6474846/b6a551bd-f99b-47c9-b3c3-38bb91e8d988.mp4	https://www.littletonpublicschools.net/o/lps/page/board-of-education	us:sd:0805310
-https://cmsv2-assets.apptegy.net/uploads/29929/file/5992563/cf229666-b4f0-4442-848d-ebc9d41b0a57.mp4	https://www.tcaps.net/page/board-meetings	us:sd:2633870
-https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/1283/Wscuhsd/b1048b70-cf00-4a76-bb86-aafe6920cbc1/VID_20251029_103939_186.mp4?disposition=inline	https://www.wscuhsd.org/documents/videos/860405	us:sd:0602670
-https://cmsv2-assets.apptegy.net/uploads/521/file/5651462/78b2dacd-10d0-4a71-8345-8d6d77fe7af5.mp4	https://www.cpcsc.k12.in.us/page/board-of-school-trustees	us:sd:1801890
-https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/2558/Mcs/68af5d04-090f-464d-9a35-fac43ce16b05/vff20144d6dbb27ff2285.highres.mp4?disposition=inline	https://boe.merc.k12.wv.us/documents/departments/pupil-services/body-safety-videos/294882	us:sd:5400840
-https://cmsv2-assets.apptegy.net/uploads/29189/file/6390389/1e00af7c-ec8c-4297-8574-c309c8253a64.mp4	https://www.greenvilleisd.com/page/school-board	us:sd:4821720
-https://cmsv2-assets.apptegy.net/uploads/32171/file/5643885/e2201c5e-3bcc-4142-a24a-042e1a56b0bd.webm	https://www.gulfportschools.org/page/board-meeting-agendas	us:sd:2801710
-https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/4737/Aisd/a3ba75d0-9d8d-407a-8f87-1cc6d6d9738a/01292024.mp3?disposition=inline	https://www.angletonisd.net/documents/departments/health-services/school-health-advisory-council/recordings/702368	us:sd:4808310
 https://hollandpublicschools.fxbrt.com/downloads/board_minutes/nick_thx_mixdown.mp3	https://www.hollandpublicschools.org/the-district/school-board/	us:sd:2618420
 https://townhallstreams.com/stream.php?location_id=121&id=76719	https://www.dcps.k12.md.us/live-feed/	us:sd:2400300
 https://cmsv2-assets.apptegy.net/uploads/14437/file/5657942/66732bc6-fee0-4a6e-95a9-b4a61bf2f907.mp4	https://www.powhatan.k12.va.us/o/pcps/page/school-board	us:sd:5103030
