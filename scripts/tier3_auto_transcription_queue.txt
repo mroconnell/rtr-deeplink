@@ -295,18 +295,6 @@ https://vimeo.com/1233006487		us:place:2018250
 https://vimeo.com/1233494766		us:place:2633420
 https://vimeo.com/1231005435		us:place:2970000
 https://player.vimeo.com/video/784792836?h=e33e8fbaac&byline=0		us:county:13247
-https://hollandpublicschools.fxbrt.com/downloads/board_minutes/nick_thx_mixdown.mp3	https://www.hollandpublicschools.org/the-district/school-board/	us:sd:2618420
-https://townhallstreams.com/stream.php?location_id=121&id=76719	https://www.dcps.k12.md.us/live-feed/	us:sd:2400300
-https://cmsv2-assets.apptegy.net/uploads/14437/file/5657942/66732bc6-fee0-4a6e-95a9-b4a61bf2f907.mp4	https://www.powhatan.k12.va.us/o/pcps/page/school-board	us:sd:5103030
-https://cmsv2-assets.apptegy.net/uploads/26904/file/6146831/d274b9ad-704e-4996-9a5e-71bf9175dcc0.webm	https://www.clearviewregional.edu/page/board-meeting-schedules	us:sd:3403210
-https://cmsv2-assets.apptegy.net/uploads/30443/file/6142112/39f4b7f2-302b-4af5-bd38-78b3bc5df144.mp4	https://www.g-pisd.org/live-feed/	us:sd:4821780
-https://cmsv2-assets.apptegy.net/uploads/23525/file/5515187/f6921eff-f57f-4042-9fff-2406d703a05c.mp4	https://www.nusd.k12.az.us/page/governing-board	us:sd:0405530
-https://cmsv2-assets.apptegy.net/uploads/11847/file/6437265/64555613-61d5-40ab-8ac2-e7f7fca5267c.mp4	https://www.sd170.com/documents/about-us/school-board/agendas%2Fminutes/board-minutes/340141	us:sd:1709960
-https://cmsv2-assets.apptegy.net/uploads/11133/file/6579593/07a9de13-a32a-4cdb-bd26-ebe94d1b152e.mp4	https://www.westg.org/o/wgls/page/board-of-education-new	us:sd:3904722
-https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/1799/Upshur_County/fbe1ea1b-037b-4335-81bf-0ffff42ee374/August_9__2022.mp3?disposition=inline	https://www.upshurschools.com/documents/board-of-education/board-meeting-recordings/362453	us:sd:5401470
-https://cmsv2-assets.apptegy.net/uploads/27527/file/6193863/65e37843-efee-4d3a-981e-272d0322c9af.webm	https://www.riverdell.org/page/agendas-and-minutes	us:sd:3412260
-https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/2675/Somerset_Isd/a4d6fe09-e322-4445-8abe-92ca063dd104/09-22-2022_Zoom_Recording-Video.mp4?disposition=inline	https://www.sisdk12.net/documents/departments/school-health-and-wellness-services/school-health-advisory-council-(shac)/meeting-audio/video/311346	us:sd:4840740
-https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/1372/Cisd/d6a67641-fc88-4467-97b0-0581d24793ff/May_12__2022.WAV?disposition=inline	https://www.carthageisd.org/documents/public-notice/school-health-advisory-committee/shac-meeting-audio-recordings/308729	us:sd:4813110
 https://4.files.edl.io/eda3/06/10/20/010021-fb09594c-36cc-4948-b36e-6d87e79f82c5.mp4	https://uinta1.com/en-US?orgId=c936cc91-6260-4f63-81fe-cc403df498c0	us:sd:5602760
 https://cmsv2-assets.apptegy.net/uploads/2364/file/6122651/1cd2aafd-f888-4489-a8af-9a6fc9b4a5d8.mp4	https://www.delhiusd.org/documents/board-agendas--%26-committees/board-agendas-and-minutes-2026-2027/28637870	us:sd:0600039
 https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/1376/Naps/75937b18-bf2d-47d0-9d9b-54cb0918723c/Family_Forum_8.26.21.mp4?disposition=inline	https://www.napsk12.org/documents/family-forum-videos/199075	us:sd:2508670
