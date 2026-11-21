@@ -295,18 +295,6 @@ https://vimeo.com/1233006487		us:place:2018250
 https://vimeo.com/1233494766		us:place:2633420
 https://vimeo.com/1231005435		us:place:2970000
 https://player.vimeo.com/video/784792836?h=e33e8fbaac&byline=0		us:county:13247
-https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/1820/Asd/89016f06-cf3a-4af8-997f-cfaee35c91d6/GMT20210609-185813_Recording_640x360.mp4?disposition=inline	https://www.anacondaschools.org/documents/fred-moodry-intermediate-school/recordings-2021/219960	us:sd:3002030
-https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/823/Quitman_Isd/cef7678c-8b1f-4bb4-9bff-d69dcac764ac/251117_001.MP3?disposition=inline	https://www.quitmanisd.net/documents/school-board/audio-recording/853357	us:sd:4836300
-https://files.smartsites.parentsquare.com/5103/aqnb8qvuqhgtkchlprkuqvc7i8saomuz3hi0foi_wewvmbnxc-s4cobka-vrfclmux7r8nowaylvrhczblcyagy5p9ekufbcc4a8eccd_ymlrio4bq.mp4	https://www.bunaisd.net/52956_1	us:sd:4812090
-https://4.files.edl.io/df2f/08/01/19/173024-7230d29b-60f2-4758-93f3-af2ab0d66487.mp4	https://www.grapecreekisd.net/apps/pages/index.jsp?uREC_ID=786356&type=d&pREC_ID=1181580	us:sd:4821600
-https://4.files.edl.io/dd8c/09/19/23/195752-0d2a0dfd-454c-477c-ab0b-3adc0e2c05bb.mp4	http://www.miamiusd40.org/apps/pages/index.jsp?uREC_ID=1538529&type=d&pREC_ID=1668385	us:sd:0405030
-https://files.smartsites.parentsquare.com/12205/june_11_2024_-_audio_1.mp3	https://www.mountshastausd.com/recordings	us:sd:0626040
-https://4.files.edl.io/4b40/04/17/25/134318-51ab3108-1c2a-4702-b684-98c4d30a28b7.m4a	https://www.rochellepark.org/apps/pages/index.jsp?uREC_ID=4358341&type=d&pREC_ID=2555911	us:sd:3414070
-https://resources.finalsite.net/videos/t_video_mp4_480/v1733841806/jacksonmiltonk12ohus/xtlkxot28nd3enwicuop/IMG_0005.mp4	https://www.jacksonmilton.k12.oh.us/board-of-education4	us:sd:3904832
-https://4.files.edl.io/e2ed/03/26/20/161445-003f5776-d93b-441f-9048-5c9d3455dc16.mp4	https://www.gananda.org/apps/pages/index.jsp?uREC_ID=1035590&type=d&pREC_ID=1338166	us:sd:3611740
-https://files.smartsites.parentsquare.com/4888/pershing_st_2.mp3	https://ciscoisd.net/36772_3	us:sd:4814070
-https://4.files.edl.io/8ffb/01/29/26/213823-40c6442e-a776-422c-b669-518a4e2b3ec9.m4a	https://www.bgisd.org/apps/pages/index.jsp?uREC_ID=420347&type=d	us:sd:4810470
-https://4.files.edl.io/0874/09/22/26/191352-16157a6f-8cb8-4b2a-b498-35583e99a3c7.wav	https://www.danburyisd.org/apps/pages/index.jsp?uREC_ID=1587314&type=d&pREC_ID=1713696	us:sd:4816290
 https://huntisd.org/files/user/50/file/250916_001(3).MP3		us:sd:4823970
 https://files.smartsites.parentsquare.com/9577/poolvilleelementary.mp4	https://poolville.net/safety-and-security-agenda	us:sd:4835340
 https://4.files.edl.io/a90c/02/05/26/140544-a9fee439-b781-488b-b6a2-b80cf9966acb.m4a	https://www.rallsisd.org/apps/pages/index.jsp?uREC_ID=216873&type=d&pREC_ID=477822	us:sd:4836390
