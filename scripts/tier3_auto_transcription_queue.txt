@@ -295,18 +295,6 @@ https://vimeo.com/1233006487		us:place:2018250
 https://vimeo.com/1233494766		us:place:2633420
 https://vimeo.com/1231005435		us:place:2970000
 https://player.vimeo.com/video/784792836?h=e33e8fbaac&byline=0		us:county:13247
-https://huntisd.org/files/user/50/file/250916_001(3).MP3		us:sd:4823970
-https://files.smartsites.parentsquare.com/9577/poolvilleelementary.mp4	https://poolville.net/safety-and-security-agenda	us:sd:4835340
-https://4.files.edl.io/a90c/02/05/26/140544-a9fee439-b781-488b-b6a2-b80cf9966acb.m4a	https://www.rallsisd.org/apps/pages/index.jsp?uREC_ID=216873&type=d&pREC_ID=477822	us:sd:4836390
-https://townhallstreams.com/stream.php?location_id=180&id=76407	https://www.sandystonwalpack.org/board/meeting-agendas-minutes	us:sd:3414610
-https://files.smartsites.parentsquare.com/12248/video1601679931__1_.mp4	https://pilotrock.k12.or.us/school-board	us:sd:4109660
-https://4.files.edl.io/e9be/07/10/22/182237-28bf2c46-ec54-473e-9d8b-0893cef600a8.mp4	https://www.bayheadschool.org/apps/pages/index.jsp?uREC_ID=1431030&type=d&pREC_ID=1596159	us:sd:3401230
-https://4.files.edl.io/d3cc/04/02/24/154515-67d58c6e-44dc-429d-866f-d82a84370077.mp4	https://www.blackwellhornets.org/apps/pages/index.jsp?uREC_ID=82659&type=d	us:sd:4800005
-https://4.files.edl.io/f5ea/02/20/26/221306-43233ddb-fbbf-4b37-ae20-f236c194d8e3.m4a		us:sd:4827270		2026-01-20
-https://4.files.edl.io/07e1/05/22/24/164547-951bbadf-d6f0-434d-a876-c8f9b910a673.mp3	https://www.orogrande.net/apps/pages/index.jsp?uREC_ID=4379480&type=d&pREC_ID=2583590	us:sd:0628950
-https://content.myconnectsuite.com/api/documents/fae829c5e3424aacbd147273649663fb.mp4	https://www.royschools.org/boardmeetingnotesanddocuments	us:sd:3502280
-https://4.files.edl.io/0e0f/09/14/26/160427-4073bd67-202f-4196-bcf5-f2bb3eafcd4b.wav	https://www.harpersd.org/apps/pages/index.jsp?uREC_ID=2069788&type=d	us:sd:4106120
-https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/1262/Westbyasd/0cd39a8e-84de-4507-9463-2a7d307adec9/Recording__34.mp4?disposition=inline	https://www.westby-norse.org/documents/school-board/audio-recordings/196794	us:sd:5516410
 https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/3552/Dlsisd/c8b8345c-eac0-4d09-932a-8ef4772feea2/GMT20230912-163515_Recording.cutfile.202309191.mp4?disposition=inline	https://www.dlsisd.org/documents/parents/shac/shac-minutes-and-recordings/534984	us:sd:4816180
 https://content.schoolinsites.com/api/documents/9e08ed5043814a39b9b62c8407f9896a.mp4	https://www.jccschools.com/schoolboard	us:sd:2700231
 https://vid.hellonetcdn.com/vid/wa/clallamcounty2022/biz/waclmmnty24_25_rev4_iwd_xtlrg_univ.mp4	https://www.qvschools.org/o/qvsd/page/school-board	us:sd:5307020
