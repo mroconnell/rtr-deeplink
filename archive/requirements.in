@@ -41,5 +41,5 @@ wordninja>=2.0
 # rtr-upcoming uses, where both were measured on real agendas. The parse
 # runs in a separate process under a memory ceiling
 # (app/agenda_extract_worker.py).
-pypdf>=6.19.0
+pypdf>=6.21.2
 pdfplumber>=0.11.10
