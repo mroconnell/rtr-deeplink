@@ -295,18 +295,6 @@ https://vimeo.com/1233006487		us:place:2018250
 https://vimeo.com/1233494766		us:place:2633420
 https://vimeo.com/1231005435		us:place:2970000
 https://player.vimeo.com/video/784792836?h=e33e8fbaac&byline=0		us:county:13247
-https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/3552/Dlsisd/c8b8345c-eac0-4d09-932a-8ef4772feea2/GMT20230912-163515_Recording.cutfile.202309191.mp4?disposition=inline	https://www.dlsisd.org/documents/parents/shac/shac-minutes-and-recordings/534984	us:sd:4816180
-https://content.schoolinsites.com/api/documents/9e08ed5043814a39b9b62c8407f9896a.mp4	https://www.jccschools.com/schoolboard	us:sd:2700231
-https://vid.hellonetcdn.com/vid/wa/clallamcounty2022/biz/waclmmnty24_25_rev4_iwd_xtlrg_univ.mp4	https://www.qvschools.org/o/qvsd/page/school-board	us:sd:5307020
-https://gibnet.s3.us-west-2.amazonaws.com/2024/01-08-2024.mp3	https://www.gibraltar.k12.wi.us/documents/administration/board-of-education/school-board-meeting-audio-recordings/2024/561489	us:sd:5505220
-https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/1566/Greenland/4eff31e0-6425-4b89-b56a-8b095590f151/Audio_11_07_2023_11_44_37.mp3?disposition=inline	https://www.greenlandsd.com/documents/ppc/recordings/532519	us:sd:0506930
-https://core-docs.s3.amazonaws.com/documents/asset/uploaded_file/3065/NPS/2304155/July_26_2022.mp4	https://www.wearenorwood.org/page/boe-meetings-videos-copy/	us:sd:3411850
-https://content.myconnectsuite.com/api/documents/5e97c48f32e34e468a8e978d9b632ed7.m4a	https://www.csd.k12.or.us/agendasminutes	us:sd:4103260
-https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/3907/Scsd/a633131b-6b5a-4200-86fb-14c6ebdbcc6d/Regina_Eastman_s_Personal_Room-20250211_2342-1.mp4?disposition=inline	https://www.salemcsd.org/documents/budget-video/777464	us:sd:3625470
-https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/924/Usd_363_Holcomb_School_District/d5235efc-a955-4499-a573-0739c2d388ee/Recording-%289%29.wav?disposition=inline	https://www.usd363.com/o/usd-363-holcomb-school-district/browse/57767	us:sd:2007350
-https://cmsv2-assets.apptegy.net/uploads/14783/file/5662805/4bf11b9a-74cf-49b2-aa10-a7459705aa9d.mp4	https://www.cumbyisd.net/page/board-of-trustees	us:sd:4816020
-https://content.myconnectsuite.com/api/documents/938f99d809c04fd7ab8543320af5e75a.mp4	https://www.bgs.k12.mt.us/board	us:sd:3004380
-https://cmsv2-assets.apptegy.net/uploads/32803/file/6055707/1af95b0d-4afc-4a8a-a758-d970486fbe06.mp4	https://www.eraisd.net/page/school-board	us:sd:4818600
 https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/1381/Plains_Isd/8bb55b1d-34d2-4b2d-a859-2123555f485f/260119_0020.mp3?disposition=inline	https://www.plainsisd.net/documents/school-board/audio-recordings/854242	us:sd:4835040
 https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/4807/Lgusd_245/1226ed6e-753f-4dd7-be57-4a6023d63957/AQMhVqwfSRcZAdqh3nH-boDaGDY34FH2zh00itZhyyij8K.mp4?disposition=inline	https://www.usd245ks.org/documents/-district-office/videos/720698	us:sd:2008670
 https://cmsv2-assets.apptegy.net/uploads/3806/file/5159631/12e14b6e-055a-4245-a29b-c2c1b6e1cad3.mp4	https://www.ducorschool.com/page/school-board-meetings	us:sd:0611550
