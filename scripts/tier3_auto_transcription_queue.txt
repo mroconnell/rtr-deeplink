@@ -295,18 +295,6 @@ https://vimeo.com/1233006487		us:place:2018250
 https://vimeo.com/1233494766		us:place:2633420
 https://vimeo.com/1231005435		us:place:2970000
 https://player.vimeo.com/video/784792836?h=e33e8fbaac&byline=0		us:county:13247
-https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/1381/Plains_Isd/8bb55b1d-34d2-4b2d-a859-2123555f485f/260119_0020.mp3?disposition=inline	https://www.plainsisd.net/documents/school-board/audio-recordings/854242	us:sd:4835040
-https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/4807/Lgusd_245/1226ed6e-753f-4dd7-be57-4a6023d63957/AQMhVqwfSRcZAdqh3nH-boDaGDY34FH2zh00itZhyyij8K.mp4?disposition=inline	https://www.usd245ks.org/documents/-district-office/videos/720698	us:sd:2008670
-https://cmsv2-assets.apptegy.net/uploads/3806/file/5159631/12e14b6e-055a-4245-a29b-c2c1b6e1cad3.mp4	https://www.ducorschool.com/page/school-board-meetings	us:sd:0611550
-https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/72/Main/2cce4ebd-047e-4bd3-b79e-8bb81f524995/video1782577208.mp4?disposition=inline	https://www.prescott.k12.wa.us/documents/school-board/board-meeting-recordings/2023-school-board-recordings/572709	us:sd:5306870
-https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/2396/Obs/6acbb5b4-88ef-4517-88dc-f8c8a849a6b3/GMT20241014-233240_Recording_640x360.mp4?disposition=inline	https://www.olneybissellschool.com/documents/school-board-agendas-&-minutes/24-25-board-meeting--agendas--&-videos/688718	us:sd:3010950
-https://content.myconnectsuite.com/api/documents/1b527ef895f64614a23d2761e1863111.mp4	https://www.brockton.k12.mt.us/schoolboard	us:sd:3005040
-https://files-backend.assets.thrillshare.com/documents/asset/uploaded_file/4206/Msd55/693dc114-85d2-4c0f-997e-9b787120e367/video1820131547.mp4?disposition=inline	https://www.mitchell.k12.or.us/documents/board-meetings-videos/745957	us:sd:4108280
-https://townhallstreams.com/stream.php?location_id=52&id=75843	https://www.bowdoinham.com/bowdoinham-water-district-board-trustees	us:cousub:2302306260
-https://slt.granicus.com/player/clip/2339?view_id=6&redirect=true	https://slt.granicus.com/ViewPublisherRSS.php?view_id=6&mode=video	us:place:0673108	10 06 2026 City Council - Oct 06, 2026	2026-10-06
-https://tuolumne.granicus.com/player/clip/835?view_id=3&redirect=true	https://tuolumne.granicus.com/ViewPublisherRSS.php?view_id=3&mode=video	rtr:us:ca:tuolumne-utilities-district	Regular Board Meeting - Sep 08, 2026	2026-09-08
-https://loudoun.granicus.com/player/clip/8231?view_id=44&redirect=true	https://loudoun.granicus.com/ViewPublisherRSS.php?view_id=44&mode=video	us:county:51107	August 19, 2026 Hearings - Aug 19, 2026	2026-08-19
-https://wsscwater.granicus.com/player/clip/1528?view_id=2&redirect=true	https://wsscwater.granicus.com/ViewPublisherRSS.php?view_id=2&mode=video	rtr:us:md:washington-suburban-sanitary-commission	WSSC Water Commission Meeting - September 16, 2026 - Sep 16, 2026	2026-09-16
 https://smc-expresslanejpa.granicus.com/player/clip/108?view_id=1&redirect=true	https://smc-expresslanejpa.granicus.com/ViewPublisherRSS.php?view_id=1&mode=video	rtr:us:ca:san-mateo-county-express-lanes-joint-powers-authority	SMC Express Lanes JPA Special Meeting - Dec 05, 2025	2025-12-05
 https://tarboro-nc.granicus.com/player/clip/167?view_id=2&redirect=true	https://tarboro-nc.granicus.com/ViewPublisherRSS.php?view_id=2&mode=video	us:place:3766700	Town Council - Sep 14, 2026	2026-09-14
 https://banningca.granicus.com/MediaPlayer.php?view_id=1&clip_id=350
@@ -1028,3 +1016,6 @@ https://cityofracine.granicus.com/MediaPlayer.php?view_id=1&clip_id=797
 https://tustin.granicus.com/MediaPlayer.php?view_id=2&clip_id=2960
 https://windsor-ca.granicus.com/MediaPlayer.php?view_id=2&clip_id=1861
 https://pgsk12.new.swagit.com/videos/394547		us:sd:5103090
+https://slt.granicus.com/player/clip/2339?view_id=6&redirect=true	https://slt.granicus.com/ViewPublisherRSS.php?view_id=6&mode=video	us:place:0673108	10 06 2026 City Council - Oct 06, 2026	2026-10-06
+https://loudoun.granicus.com/player/clip/8231?view_id=44&redirect=true	https://loudoun.granicus.com/ViewPublisherRSS.php?view_id=44&mode=video	us:county:51107	August 19, 2026 Hearings - Aug 19, 2026	2026-08-19
+https://wsscwater.granicus.com/player/clip/1528?view_id=2&redirect=true	https://wsscwater.granicus.com/ViewPublisherRSS.php?view_id=2&mode=video	rtr:us:md:washington-suburban-sanitary-commission	WSSC Water Commission Meeting - September 16, 2026 - Sep 16, 2026	2026-09-16
