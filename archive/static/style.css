@@ -2380,7 +2380,12 @@ h1.context-headline {
   border-radius: 6px;
   color: var(--fg);
   background: var(--bg);
+  /* Two fonts only, as on the rest of the site: body serif for the text,
+     the cassette button's own monospace for the one action. */
+  font-family: var(--font-body);
 }
+.signup-prompt .link-button,
+.signup-prompt-signin { font-family: var(--font-body); }
 .signup-prompt::backdrop { background: rgba(0, 0, 0, 0.45); }
 .signup-prompt-title {
   font-size: 1.25rem;
@@ -2397,6 +2402,6 @@ h1.context-headline {
   gap: 0.75rem 1rem;
 }
 .signup-prompt-primary { text-decoration: none; }
-.signup-prompt-signin { color: var(--accent); }
+.signup-prompt-signin { color: var(--primary); }
 .signup-prompt-dismiss { margin-left: auto; }
 .signup-prompt-fine { margin: 1rem 0 0; font-size: 0.85rem; color: var(--muted); }
