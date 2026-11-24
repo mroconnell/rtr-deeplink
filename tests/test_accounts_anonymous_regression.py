@@ -42,6 +42,10 @@ async def test_meeting_page_anonymous_has_no_save_button_and_renders_normally(
     monkeypatch,
 ):
     monkeypatch.setenv("CLERK_SECRET_KEY", "sk_test_fake_for_this_test")
+    # Accounts off (no publishable key): no save button at all. With
+    # accounts on, signed-out visitors see it -- see the *_when_accounts_on
+    # tests below.
+    monkeypatch.setitem(archive.main.templates.env.globals, "CLERK_PUBLISHABLE_KEY", "")
     slug = await _make_page("anon-regress-1")
 
     response = archive_client_.get(f"/m/{slug}")
@@ -53,10 +57,48 @@ async def test_meeting_page_anonymous_has_no_save_button_and_renders_normally(
 
 def test_meetings_index_anonymous_has_no_save_search_button(monkeypatch):
     monkeypatch.setenv("CLERK_SECRET_KEY", "sk_test_fake_for_this_test")
+    # Accounts off (no publishable key): no save button at all. With
+    # accounts on, signed-out visitors see it -- see the *_when_accounts_on
+    # tests below.
+    monkeypatch.setitem(archive.main.templates.env.globals, "CLERK_PUBLISHABLE_KEY", "")
     response = archive_client_.get("/meetings")
     assert response.status_code == 200
     assert 'id="saveSearchBtn"' not in response.text
     # The rest of the page is unaffected -- search box/filters still there.
+    assert "Search title, jurisdiction" in response.text
+
+
+async def test_meeting_page_anonymous_sees_save_button_when_accounts_on(monkeypatch):
+    """2026-11-24: with accounts configured, a signed-out visitor now sees
+    "Save this meeting", marked signed-out so the click opens the
+    free-account box (archive/static/signup_prompt.js) instead of saving.
+    The two tests above still pin the accounts-off case: no button."""
+    monkeypatch.setenv("CLERK_SECRET_KEY", "sk_test_fake_for_this_test")
+    monkeypatch.setitem(
+        archive.main.templates.env.globals, "CLERK_PUBLISHABLE_KEY", "pk_test_fake"
+    )
+    slug = await _make_page("anon-regress-prompt-1")
+
+    response = archive_client_.get(f"/m/{slug}")
+    assert response.status_code == 200
+    assert 'id="saveMeetingBtn"' in response.text
+    assert 'id="saveMeetingIconBtn"' in response.text
+    assert response.text.count('data-signed-in="false"') == 2
+    assert 'data-signed-in="true"' not in response.text
+    assert "/archive-static/signup_prompt.js" in response.text
+    # Nothing else on the page changes for a signed-out visitor.
+    assert "Report a problem with this meeting" in response.text
+
+
+def test_meetings_index_anonymous_sees_save_search_when_accounts_on(monkeypatch):
+    monkeypatch.setenv("CLERK_SECRET_KEY", "sk_test_fake_for_this_test")
+    monkeypatch.setitem(
+        archive.main.templates.env.globals, "CLERK_PUBLISHABLE_KEY", "pk_test_fake"
+    )
+    response = archive_client_.get("/meetings")
+    assert response.status_code == 200
+    assert 'id="saveSearchBtn"' in response.text
+    assert 'data-signed-in="false"' in response.text
     assert "Search title, jurisdiction" in response.text
 
 

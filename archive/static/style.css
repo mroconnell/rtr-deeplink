@@ -2369,3 +2369,34 @@ h1.context-headline {
 .context-mentions-timestamp:focus {
   text-decoration: underline;
 }
+
+/* Free-account box for signed-out "Save" clicks (archive/static/signup_prompt.js). */
+.signup-prompt {
+  box-sizing: border-box;
+  max-width: 26rem;
+  width: calc(100% - 32px);
+  padding: 1.5rem;
+  border: 2px solid var(--primary);
+  border-radius: 6px;
+  color: var(--fg);
+  background: var(--bg);
+}
+.signup-prompt::backdrop { background: rgba(0, 0, 0, 0.45); }
+.signup-prompt-title {
+  font-size: 1.25rem;
+  margin: 0 0 0.5rem;
+  color: var(--primary);
+}
+.signup-prompt-lead { margin: 0 0 0.75rem; }
+.signup-prompt-perks { margin: 0 0 1rem; padding-left: 1.2rem; }
+.signup-prompt-perks li { margin-bottom: 0.35rem; }
+.signup-prompt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+}
+.signup-prompt-primary { text-decoration: none; }
+.signup-prompt-signin { color: var(--accent); }
+.signup-prompt-dismiss { margin-left: auto; }
+.signup-prompt-fine { margin: 1rem 0 0; font-size: 0.85rem; color: var(--muted); }
