@@ -90,6 +90,25 @@ async def test_meeting_page_anonymous_sees_save_button_when_accounts_on(monkeypa
     assert "Report a problem with this meeting" in response.text
 
 
+async def test_meeting_page_anonymous_has_hidden_welcome_bar(monkeypatch):
+    """The shared-moment welcome bar ships hidden; welcome_bar.js decides
+    to show it client-side. Absent when accounts are off."""
+    monkeypatch.setenv("CLERK_SECRET_KEY", "sk_test_fake_for_this_test")
+    monkeypatch.setitem(
+        archive.main.templates.env.globals, "CLERK_PUBLISHABLE_KEY", "pk_test_fake"
+    )
+    slug = await _make_page("anon-regress-welcome-1")
+    response = archive_client_.get(f"/m/{slug}")
+    assert response.status_code == 200
+    assert 'id="welcomeBar"' in response.text
+    assert 'data-jurisdiction="City of Test"' in response.text
+    assert "/archive-static/welcome_bar.js" in response.text
+
+    monkeypatch.setitem(archive.main.templates.env.globals, "CLERK_PUBLISHABLE_KEY", "")
+    response = archive_client_.get(f"/m/{slug}")
+    assert 'id="welcomeBar"' not in response.text
+
+
 def test_meetings_index_anonymous_sees_save_search_when_accounts_on(monkeypatch):
     monkeypatch.setenv("CLERK_SECRET_KEY", "sk_test_fake_for_this_test")
     monkeypatch.setitem(

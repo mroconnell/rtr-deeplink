@@ -1843,6 +1843,19 @@ account created in the last 30 minutes, once per browser, from
 `shared_static/clerk_nav.js`) and `visit_start` with a 30-day visit count
 (`shared_static/visit_counter.js`).
 
+**Welcome bar for shared-moment arrivals (2026-11-24).** A signed-out
+visitor who arrives from another site on a meeting link with `t=` sees a
+bar fixed to the bottom of the window (`archive/static/welcome_bar.js`):
+"Get an email when <jurisdiction> posts a new meeting." They type an
+email, Clerk emails a 6-digit code, and the code creates a free account
+(or signs in an existing one) in place, with no password. The bar then
+saves a search for that jurisdiction, so the existing saved-search alert
+email does the rest. It relies on Clerk Production having "Sign-up with
+password" off (Ryan switched it off 2026-11-24). Anything Clerk can't
+finish in place (a second factor, a device check) falls back to
+`/sign-in` or `/sign-up`. Shown once per browser: a dismiss or a finished
+sign-up hides it for good. GA event `welcome_bar` with `step`.
+
 ### What needs an account, at a glance
 
 | Works for everyone, no sign-in | Requires a signed-in Clerk session |

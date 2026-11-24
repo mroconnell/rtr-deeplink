@@ -342,6 +342,37 @@
      expression). Same filter, same value. #}
   {% set iso_date = page.date|iso_date %}
   <main class="meeting-page">
+    {#- Welcome bar for signed-out visitors who arrive on a shared moment
+       (a link with t=). Hidden until archive/static/welcome_bar.js decides
+       to show it: signed out, arrived from another site, never dismissed.
+       Email -> 6-digit code -> free Clerk account -> a saved search for
+       this jurisdiction, so the existing alert email does the rest. -#}
+    {% if CLERK_PUBLISHABLE_KEY and not active_account and page.jurisdiction %}
+    <section id="welcomeBar" class="welcome-bar" aria-label="Get alerts" hidden
+      data-jurisdiction="{{ page.jurisdiction }}" data-jurisdiction-display="{{ page.jurisdiction_display }}">
+      <div class="welcome-bar-text">
+        <p class="welcome-bar-lead">You followed a link to <span class="welcome-bar-time"></span> in this {{ page.jurisdiction_display }} meeting.</p>
+        <p class="welcome-bar-offer">Get an email when {{ page.jurisdiction_display }} posts a new meeting. Free.</p>
+      </div>
+      <form id="welcomeBarEmailForm" class="welcome-bar-form" novalidate>
+        <label for="welcomeBarEmail" class="visually-hidden">Email address</label>
+        <input type="email" id="welcomeBarEmail" autocomplete="email" placeholder="you@example.com" required>
+        <button type="submit" class="cassette-btn welcome-bar-submit"><span class="cassette-label">Email me</span></button>
+        <button type="button" class="link-button welcome-bar-dismiss">Not now</button>
+        <p class="welcome-bar-fine">We'll send a 6-digit code to confirm. No password.</p>
+      </form>
+      <form id="welcomeBarCodeForm" class="welcome-bar-form" novalidate hidden>
+        <label for="welcomeBarCode">Enter the 6-digit code we emailed you</label>
+        <input type="text" id="welcomeBarCode" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required>
+        <button type="submit" class="cassette-btn welcome-bar-submit"><span class="cassette-label">Confirm</span></button>
+        <button type="button" class="link-button welcome-bar-dismiss">Cancel</button>
+      </form>
+      <p id="welcomeBarStatus" class="welcome-bar-status" role="status"></p>
+      {#- Clerk's bot protection renders its challenge here when it needs
+          one during a custom sign-up flow. -#}
+      <div id="clerk-captcha"></div>
+    </section>
+    {% endif %}
     <div class="meta">
       <h1>
         {{ page.title or (page.jurisdiction_display ~ " meeting" if page.jurisdiction else "Untitled meeting") }}
