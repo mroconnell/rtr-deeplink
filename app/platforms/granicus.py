@@ -1141,6 +1141,12 @@ class GranicusAssetFinder(AssetFinder):
                 raw_items, agenda_fallback_url = await self._fetch_agenda_items(
                     session, final_url, clip_id
                 )
+                if not raw_items:
+                    # The player page we already downloaded carries the
+                    # clerk's index points too. Read them when
+                    # AgendaViewer.php gave none (Napa sends it to a PDF).
+                    # agenda_fallback_url still becomes agenda_link below.
+                    raw_items = self._extract_index_points(soup, html)
                 if raw_items:
                     raw_items.sort(key=lambda item: item[0])
                     for i, (start, item_title) in enumerate(raw_items):
@@ -1150,8 +1156,10 @@ class GranicusAssetFinder(AssetFinder):
                                 start=start, end=max(end, start), text=item_title
                             )
                         )
-                elif agenda_fallback_url:
-                    # No timestamped chapter data (e.g. Berkeley/Paradise Valley AZ,
+                if agenda_fallback_url:
+                    # Kept even when index points above filled agenda_items:
+                    # the page then shows both the chapters and the PDF.
+                    # No AgendaViewer.php chapter data (e.g. Berkeley/Paradise Valley AZ,
                     # which redirect AgendaViewer.php to their own external site or a
                     # PDF instead of Granicus's native structure) -- still a real,
                     # fetchable agenda, just not one we can parse into clickable
@@ -1364,6 +1372,49 @@ class GranicusAssetFinder(AssetFinder):
                 items.append((float(match.group(1)), title))
 
         return items, (None if items else final_url)
+
+    @staticmethod
+    def _extract_index_points(
+        soup: BeautifulSoup, html: str
+    ) -> List[Tuple[float, str]]:
+        """The clerk's index points, read off the player page itself.
+
+        Granicus's /player/clip/{id} page lists each index point as
+        `<div class="index-point" time="{seconds}" data-id="{meta_id}">
+        {title}</div>` (real fixtures: Tulsa 7694, Mission Viejo 2515,
+        Albemarle 1452, Hercules 1306). These are the same points that
+        `?meta_id=` and `&entrytime=` links jump to. `_fetch_agenda_items`
+        only reads AgendaViewer.php, which some tenants send to a PDF
+        instead (Napa, 2026-08-11), so their index points were dropped
+        even though this page already had them.
+
+        `time` here is plain seconds. The page's own flowplayer
+        `cuepoints: [...]` list names each point's type; the player's JS
+        treats type "Document" as a slide, not an agenda item, so an id
+        that list marks as anything other than "Agenda" is skipped. An id
+        missing from that list is kept.
+        """
+        types: Dict[str, str] = {}
+        for match in re.finditer(
+            r'\{[^{}]*"type"\s*:\s*"([^"]+)"[^{}]*"id"\s*:\s*"(\d+)"[^{}]*\}', html
+        ):
+            types[match.group(2)] = match.group(1)
+
+        items: List[Tuple[float, str]] = []
+        for div in soup.select("div.index-point"):
+            raw_time = (div.get("time") or "").strip()
+            title = " ".join(div.get_text(" ", strip=True).split())
+            if not raw_time or not title:
+                continue
+            try:
+                start = float(raw_time)
+            except ValueError:
+                continue
+            point_type = types.get((div.get("data-id") or "").strip())
+            if point_type and point_type != "Agenda":
+                continue
+            items.append((start, title))
+        return items
 
     @staticmethod
     async def _fetch_minutes_date(
