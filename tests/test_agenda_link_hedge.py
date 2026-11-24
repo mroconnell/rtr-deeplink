@@ -51,4 +51,5 @@ async def test_legistar_agenda_link_gets_a_plain_label():
     response = client.get(f"/m/{slug}")
     assert response.status_code == 200
     assert "We think we found an agenda here" not in response.text
-    assert "Agenda:" in response.text
+    assert "View original agenda" in response.text
+    assert "https://example.com/agendahedge/agenda.pdf" in response.text

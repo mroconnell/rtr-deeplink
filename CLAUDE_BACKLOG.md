@@ -789,3 +789,20 @@ measurements quoted; re-check before building.
   suiteone.py`'s `_extract_title` parses a whole real 2.6 MB event page
   with BeautifulSoup to find one heading (about 1s). A `SoupStrainer("h1")`
   measured 0.39s on the same page.
+
+## Agenda chapters other platforms may already send us (2026-11-24)
+
+WO-1982 found Granicus index points sitting unread on a page we already
+download. A check of the saved fixtures for the same pattern found these
+leads. None is confirmed with a real populated example yet.
+
+- **Cablecast.** Its show API has a `"chapters"` field that no code reads.
+  It is empty (`[]`) in all 28 saved samples, so it needs a live show
+  that uses it first.
+- **open.media.** The page config says `"cuepoints":true`, but
+  `app/platforms/openmedia.py` reads no agenda items. Its video is
+  YouTube, so check this from the drip Mac only.
+- **Town Hall Streams.** The player reads a `#chapters` value for its
+  seek offset. Check whether a live page lists named chapters.
+- **YouTube.** yt-dlp returns a video's description chapters. Only the
+  drip Mac may fetch YouTube, so this would ride on the drip.
