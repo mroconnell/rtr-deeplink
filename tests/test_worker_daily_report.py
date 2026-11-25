@@ -799,3 +799,54 @@ async def test_recent_completions_lists_a_job_that_just_finished():
     row = next(c for c in completions if c["job_id"] == job_id)
     assert row["slug"]
     assert isinstance(row["priority"], int)
+
+
+# --- WO-1983: say when the chunk count covers more than a day --------------
+#
+# The chunk count diffs against the last SUCCESSFUL send. Real case: the
+# 2026-11-24 send failed (the Archive answered with an error page), so the
+# 2026-11-25 report's "47 chunks" covered ~50 hours next to "0 jobs
+# finished" for the last 24 hours, and read as "chunks finish, jobs don't".
+
+
+async def _report_html(monkeypatch, previous: dict) -> str:
+    captured = {}
+
+    async def _fake_send(to, subject, html, *, cc=""):
+        captured["html"] = html
+        return True
+
+    monkeypatch.setattr(email_utils, "_send", _fake_send)
+    await email_utils.send_worker_daily_report(
+        "ops@example.com",
+        summary=_summary(active_jobs=0, cumulative_chunks=67221),
+        previous=previous,
+    )
+    return captured["html"]
+
+
+async def test_daily_report_labels_a_chunk_count_older_than_a_day(monkeypatch):
+    from datetime import datetime, timedelta, timezone
+
+    html = await _report_html(
+        monkeypatch,
+        {
+            "cumulative_chunks_completed": 67174,
+            "recorded_at": datetime.now(timezone.utc) - timedelta(hours=50),
+        },
+    )
+    assert "since the last report, 50 hours ago" in html
+
+
+async def test_daily_report_keeps_the_plain_label_for_a_normal_day(monkeypatch):
+    from datetime import datetime, timedelta
+
+    # Naive datetime, as SQLite hands it back.
+    html = await _report_html(
+        monkeypatch,
+        {
+            "cumulative_chunks_completed": 67174,
+            "recorded_at": datetime.utcnow() - timedelta(hours=24),
+        },
+    )
+    assert "<td>Chunks completed</td>" in html
