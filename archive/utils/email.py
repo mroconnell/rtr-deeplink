@@ -18,6 +18,7 @@ copy added too (see the render.yaml task this was built alongside).
 import html
 import logging
 import os
+from datetime import datetime, timezone
 from typing import Optional
 from urllib.parse import quote
 
@@ -857,6 +858,22 @@ async def send_worker_daily_report(
     chunks_24h_str = (
         f"{chunks_24h:,}" if chunks_24h is not None else "n/a (first report)"
     )
+    # WO-1983: the chunk count is a diff against the LAST SUCCESSFUL send,
+    # not a true 24-hour window. When a send fails (2026-11-24: the Archive
+    # returned an error page), the next report's chunk count covers two
+    # days while "Jobs finished" still counts only the last 24 hours --
+    # it read "47 chunks, 0 jobs" when 4 jobs had actually finished. Say
+    # how long the chunk count really covers whenever it is not about a day.
+    chunks_label = "Chunks completed"
+    recorded_at = (previous or {}).get("recorded_at")
+    if chunks_24h is not None and isinstance(recorded_at, datetime):
+        if recorded_at.tzinfo is None:
+            recorded_at = recorded_at.replace(tzinfo=timezone.utc)
+        hours = (datetime.now(timezone.utc) - recorded_at).total_seconds() / 3600
+        if hours > 30:
+            chunks_label = (
+                f"Chunks completed (since the last report, {hours:.0f} hours ago)"
+            )
     segments_24h = summary["segments_added_last_24h"]
     segments_24h_str = f"{segments_24h:,}" if segments_24h is not None else "n/a"
     # WO-936: absent for any caller that doesn't pass it (older tests'
@@ -881,7 +898,7 @@ async def send_worker_daily_report(
     body += (
         "<h2>Transcription worker activity, last 24 hours</h2>"
         '<table cellpadding="6" style="border-collapse: collapse">'
-        f"<tr><td>Chunks completed</td><td><strong>{chunks_24h_str}</strong></td></tr>"
+        f"<tr><td>{chunks_label}</td><td><strong>{chunks_24h_str}</strong></td></tr>"
         f"<tr><td>Jobs finished</td><td><strong>{summary['jobs_completed_last_24h']:,}</strong></td></tr>"
         f"<tr><td>Segments transcribed</td><td><strong>{segments_24h_str}</strong></td></tr>"
         "</table>"

@@ -1,3 +1,8 @@
+# NOTE (WO-1983, 2026-11-25): despite the RETIRED note below, this
+# workflow is enabled and runs every 6 hours (feed log rows every day
+# since 2026-09-22). It is the main thing feeding new meetings to the
+# cloud workers. Lines it can't reach are kept (NOT-REACHABLE-FROM-GITHUB).
+#
 # RETIRED (WO-1168, 2026-09-29): Granicus/Cablecast -- most of this
 # queue -- refuse GitHub Actions' own IP addresses with an HTTP 403 even
 # with a correct Referer/User-Agent, confirmed live: this workflow's last
@@ -98,6 +103,13 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements.txt
+
+      # WO-1983 (2026-11-25): ffprobe is not preinstalled on ubuntu-latest.
+      # Without it every direct-file line was dropped as "dead" (594 lines,
+      # 2026-09-26 to 2026-11-25). The feed script now also refuses to run
+      # without ffprobe. Same step adapter-canary.yml already has.
+      - name: Install ffmpeg (for ffprobe)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends ffmpeg
 
       - name: Feed the next batch
         env:

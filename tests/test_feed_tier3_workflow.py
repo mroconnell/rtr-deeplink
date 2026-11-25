@@ -79,3 +79,14 @@ def test_workflow_still_runs_the_script_that_writes_the_probe_sidecar():
         s.get("run", "") for s in steps if s.get("name") == "Feed the next batch"
     ]
     assert any("feed_tier3_auto_transcription.py" in s for s in run_steps)
+
+
+def test_ffmpeg_is_installed_before_the_feed_runs():
+    """WO-1983: ubuntu-latest has no ffprobe. Without it the feed dropped
+    every direct-file line as "dead" -- 594 real lines, 2026-09-26 to
+    2026-11-25."""
+    workflow = yaml.safe_load(WORKFLOW_PATH.read_text())
+    names = [s.get("name", "") for s in workflow["jobs"]["feed"]["steps"]]
+    runs = [s.get("run", "") for s in workflow["jobs"]["feed"]["steps"]]
+    install = next(i for i, r in enumerate(runs) if "install -y" in r and "ffmpeg" in r)
+    assert install < names.index("Feed the next batch")
