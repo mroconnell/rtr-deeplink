@@ -72018,3 +72018,32 @@ Every self-generated job is `PRIORITY_LOW` (the idle trickle, the batch top-up a
 
 **Not deployed when merged.** The worker and Archive services need a deploy before the emails stop.
 
+## [Done 2026-11-25] Singapore scraper: the apex now goes through our Cloudflare zone, with a Singapore challenge, a feed cache and a rate limit
+
+**What happened.** From 2026-11-11 a scraper loaded one page per visit (direct, Chrome at 1280x1200, a new IP each time, many from Alibaba Cloud). A second wave from Nov 17 was about 10 times bigger: 53.5K of 56.6K GA users in Nov 17-23 were "Singapore". The harm was speed, not cost: 5xx errors from Nov 20, a typical response time of 9.8 seconds on Nov 23, and 16 Archive restarts overnight Nov 23-24.
+
+**Root cause.** The apex record was an A record to `216.24.57.1`. Render serves custom domains through Cloudflare for SaaS, and a customer zone's rules apply only through a proxied CNAME to the Render host ("orange-to-orange"). So apex traffic skipped our zone: no analytics, no rules, no Transform Rule header. That is also why the origin lock saw 705 of 705 requests with no header.
+
+**What changed (Cloudflare dashboard, Ryan's written approval each time).**
+
+| When (ET) | Change |
+|---|---|
+| 2026-11-24 12:22 | Apex A `216.24.57.1` changed to CNAME `rtr-deeplink.onrender.com`, proxied |
+| 2026-11-24 12:23 | WAF custom rule "Challenge Singapore" (Managed Challenge) |
+| 2026-11-25 13:31 | Cache rule "Cache feed.xml 10 min" |
+| 2026-11-25 13:32 | Rate limit "Rate limit 50 per 10s per IP" (10-second block) |
+
+The feed cache and rate limit followed a second burst: "ShapBot/0.1.0" on Google Cloud sent about 41,000 requests, almost all `/feed.xml`, from 4 IPs in 90 minutes on Nov 24 night (about 30 per 10 seconds from its busiest IP). The Archive builds the feed on every request. We chose to cache the feed rather than block ShapBot.
+
+**Result.**
+
+| Measure | Before | After |
+|---|---|---|
+| GA Singapore users per day | 5,811 (Nov 23) | 5 or fewer (Nov 25, morning) |
+| Typical response time | 9.8 s (Nov 23) | 0.06 s (Nov 25) |
+| Archive restarts | 16 overnight Nov 23-24 | 3 in the following day |
+| Apex requests seen by our zone | 0 in 7 days | about 88,000 in 24 hours |
+
+"Challenge Singapore" logged 5,330 challenges in its first 24 hours, none solved. Feed test: first request a cache MISS, then HITs. Rate limit test: 80 fast requests, 52 served, 28 got 429; the home page loaded 15 seconds later.
+
+**Left open.** The origin lock is untested since the fix: see BACKLOG.md, "Re-test the origin lock now that the apex goes through our Cloudflare zone".

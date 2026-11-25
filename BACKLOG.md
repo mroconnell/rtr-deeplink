@@ -273,7 +273,7 @@ Reliability, ops & cost  (7)
   Search Console, structured data & SEO plumbing  (1)
     [NEEDS-AUDIT] Search Console "Missing field" flags (Videos…
   `/coverage` as a QA surface
-  A scraper copies the Archive by reaching Render directly, and the app…
+  Re-test the origin lock now that the apex goes through our Cloudflare…
 
 Trust, safety & data quality  (12)
   Shade the stretches of a Whisper transcript where Whisper itself was…
@@ -2086,13 +2086,13 @@ actionability sections above.
 
 ### `/coverage` as a QA surface
 
-### A scraper copies the Archive by reaching Render directly, and the app cannot tell it from Cloudflare traffic
+### Re-test the origin lock now that the apex goes through our Cloudflare zone
 
-- **Issue**: from 2026-11-11 to 14, about 3,150 of 7,203 GA views came from a scraper. Each visit loaded one `/m/` page, came direct, and used Chrome at 1280x1200, mostly from Singapore. GA logged them on redtaperecordings.com, but our Cloudflare zone saw almost none of them. Render's own address now redirects page loads (PR #2169). The public domain does not, because Render answers it directly (216.24.57.1).
-- **Impact**: the public pages get copied, and GA counts are inflated. There is no load or cost harm: Render's daily requests stayed in their normal range.
-- **Next action**: none in code for now. Filter GA (exclude Singapore, China, "(not set)" city). Revisit only if load or cost rises.
-- **Constraint**: a header-based origin lock cannot work on Render. Our zone's Transform Rule header never reaches the app (`/admin/origin-lock-check`: 705 missing, 0 match). `/admin/request-headers` (PR #2172) showed identical headers through our Cloudflare and direct to Render (CDN-Loop `loops=1`, same 16 names, 2 forwarding hops). Never set `ORIGIN_LOCK_MODE=enforce`: on 2026-11-15 it refused every visitor until it was rolled back.
-- **History**: README "Cloudflare and the origin lock"; PRs #2169, #2170, #2172.
+- **Issue**: the origin lock (`require_cloudflare_for_public_host`) is in check-only mode. It never saw its header because the apex was an A record, which skips our zone. Since 2026-11-24 the apex is a proxied CNAME, so our zone's Transform Rule should now reach the app. Nobody has checked.
+- **Impact**: anyone who connects straight to Render's IP still skips the Singapore challenge and the rate limit.
+- **Next action**: set the Transform Rule "Origin lock header" and Render's `ORIGIN_SHARED_SECRET` to the same value. Load pages, then read `/admin/origin-lock-check`. Turn on `enforce` only if `match` climbs and `mismatch` stays 0.
+- **Constraint**: never set `ORIGIN_LOCK_MODE=enforce` before that check passes. On 2026-11-15 it refused every visitor.
+- **History**: `BACKLOG_DONE.md`, "Singapore scraper"; README "Cloudflare and the origin lock"; PRs #2169, #2170, #2172.
 
 ## Trust, safety & data quality
 

@@ -3519,19 +3519,39 @@ this:
    `match`, `missing`, `mismatch`, and the length of the last wrong
    value. It never returns the secret.
 
-**The lock does not work on Render (confirmed 2026-11-15). Do not
-turn on `enforce`.** In check-only mode, 705 of 705 requests arrived
-with no `X-Origin-Auth` at all, including test requests that went
-through our Cloudflare zone. The Transform Rule itself was correct.
-`GET /admin/request-headers` (admin token, PR #2172) then showed that a
-request through our zone and a request straight to Render
-(`curl --resolve redtaperecordings.com:443:216.24.57.1`) arrive
-identical: the same 16 header names, `CDN-Loop: cloudflare; loops=1`,
-and 2 X-Forwarded-For hops. Render serves custom domains behind its
-own Cloudflare, and nothing our zone adds survives to the app. So the
-app cannot tell the two paths apart. The steps below are kept as a
-record only. See BACKLOG.md, "A scraper copies the Archive by reaching
-Render directly".
+**Why the lock saw no header (found 2026-11-24).** In check-only mode,
+705 of 705 requests arrived with no `X-Origin-Auth`. The cause was DNS,
+not the app. The apex record was an A record to `216.24.57.1`.
+Render serves custom domains through its own Cloudflare account
+("Cloudflare for SaaS"). Our zone's rules apply to that traffic only
+when the record is a proxied **CNAME to `rtr-deeplink.onrender.com`**
+(Cloudflare calls this "orange-to-orange"). With an A record, apex
+traffic skipped our zone entirely: no analytics, no rules, no header.
+
+**Fixed 2026-11-24 12:22 ET.** The apex is now a proxied CNAME to
+`rtr-deeplink.onrender.com`. Rollback value: A `216.24.57.1`, proxied,
+TTL Auto. Our zone saw 0 apex requests the week before and about
+88,000 the next day.
+
+Zone rules added since (Cloudflare dashboard, not in this repo):
+
+| Rule | Type | What it does |
+|---|---|---|
+| Challenge Singapore | WAF custom rule | `ip.src.country eq "SG"`, Managed Challenge |
+| Cache feed.xml 10 min | Cache rule | `/feed.xml` on the apex, edge copy kept 10 minutes, errors not cached |
+| Rate limit 50 per 10s per IP | Rate limiting rule (the free plan's only one) | Over 50 requests in 10 seconds from one IP: blocked for 10 seconds |
+
+The rate limit covers the public domain only. A script that calls
+`redtaperecordings.com` faster than about 5 requests a second gets 429s.
+Calls to `*.onrender.com` skip Cloudflare and are not limited.
+
+**The origin lock has not been re-tested since the fix. Do not turn on
+`enforce` until check-only shows `match` climbing and `mismatch` at 0.**
+On 2026-11-15, `enforce` refused every visitor until it was rolled back.
+The Transform Rule "Origin lock header" still holds an old value that
+does not match Render's `ORIGIN_SHARED_SECRET`; set them equal first.
+See BACKLOG.md, "Re-test the origin lock now that the apex goes through
+our Cloudflare zone".
 
 **First try failed (2026-11-15).** The lock went straight to blocking.
 Requests through Cloudflare then got 403 too: the header Cloudflare sent
