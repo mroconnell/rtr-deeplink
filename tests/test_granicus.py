@@ -1537,3 +1537,117 @@ async def test_fetch_page_raises_when_browser_headers_retry_also_fails():
                 assert "403" in str(e)
 
     assert raised
+
+
+async def test_index_points_on_player_page_become_agenda_items():
+    # Real Tulsa, OK clip 7694 (fetched live 2026-08-23, same fixture as
+    # the RSS-date test above). Its player page lists 54 index points as
+    # `<div class="index-point" time="..." data-id="...">`. AgendaViewer.php
+    # is mocked as a 404 here, so every chapter must come from the page.
+    url = "https://tulsa-ok.granicus.com/player/clip/7694"
+    html = load_fixture("granicus", "tulsa_clip7694.html")
+
+    routes = {
+        url: FakeResponse(status=200, text=html, url=url),
+        "https://tulsa-ok.granicus.com/videos/7694/captions.vtt": FakeResponse(
+            status=404
+        ),
+        "https://tulsa-ok.granicus.com/AgendaViewer.php?clip_id=7694&embedded=1": FakeResponse(
+            status=404
+        ),
+    }
+
+    with mock_session(routes):
+        result = await GranicusAssetFinder().resolve(url)
+
+    assert len(result.agenda_items) == 54
+    first, second = result.agenda_items[0], result.agenda_items[1]
+    assert (first.start, first.end, first.text) == (11.0, 904.0, "INTRODUCTION")
+    assert (second.start, second.text) == (904.0, "1. RECEIPT & FILING OF MINUTES")
+    assert result.agenda_link is None
+
+
+async def test_index_points_fill_in_when_agenda_viewer_redirects_to_pdf():
+    # Napa's AgendaViewer.php sends you to a raw PDF (real, clip 3470,
+    # 2026-08-11 -- see the PDF test above), while its player pages carry
+    # index points (clip 3532, seen live 2026-11-24). No saved Napa page
+    # has index points, so this pairs that real PDF behavior with a real
+    # page that does: Mission Viejo clip 2515 (22 index points). The pair
+    # is synthetic; each half is real. Both the chapters and the PDF link
+    # must survive.
+    url = "https://missionviejo.granicus.com/player/clip/2515"
+    html = load_fixture("granicus", "missionviejo_clip2515.html")
+    pdf_url = "https://missionviejo.granicus.com/DocumentViewer.php?file=agenda.pdf"
+
+    routes = {
+        url: FakeResponse(status=200, text=html, url=url),
+        "https://missionviejo.granicus.com/videos/2515/captions.vtt": FakeResponse(
+            status=404
+        ),
+        "https://missionviejo.granicus.com/AgendaViewer.php?clip_id=2515&embedded=1": FakeResponse(
+            status=200,
+            url=pdf_url,
+            text_raises=UnicodeDecodeError(
+                "utf-8", b"\xe2", 0, 1, "invalid continuation byte"
+            ),
+        ),
+        "https://missionviejo.granicus.com/MinutesViewer.php?clip_id=2515&embedded=1": FakeResponse(
+            status=404
+        ),
+    }
+
+    with mock_session(routes):
+        result = await GranicusAssetFinder().resolve(url)
+
+    assert len(result.agenda_items) == 22
+    assert result.agenda_items[0].text == "CLOSED SESSION"
+    assert result.agenda_items[0].start == 88.0
+    assert result.agenda_link == pdf_url
+
+
+async def test_agenda_viewer_items_still_win_over_index_points():
+    # When AgendaViewer.php has its own timed anchors, that list is used
+    # as before and the page's index points are not read. Real Tulsa page;
+    # the one-item AgendaViewer body is synthetic, in the real anchor
+    # shape `_fetch_agenda_items` documents (Simi Valley / San Francisco).
+    url = "https://tulsa-ok.granicus.com/player/clip/7694"
+    html = load_fixture("granicus", "tulsa_clip7694.html")
+    agenda_html = (
+        '<a name="agenda170652" onclick="top.SetPlayerPosition(\'0:12\', null)">'
+        "Introduction</a>"
+    )
+
+    routes = {
+        url: FakeResponse(status=200, text=html, url=url),
+        "https://tulsa-ok.granicus.com/videos/7694/captions.vtt": FakeResponse(
+            status=404
+        ),
+        "https://tulsa-ok.granicus.com/AgendaViewer.php?clip_id=7694&embedded=1": FakeResponse(
+            status=200, text=agenda_html
+        ),
+    }
+
+    with mock_session(routes):
+        result = await GranicusAssetFinder().resolve(url)
+
+    assert [(i.start, i.text) for i in result.agenda_items] == [(12.0, "Introduction")]
+
+
+def test_extract_index_points_skips_non_agenda_cuepoint_types():
+    # Synthetic. The real player JS treats a cuepoint of type "Document"
+    # as a slide (markCurrentIndexItem in every saved player page), but no
+    # saved page has one yet. Shapes copied from the real Tulsa markup.
+    html = (
+        '<div class="index-point" time="11" data-id="1">INTRODUCTION</div>'
+        '<div class="index-point" time="40" data-id="2">Slide 1</div>'
+        '<div class="index-point" time="60" data-id="3">  2. Public\n  Comment </div>'
+        '<div class="index-point" time="" data-id="4">No time</div>'
+        "<script>cuepoints: ["
+        '{"time":11,"type":"Agenda","id":"1"},'
+        '{"time":40,"type":"Document","id":"2"}]</script>'
+    )
+    soup = BeautifulSoup(html, "html.parser")
+    assert GranicusAssetFinder._extract_index_points(soup, html) == [
+        (11.0, "INTRODUCTION"),
+        (60.0, "2. Public Comment"),
+    ]

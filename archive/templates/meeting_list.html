@@ -59,9 +59,12 @@
         </ul>
       </div>
     </div>
-    {% if active_account %}
+    {#- Rendered for signed-out visitors too (2026-11-24); see the same
+       note on meeting_page.html's save buttons. -#}
+    {% if active_account or CLERK_PUBLISHABLE_KEY %}
     <p class="save-search-toggle">
       <button type="button" id="saveSearchBtn" class="cassette-btn"
+        data-signed-in="{{ 'true' if active_account else 'false' }}"
         data-q="{{ q }}" data-jurisdiction="{{ jurisdiction }}" data-date-from="{{ date_from }}"
         data-date-to="{{ date_to }}" data-has-agenda="{{ 'true' if has_agenda else '' }}"
         data-has-transcript="{{ 'true' if has_transcript else '' }}" data-fuzzy="{{ 'true' if fuzzy else '' }}"

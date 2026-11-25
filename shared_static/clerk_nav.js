@@ -105,6 +105,32 @@
     }
   }
 
+  // GA "sign_up" event (2026-11-24). Nothing recorded account creation
+  // before, so a funnel from "saw the free-account box" to "made an
+  // account" could not be measured. Clerk's sign-up form runs on Clerk's
+  // own code, so rather than hook it, this checks on the first signed-in
+  // page load: an account created in the last 30 minutes that this
+  // browser has not reported yet counts once. GA's own recommended event
+  // name, so its built-in reports pick it up.
+  const SIGNUP_TRACKED_KEY = "rtrSignUpTracked";
+  const SIGNUP_WINDOW_MS = 30 * 60 * 1000;
+
+  function trackNewSignUp() {
+    try {
+      const user = window.Clerk && window.Clerk.user;
+      if (!user || !user.createdAt) return;
+      const created = new Date(user.createdAt).getTime();
+      if (!created || Date.now() - created > SIGNUP_WINDOW_MS) return;
+      if (localStorage.getItem(SIGNUP_TRACKED_KEY) === user.id) return;
+      localStorage.setItem(SIGNUP_TRACKED_KEY, user.id);
+      if (typeof window.trackEvent === "function") {
+        window.trackEvent("sign_up", { method: "clerk" });
+      }
+    } catch (e) {
+      // Storage blocked or an unexpected user shape: skip the event.
+    }
+  }
+
   function maybeForceSignInReturn(signedIn) {
     if (!signedIn) return false;
     let returnUrl = null;
@@ -260,6 +286,7 @@
       getUserId: () => (window.Clerk.user ? window.Clerk.user.id : null),
     };
 
+    trackNewSignUp();
     renderNavAuthState();
     if (typeof window.Clerk.addListener === "function") {
       window.Clerk.addListener(renderNavAuthState);

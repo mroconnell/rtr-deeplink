@@ -1831,6 +1831,31 @@ purely additive things a signed-in visitor sees are a "Save this
 meeting"/"Save this search" button, a bookmark icon by the meeting title,
 a "My Saved Items" nav link, and a user avatar.
 
+**Since 2026-11-24 signed-out visitors see the Save buttons too** (when
+Clerk is configured). A signed-out click saves nothing: it opens a short
+box (`archive/static/signup_prompt.js`) that says what a free account
+gives you and links to `/sign-up` or `/sign-in`. After sign-up the visitor
+returns to the same page and the save they asked for runs once. Reason: GA
+showed 0 views of `/sign-up` and 0 saves in 30 days, because no signed-out
+visitor ever learned saving existed. GA events: `signup_prompt_shown`,
+`signup_prompt_click`, `signup_prompt_completed`, plus `sign_up` (an
+account created in the last 30 minutes, once per browser, from
+`shared_static/clerk_nav.js`) and `visit_start` with a 30-day visit count
+(`shared_static/visit_counter.js`).
+
+**Welcome bar for shared-moment arrivals (2026-11-24).** A signed-out
+visitor who arrives from another site on a meeting link with `t=` sees a
+bar fixed to the bottom of the window (`archive/static/welcome_bar.js`):
+"Get an email when <jurisdiction> posts a new meeting." They type an
+email, Clerk emails a 6-digit code, and the code creates a free account
+(or signs in an existing one) in place, with no password. The bar then
+saves a search for that jurisdiction, so the existing saved-search alert
+email does the rest. It relies on Clerk Production having "Sign-up with
+password" off (Ryan switched it off 2026-11-24). Anything Clerk can't
+finish in place (a second factor, a device check) falls back to
+`/sign-in` or `/sign-up`. Shown once per browser: a dismiss or a finished
+sign-up hides it for good. GA event `welcome_bar` with `step`.
+
 ### What needs an account, at a glance
 
 | Works for everyone, no sign-in | Requires a signed-in Clerk session |
@@ -1857,8 +1882,10 @@ this sits alongside.
 (This paragraph used to flag an open UX gap — the "Save this meeting"/
 "Save this search" buttons rendering for signed-out visitors. That
 premise was investigated 2026-08-13 and turned out to be **false**: both
-templates have gated on `{% if active_account %}` since the first
-accounts commits. Corrected here 2026-08-21; see `BACKLOG_DONE.md`.)
+templates gated on `{% if active_account %}` from the first accounts
+commits. Corrected here 2026-08-21; see `BACKLOG_DONE.md`. On 2026-11-24
+the buttons were shown to signed-out visitors on purpose, opening the
+free-account box rather than calling the API: see the paragraph above.)
 
 **Why Clerk, not a hand-rolled session system.** The user explicitly chose
 a third-party auth provider over building/maintaining login, sessions, and
@@ -2824,7 +2851,7 @@ platform share the same page/API structure. Detection lives in
 
 | Platform | File | How video is found | How captions/agenda are found |
 |---|---|---|---|
-| Granicus | `granicus.py` | Regex-scan the page HTML for `.m3u8`/`.mp4` URLs (shared `media_scan.py` helper) | Guessed `/videos/{id}/captions.vtt` path + scanned `.vtt` URLs; language verified from actual cue content (not the untrustworthy `srclang` label); RSS channel title (`ViewPublisherRSS.php`) used for reliable jurisdiction/title. Agenda items (`AgendaViewer.php`'s chapter markers) are fetched independently of transcript availability into their own `agenda_items` field, when that customer has Granicus's native agenda index turned on (not universal — some customers redirect it to their own site instead, surfaced as a plain link instead). Date fallback chain: page text (excluding a "previous meeting" reference, a real confirmed false-positive trap) → RSS item date → Granicus's own published Minutes document (`MinutesViewer.php`, plain HTTP-fetchable, real date at the top) → document-link-filename guess |
+| Granicus | `granicus.py` | Regex-scan the page HTML for `.m3u8`/`.mp4` URLs (shared `media_scan.py` helper) | Guessed `/videos/{id}/captions.vtt` path + scanned `.vtt` URLs; language verified from actual cue content (not the untrustworthy `srclang` label); RSS channel title (`ViewPublisherRSS.php`) used for reliable jurisdiction/title. Agenda items (`AgendaViewer.php`'s chapter markers) are fetched independently of transcript availability into their own `agenda_items` field, when that customer has Granicus's native agenda index turned on (not universal — some customers redirect it to their own site or a PDF instead, surfaced as a plain link instead). When `AgendaViewer.php` gives no items, the clerk's index points are read off the player page itself (`<div class="index-point" time="...">`, WO-1982), so a tenant like Napa gets clickable chapters and the PDF link together. Date fallback chain: page text (excluding a "previous meeting" reference, a real confirmed false-positive trap) → RSS item date → Granicus's own published Minutes document (`MinutesViewer.php`, plain HTTP-fetchable, real date at the top) → document-link-filename guess |
 | CivicClerk | `civicclerk.py` | Public REST API (`<subdomain>.api.civicclerk.com`) — the portal page itself is a client-rendered SPA with nothing to scrape. A bare portal URL with no `/event/<id>` (what a government page such as vallejo.gov iframes) returns a `calendar_page` pick-list of the newest past meetings that have a recording, from `GET /v1/Events` | `closedCaptionTracks`/`closedCaptionUrl` when populated — real format is **SRT**, not VTT (confirmed live); language verified from actual cue content, same distrust-the-label approach as Granicus. The API's `eventBookmarks` (agenda-item timestamps) are fetched independently into `agenda_items` |
 | Swagit | `swagit.py` | jwplayer JSON blob embedded in the page (shares Granicus's CDN infra, but a different page shape) | `.playerControl[data-ts]` agenda-item markers fetched independently into `agenda_items` |
 | eScribe | `escribe.py` | `<div id="isi_player" data-client_id data-stream_name>` when present — video integration varies entirely by city, "no video" is a normal outcome here | iSiLIVE captions, keyed by language suffix in the filename (`{file}.vtt`, `{file}.fr.vtt`, ...). Real per-item agenda timestamps from an embedded `video.Bookmarks` JS array, when present — not every item gets one, so items without a match are omitted rather than guessed. `jurisdiction` falls back to the `pub-{city}.escribemeetings.com` subdomain when the page body has no "City of X" phrase — validated against the same Census/StatsCan tables Granicus uses (`jurisdiction_enrich.validated_label_extract()`) before being accepted, declining rather than guessing when nothing validates (gated 2026-08-18; previously an ungated wordninja-split guess, see BACKLOG_DONE.md) |

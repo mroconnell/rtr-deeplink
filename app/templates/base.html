@@ -27,6 +27,8 @@
     gtag('config', '{{ GA_MEASUREMENT_ID }}');
     window.trackEvent = function(name, params) { gtag('event', name, params || {}); };
   </script>
+  {#- Visits in the last 30 days, sent to GA as visit_start. See the file. -#}
+  <script src="/shared-static/visit_counter.js"></script>
   {% else %}
   <script>window.trackEvent = function() {};</script>
   {% endif %}

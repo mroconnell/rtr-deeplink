@@ -1,5 +1,31 @@
 # Backlog — done
 
+## [Done 2026-11-24] WO-1982: Granicus agenda chapters from the player page's index points
+
+**What happened.** Ryan found Granicus links that jump to one agenda
+item (`?meta_id=276632`) or one second (`&entrytime=9571`) on Napa
+clip 3532. Those jump points are the clerk's index points. The player
+page lists every one as `<div class="index-point" time="{seconds}"
+data-id="{meta_id}">{title}</div>`.
+
+**Cause.** `_fetch_agenda_items()` only read `AgendaViewer.php`. Napa
+and some other tenants send that page to a PDF, so we showed only a PDF
+link and no chapters. The player page, which `resolve()` already
+downloads, had the index points all along.
+
+**Fix.** `GranicusAssetFinder._extract_index_points()` reads them when
+`AgendaViewer.php` gives none. `agenda_link` is still set to the PDF,
+so the page shows both. A point that the page's own flowplayer
+`cuepoints` list types as anything but "Agenda" (the player treats
+"Document" as a slide) is skipped. Saved real pages with index points:
+Tulsa 54, Mission Viejo 22, Albemarle 20, Hercules 20. Tests in
+`tests/test_granicus.py`.
+
+**Caution.** Existing Archive pages only gain chapters when they are
+re-resolved (a "Refresh this page" click or a re-resolve sweep). Ryan
+decided against adding `entrytime` to the "View original source" link
+(2026-11-24).
+
 ## [Done 2026-11-12] WO-1981: auto-generation kept re-queuing a meeting whose job landed on a different page
 
 **What happened.** On 2026-11-11 both cloud workers restarted about 94
