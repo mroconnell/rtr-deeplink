@@ -262,7 +262,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (79)
   16 pins in `tenant_overrides.csv` name a minted id with no registry…
   Four TelVue pages for special bodies would be re-keyed to a town or…
 
-Reliability, ops & cost  (6)
+Reliability, ops & cost  (7)
   `[BIG]` Make BACKLOG.md a generated doc: one file per entry
   `[WAIT]` Run the local Whisper recovery on the ~159 Granicus/Swagit…  (1)
     [NEEDS-AUDIT] `rtr-deeplink-archive`'s "HTTP health check failed"…
@@ -273,6 +273,7 @@ Reliability, ops & cost  (6)
   Search Console, structured data & SEO plumbing  (1)
     [NEEDS-AUDIT] Search Console "Missing field" flags (Videos…
   `/coverage` as a QA surface
+  Re-test the origin lock now that the apex goes through our Cloudflare…
 
 Trust, safety & data quality  (12)
   Shade the stretches of a Whisper transcript where Whisper itself was…
@@ -2084,6 +2085,14 @@ actionability sections above.
   - **History**: `BACKLOG_DONE.md` "Search Console dashboard walkthrough" (2026-08-29); dashboard checklist #1338.
 
 ### `/coverage` as a QA surface
+
+### Re-test the origin lock now that the apex goes through our Cloudflare zone
+
+- **Issue**: the origin lock (`require_cloudflare_for_public_host`) is in check-only mode. It never saw its header because the apex was an A record, which skips our zone. Since 2026-11-24 the apex is a proxied CNAME, so our zone's Transform Rule should now reach the app. Nobody has checked.
+- **Impact**: anyone who connects straight to Render's IP still skips the Singapore challenge and the rate limit.
+- **Next action**: set the Transform Rule "Origin lock header" and Render's `ORIGIN_SHARED_SECRET` to the same value. Load pages, then read `/admin/origin-lock-check`. Turn on `enforce` only if `match` climbs and `mismatch` stays 0.
+- **Constraint**: never set `ORIGIN_LOCK_MODE=enforce` before that check passes. On 2026-11-15 it refused every visitor.
+- **History**: `BACKLOG_DONE.md`, "Singapore scraper"; README "Cloudflare and the origin lock"; PRs #2169, #2170, #2172.
 
 ## Trust, safety & data quality
 
