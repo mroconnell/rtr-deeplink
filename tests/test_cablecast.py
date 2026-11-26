@@ -1973,3 +1973,56 @@ def test_extract_jurisdiction_wellfleet_host_is_massachusetts():
     url = "https://reflect-townofwellfleet.cablecast.tv/internetchannel/show/1"
     site = {"title": "Town of Wellfleet", "pageDescription": None}
     assert CablecastAssetFinder._extract_jurisdiction(site, url) == "Wellfleet, MA"
+
+
+async def test_remix_show_chapters_become_agenda_items():
+    # WO-1985. Real Maplewood, MN Remix data (`maplewood_gallery_19.html`,
+    # fetched live 2026-10-06): show 1809, "City Council Meeting -
+    # September 28, 2026", carries 10 real chapters with titles and
+    # offsets in seconds. Synthetic part: the gallery page is served as
+    # the show page's response. That works because the show page and the
+    # gallery embed the same show object in `window.__remixContext`.
+    html = load_fixture("cablecast", "maplewood_gallery_19.html")
+    url = "https://vod.maplewoodmn.gov/internetchannel/show/1809?site=1"
+    fetch_url = "http://vod.maplewoodmn.gov/internetchannel/show/1809?site=1"
+    routes = {fetch_url: FakeResponse(status=200, text=html, url=fetch_url)}
+
+    with mock_session(routes):
+        result = await CablecastAssetFinder().resolve(url)
+
+    assert result.title == "City Council Meeting - September 28, 2026"
+    assert len(result.agenda_items) == 10
+    first = result.agenda_items[0]
+    assert first.text == "A. CALL TO ORDER"
+    starts = [item.start for item in result.agenda_items]
+    assert starts == sorted(starts)
+    assert first.end == result.agenda_items[1].start
+
+
+async def test_remix_show_with_empty_chapters_has_no_agenda_items():
+    # Real Detroit show 15323: `"chapters": []`, the common case.
+    html = load_fixture("cablecast", "detroit_show_15323.html")
+    fetch_url = "http://detroit-vod.cablecast.tv/internetchannel/show/15323?site=1"
+    routes = {fetch_url: FakeResponse(status=200, text=html, url=fetch_url)}
+
+    with mock_session(routes):
+        result = await CablecastAssetFinder().resolve(PORTAL_URL)
+
+    assert result.agenda_items == []
+
+
+def test_chapters_to_agenda_items_skips_bad_rows():
+    # Synthetic rows in the real chapter shape above.
+    show = {
+        "chapters": [
+            {"title": "2. Roll Call ", "body": "", "order": 2, "offset": 120},
+            {"title": "1. Call to Order", "body": "", "order": 1, "offset": 92},
+            {"title": "", "body": "", "order": 3, "offset": 150},
+            {"title": "No offset", "body": "", "order": 4, "offset": None},
+        ]
+    }
+    items = CablecastAssetFinder._chapters_to_agenda_items(show)
+    assert [(i.start, i.end, i.text) for i in items] == [
+        (92.0, 120.0, "1. Call to Order"),
+        (120.0, 120.0, "2. Roll Call"),
+    ]

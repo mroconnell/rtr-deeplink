@@ -794,15 +794,17 @@ measurements quoted; re-check before building.
 
 WO-1982 found Granicus index points sitting unread on a page we already
 download. A check of the saved fixtures for the same pattern found these
-leads. None is confirmed with a real populated example yet.
+leads. Cablecast's Remix chapters shipped as WO-1985. Ryan ruled YouTube
+out (2026-11-25). Neither lead below is confirmed with a real example.
 
-- **Cablecast.** Its show API has a `"chapters"` field that no code reads.
-  It is empty (`[]`) in all 28 saved samples, so it needs a live show
-  that uses it first.
 - **open.media.** The page config says `"cuepoints":true`, but
-  `app/platforms/openmedia.py` reads no agenda items. Its video is
-  YouTube, so check this from the drip Mac only.
-- **Town Hall Streams.** The player reads a `#chapters` value for its
-  seek offset. Check whether a live page lists named chapters.
-- **YouTube.** yt-dlp returns a video's description chapters. Only the
-  drip Mac may fetch YouTube, so this would ride on the drip.
+  `app/platforms/openmedia.py` reads no agenda items. In all 5 saved
+  pages the `#region-agenda-items` block is empty, so the items probably
+  load later from another request. Check one live page's network calls.
+  Fetch only the open.media page, never the YouTube video.
+- **Town Hall Streams.** The player script reads `$("#chapters").val()`
+  as a seek offset, but none of the 7 saved pages has a `#chapters`
+  element. Check whether any live tenant renders one.
+- **Cablecast PublicSite API.** A vod lists chapter ids and a
+  `chaptersPublished` flag. The one sample with ids (Brooklyn Center vod
+  13099) says `false`. Needs a sample with `true` before reading them.

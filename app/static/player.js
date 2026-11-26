@@ -1484,7 +1484,7 @@ async function init() {
     renderSourceGuess('agendaGuess', 'We think we found an agenda here: ', data.agenda_link, '[No agenda found]');
     if (agendaItems.length) renderAgenda(agendaItems);
   } else if (agendaItems.length || data.agenda_link) {
-    // WO-1983: a confirmed agenda link sits beside the heading, small,
+    // WO-1984: a confirmed agenda link sits beside the heading, small,
     // like "View original source" under the title. It used to be dropped
     // here entirely unless the result was best-effort.
     document.getElementById('agendaSection').hidden = false;

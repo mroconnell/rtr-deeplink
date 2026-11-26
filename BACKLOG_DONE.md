@@ -1,6 +1,24 @@
 # Backlog — done
 
-## [Done 2026-11-24] WO-1983: "View original agenda" link beside the Agenda heading
+## [Done 2026-11-25] WO-1985: Cablecast agenda chapters from the show's own chapter list
+
+**What happened.** After WO-1982, Ryan asked which other platforms carry
+timed agenda items we do not read. Cablecast's Remix show object has a
+`chapters` list: title plus `offset` in seconds.
+
+**Cause.** No code read `chapters`. An earlier note in this thread said
+it was empty in every saved sample. That was wrong: the saved Maplewood,
+MN gallery page (`maplewood_gallery_19.html`) has filled chapter lists on
+its shows, for example show 1809 with 10 items from "A. CALL TO ORDER" at
+0:09 to "L. ADJOURNMENT" at 34:01.
+
+**Fix.** `CablecastAssetFinder._chapters_to_agenda_items()` turns them
+into `agenda_items` on the Remix resolve path. A chapter with no title or
+no numeric offset is skipped. The PublicSite API path is unchanged: its
+only sample with chapter ids is marked `"chaptersPublished": false`.
+Tests in `tests/test_cablecast.py`.
+
+## [Done 2026-11-24] WO-1984: "View original agenda" link beside the Agenda heading
 
 **What happened.** After WO-1982 went live, Ryan checked Napa clip 3532
 on the live meeting page. The chapters showed, but the PDF agenda link
