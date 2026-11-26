@@ -72147,3 +72147,34 @@ In November that was about 20 a day against about 1.5 a day fed successfully. Th
 **Cloudflare ruled out.** The workers reach the database directly, not over HTTP. The feed makes 12 Archive requests per 6 hours, far under the 50 per 10 seconds limit, and the failed Nov 24 report was a Render error page, from before the rate limit was added.
 
 **Follow-up, same day.** The first run after the merge (run 45709166294) fed well: 9 of 12 lines OK, ffprobe working. It then failed at the merge step, leaving PR #2197 open. The "wait for checks" loop in both feed workflows read `gh pr checks ... || echo 0` into COUNT. When gh fails it can print "no checks reported" to stdout, so COUNT held that text plus "0", which is not "0", and the loop stopped at once. `--watch` then ran before the checks existed. COUNT is now forced to a number, and the wait is 2 minutes.
+
+## [Done 2026-11-26] WO-1986: chunks from a recording with holes in its sound came out short and killed the job
+
+**What was looked at, and why.** Job 13281 (Opa-locka FL, Regular Commission Meeting 2019-10-23, CivicMedia / TikiLive HLS) failed at chunk 4 of 9. Every try said "the output is only 396s of the 450s asked for (likely truncated)". The question was whether the download was cut short or the recording itself was shorter.
+
+**Result: neither. The recording is missing stretches of sound.** Measured on the office Mac (the cloud cannot reach CivicPlus). The playlist is complete: 632 audio and 632 video segments, adding up to exactly the probed 3,866.757 s, with no discontinuity markers. But the audio packets inside 1,800-2,250 s stop and start:
+
+| Measure | Value |
+|---|---|
+| Audio actually present | 397.4 s of 450 |
+| Total missing audio | 52.6 s |
+| Holes over 1 s | 14, from 1,907 s to 2,029 s |
+| Largest hole | 8.0 s |
+
+ffmpeg wrote the sound it had back to back, so the holes closed up. The WO-935 length check then failed the chunk on every try (each try took 126 s, with the retry).
+
+**Second effect, worse for readers.** A chunk that passed still lost its holes. Chunk 5 decoded to 435.6 s of 450, so every word after its holes was timed up to 14 s early, which breaks deep links. Any source with short audio holes had this, silently.
+
+**What changed.** Every audio extraction in `app/platforms/media_probe.py` (chunk, whole-file cache, left-channel fallback) now runs `-af aresample=async=1:first_pts=0`. That filter reads the packet timestamps and puts silence where they jump. The length check is unchanged.
+
+| Chunk | Start (s) | Asked for (s) | Before (s) | After (s) |
+|---|---|---|---|---|
+| 4 | 1,800 | 450 | 395.9 (fails) | 450.0 |
+| 5 | 2,250 | 450 | 435.6 | 450.0 |
+| 6 | 2,700 | 450 | 449.6 | 450.0 |
+| 7 | 3,150 | 450 | 450.0 | 450.0 |
+| 8 | 3,600 | 266.8 | 266.2 | 266.7 |
+
+Each chunk took 3-5 s with the filter. `tests/test_media_probe.py`'s `test_extract_chunk_audio_fills_holes_in_the_source_audio` runs real ffmpeg on a stream with three 8 s holes; it fails without the filter and passes with it.
+
+**Caution.** ffmpeg already closes up a jump of 10 s or more in MPEG-TS on its own (it treats one as a discontinuity), so only shorter holes are filled. All holes on this source were 8.0 s or less. Pages already transcribed from sources with holes keep their early timestamps until they are re-transcribed. The fix needs a deploy of the workers, then job 13281 re-queued.

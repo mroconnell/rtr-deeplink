@@ -634,6 +634,31 @@ async def _mean_volume_db(path: Path) -> tuple[bool, Optional[float]]:
 _SHORT_CHUNK_TOLERANCE_SECONDS = 15.0
 
 
+# WO-1986: fill holes in the source audio with silence. Some recordings
+# are simply missing stretches of audio packets. Without this filter,
+# ffmpeg writes the audio it has back to back, so the hole closes up.
+# Two things then go wrong:
+#
+#   1. The chunk comes out shorter than asked, and the WO-935 check above
+#      fails it on every try, so the job dies.
+#   2. A chunk that passes still has every word after the hole moved
+#      earlier, so transcript timestamps and deep links drift.
+#
+# `aresample=async=1` reads the packet timestamps and inserts silence
+# where they jump. `first_pts=0` also pads a hole at the very start of
+# the window. Measured 2026-11-26 on the real failing source, job 13281
+# (Opa-locka FL, CivicMedia / TikiLive HLS, 3,867 s): 52.6 s of audio
+# missing in 14 holes between 1,907 s and 2,029 s. With the old command,
+# chunk 4 (1,800 s + 450 s) decoded to 395.9 s and chunk 5 to 435.6 s.
+# With this filter, both decoded to 450.0 s, chunks 6-8 were unchanged
+# (450.0, 450.0, 266.7 s), and each chunk took 3-5 s. A source with no
+# holes gets no silence added, so a healthy chunk is unchanged.
+# Limit: ffmpeg itself already closes up a timestamp jump of 10 s or more
+# in MPEG-TS (it reads one as a stream discontinuity), so this fills the
+# shorter holes only. Every hole on job 13281's source was 8.0 s or less.
+_FILL_AUDIO_GAPS_FILTER = "aresample=async=1:first_pts=0"
+
+
 def _chunk_is_materially_short(
     requested_seconds: float, decoded_seconds: Optional[float]
 ) -> bool:
@@ -769,6 +794,8 @@ async def _extract_chunk_once(
             "-t",
             str(duration),
             "-vn",
+            "-af",
+            _FILL_AUDIO_GAPS_FILTER,
             "-ac",
             "1",
             "-ar",
@@ -1110,6 +1137,8 @@ async def extract_full_audio(
             "-i",
             media_url,
             "-vn",
+            "-af",
+            _FILL_AUDIO_GAPS_FILTER,
             "-ac",
             "1",
             "-ar",
@@ -1529,7 +1558,7 @@ async def extract_chunk_audio(
                 str(duration),
                 "-vn",
                 "-af",
-                "pan=mono|c0=c0",
+                f"pan=mono|c0=c0,{_FILL_AUDIO_GAPS_FILTER}",
                 "-ar",
                 "16000",
                 "-c:a",

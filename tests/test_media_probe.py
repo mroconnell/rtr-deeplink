@@ -1028,6 +1028,49 @@ async def test_slice_cached_audio_against_real_ffmpeg(tmp_path):
     ) == (True, None)
 
 
+@pytest.mark.skipif(
+    shutil.which("ffmpeg") is None, reason="ffmpeg not installed on this machine"
+)
+async def test_extract_chunk_audio_fills_holes_in_the_source_audio(tmp_path):
+    """WO-1986. Synthetic stream, real ffmpeg, no mocking. The shape is the
+    one measured on job 13281's real source (Opa-locka FL, TikiLive HLS):
+    MPEG-TS audio whose packets simply stop for a few seconds at a time,
+    14 holes of up to 8.0 s each. Here: four 10 s runs of tone with an
+    8 s hole after each of the first three, so 30 s of 60 s is missing in
+    the window asked for. Holes stay under 10 s on purpose: ffmpeg treats
+    a bigger timestamp jump in MPEG-TS as a discontinuity and closes it up
+    itself, and the real holes were all under 10 s.
+
+    Without the silence fill the chunk decodes to about 36 s, the WO-935
+    length check fails it on every try, and the job dies, which is exactly
+    what happened to job 13281. With it, the chunk is the full 60 s."""
+    parts = []
+    for i in range(4):
+        part = tmp_path / f"part{i}.ts"
+        returncode, _o, _e = await media_probe._run(
+            "ffmpeg", "-y", "-f", "lavfi", "-i", "sine=frequency=440:duration=10",
+            "-c:a", "aac", "-output_ts_offset", str(i * 18), "-f", "mpegts", str(part),
+        )  # fmt: skip
+        assert returncode == 0
+        parts.append(part.read_bytes())
+    source = tmp_path / "holes.ts"
+    source.write_bytes(b"".join(parts))
+
+    out_path = tmp_path / "chunk.mp3"
+    result = await media_probe.extract_chunk_audio(
+        str(source),
+        start=2.0,
+        duration=60.0,
+        source_page_url="https://example.gov/meeting",
+        out_path=out_path,
+    )
+    assert result == (True, None)
+
+    decodable, _volume, decoded_seconds = await media_probe._decode_stats(out_path)
+    assert decodable is True
+    assert decoded_seconds is not None and abs(decoded_seconds - 60.0) < 1.0
+
+
 # -- extract_chunk_audio(): a short chunk gets one output-side retry --------
 
 
