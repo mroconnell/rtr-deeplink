@@ -72110,3 +72110,5 @@ In November that was about 20 a day against about 1.5 a day fed successfully. Th
 **Caution.** Some recovered lines may really be dead. With ffprobe present the feed will probe them properly and drop those for the right reason.
 
 **Cloudflare ruled out.** The workers reach the database directly, not over HTTP. The feed makes 12 Archive requests per 6 hours, far under the 50 per 10 seconds limit, and the failed Nov 24 report was a Render error page, from before the rate limit was added.
+
+**Follow-up, same day.** The first run after the merge (run 45709166294) fed well: 9 of 12 lines OK, ffprobe working. It then failed at the merge step, leaving PR #2197 open. The "wait for checks" loop in both feed workflows read `gh pr checks ... || echo 0` into COUNT. When gh fails it can print "no checks reported" to stdout, so COUNT held that text plus "0", which is not "0", and the loop stopped at once. `--watch` then ran before the checks existed. COUNT is now forced to a number, and the wait is 2 minutes.

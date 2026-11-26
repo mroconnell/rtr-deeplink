@@ -201,9 +201,15 @@ jobs:
           # race right after simplifying this step (PR #178), stranding
           # PR #179. So wait for at least one check to exist first.
           echo "Waiting for the pull_request-triggered test.yml check to register..."
-          for i in $(seq 1 12); do
-            COUNT=$(gh pr checks "$BRANCH" --json name --jq 'length' 2>/dev/null || echo 0)
-            if [ "$COUNT" != "0" ]; then
+          # WO-1983 (2026-11-25): COUNT must be a real number. The old
+          # `... 2>/dev/null || echo 0` could leave non-numeric text in COUNT,
+          # which is not "0", so the loop stopped early; `--watch` then ran
+          # before the checks existed and failed the job (run 45709166294:
+          # feed fine, PR #2197 left unmerged). Wait up to 2 minutes.
+          for i in $(seq 1 24); do
+            COUNT=$(gh pr checks "$BRANCH" --json name --jq 'length' 2>/dev/null) || COUNT=0
+            case "$COUNT" in ''|*[!0-9]*) COUNT=0 ;; esac
+            if [ "$COUNT" -gt 0 ]; then
               break
             fi
             sleep 5
