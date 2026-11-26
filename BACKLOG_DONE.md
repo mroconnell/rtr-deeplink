@@ -1,5 +1,40 @@
 # Backlog — done
 
+## [Done 2026-11-25] WO-1985: Cablecast agenda chapters from the show's own chapter list
+
+**What happened.** After WO-1982, Ryan asked which other platforms carry
+timed agenda items we do not read. Cablecast's Remix show object has a
+`chapters` list: title plus `offset` in seconds.
+
+**Cause.** No code read `chapters`. An earlier note in this thread said
+it was empty in every saved sample. That was wrong: the saved Maplewood,
+MN gallery page (`maplewood_gallery_19.html`) has filled chapter lists on
+its shows, for example show 1809 with 10 items from "A. CALL TO ORDER" at
+0:09 to "L. ADJOURNMENT" at 34:01.
+
+**Fix.** `CablecastAssetFinder._chapters_to_agenda_items()` turns them
+into `agenda_items` on the Remix resolve path. A chapter with no title or
+no numeric offset is skipped. The PublicSite API path is unchanged: its
+only sample with chapter ids is marked `"chaptersPublished": false`.
+Tests in `tests/test_cablecast.py`.
+
+## [Done 2026-11-24] WO-1984: "View original agenda" link beside the Agenda heading
+
+**What happened.** After WO-1982 went live, Ryan checked Napa clip 3532
+on the live meeting page. The chapters showed, but the PDF agenda link
+did not.
+
+**Cause.** `app/static/player.js` showed `agenda_link` only for a
+best-effort result. Every adapter's confirmed agenda link was dropped on
+the live page. The Archive page showed it as a long "Agenda: <url>" line.
+
+**Fix.** Both pages now show a small "View original agenda ↗" link beside
+the "Agenda" heading, styled like "View original source" (Ryan's
+suggestion). The live page also shows the Agenda section when it has only
+the link. generic_fallback's guess (platform "unknown") keeps its hedged
+"We think we found an agenda here" line. Checked in a browser on both
+pages, desktop and phone width.
+
 ## [Done 2026-11-24] WO-1982: Granicus agenda chapters from the player page's index points
 
 **What happened.** Ryan found Granicus links that jump to one agenda

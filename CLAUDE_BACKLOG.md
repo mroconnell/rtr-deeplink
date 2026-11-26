@@ -789,3 +789,22 @@ measurements quoted; re-check before building.
   suiteone.py`'s `_extract_title` parses a whole real 2.6 MB event page
   with BeautifulSoup to find one heading (about 1s). A `SoupStrainer("h1")`
   measured 0.39s on the same page.
+
+## Agenda chapters other platforms may already send us (2026-11-24)
+
+WO-1982 found Granicus index points sitting unread on a page we already
+download. A check of the saved fixtures for the same pattern found these
+leads. Cablecast's Remix chapters shipped as WO-1985. Ryan ruled YouTube
+out (2026-11-25). Neither lead below is confirmed with a real example.
+
+- **open.media.** The page config says `"cuepoints":true`, but
+  `app/platforms/openmedia.py` reads no agenda items. In all 5 saved
+  pages the `#region-agenda-items` block is empty, so the items probably
+  load later from another request. Check one live page's network calls.
+  Fetch only the open.media page, never the YouTube video.
+- **Town Hall Streams.** The player script reads `$("#chapters").val()`
+  as a seek offset, but none of the 7 saved pages has a `#chapters`
+  element. Check whether any live tenant renders one.
+- **Cablecast PublicSite API.** A vod lists chapter ids and a
+  `chaptersPublished` flag. The one sample with ids (Brooklyn Center vod
+  13099) says `false`. Needs a sample with `true` before reading them.

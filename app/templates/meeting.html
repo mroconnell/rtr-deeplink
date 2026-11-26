@@ -112,7 +112,10 @@
         <button id="transcriptSearchNext" type="button" class="btn btn-sm btn-outline-secondary" title="Next match" aria-label="Next match">&#9660;</button>
       </div>
       <div id="agendaSection" class="agenda-section" hidden>
-        <h2>Agenda</h2>
+        <div class="agenda-heading-row">
+          <h2>Agenda</h2>
+          <p id="agendaSourceLink" class="source-link agenda-source-link" hidden><a href="#" target="_blank" rel="noopener noreferrer">View original agenda &#8599;</a></p>
+        </div>
         <div id="agendaWarnings" class="warnings" hidden></div>
         <p id="agendaGuess" class="source-guess" hidden></p>
         <div id="agendaList" class="transcript-list"></div>

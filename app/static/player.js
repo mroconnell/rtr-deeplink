@@ -1483,9 +1483,21 @@ async function init() {
     document.getElementById('agendaSection').hidden = false;
     renderSourceGuess('agendaGuess', 'We think we found an agenda here: ', data.agenda_link, '[No agenda found]');
     if (agendaItems.length) renderAgenda(agendaItems);
-  } else if (agendaItems.length) {
+  } else if (agendaItems.length || data.agenda_link) {
+    // WO-1984: a confirmed agenda link sits beside the heading, small,
+    // like "View original source" under the title. It used to be dropped
+    // here entirely unless the result was best-effort.
     document.getElementById('agendaSection').hidden = false;
-    renderAgenda(agendaItems);
+    if (data.agenda_link) {
+      const linkEl = document.getElementById('agendaSourceLink');
+      linkEl.querySelector('a').href = data.agenda_link;
+      linkEl.hidden = false;
+    }
+    if (agendaItems.length) {
+      renderAgenda(agendaItems);
+    } else {
+      document.getElementById('agendaList').hidden = true;
+    }
   }
 
   const transcriptWarnings = data.transcript_warnings || [];

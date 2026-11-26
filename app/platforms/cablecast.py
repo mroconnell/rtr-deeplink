@@ -677,6 +677,7 @@ class CablecastAssetFinder(AssetFinder):
             video_url=show["vodUrl"],
             video_format="m3u8",
             segments=segments,
+            agenda_items=self._chapters_to_agenda_items(show),
             transcript_language=transcript_language,
             alternate_transcripts=alternate_transcripts,
             transcript_warnings=transcript_warnings,
@@ -1266,6 +1267,43 @@ class CablecastAssetFinder(AssetFinder):
             return json.loads(match.group(1))
         except (json.JSONDecodeError, ValueError):
             return None
+
+    @staticmethod
+    def _chapters_to_agenda_items(show: dict) -> List[TranscriptSegment]:
+        """WO-1985: a Remix show object's own `chapters` list, as agenda
+        items. Each chapter is `{"title", "body", "order", "offset", "id"}`
+        with `offset` in seconds from the start of the video (real
+        Maplewood, MN shows, `maplewood_gallery_19.html`, fetched
+        2026-10-06: "1. Call to Order" at 92, "2. Roll Call" at 120...).
+        Most tenants leave it `[]` (Detroit, Charlotte), which gives no
+        items. A chapter with no title or no numeric offset is skipped.
+
+        The CablecastPublicSite API path (`_resolve_publicsite`) is left
+        alone on purpose: its vod lists chapter ids only, and the one real
+        sample with ids (Brooklyn Center vod 13099) says
+        `"chaptersPublished": false`, so they are not public yet.
+        """
+        raw = []
+        for chapter in show.get("chapters") or []:
+            if not isinstance(chapter, dict):
+                continue
+            title = " ".join(str(chapter.get("title") or "").split())
+            offset = chapter.get("offset")
+            if not title or isinstance(offset, bool):
+                continue
+            try:
+                start = float(offset)
+            except (TypeError, ValueError):
+                continue
+            raw.append((start, title))
+        raw.sort(key=lambda item: item[0])
+        items = []
+        for i, (start, title) in enumerate(raw):
+            end = raw[i + 1][0] if i + 1 < len(raw) else start
+            items.append(
+                TranscriptSegment(start=start, end=max(end, start), text=title)
+            )
+        return items
 
     @staticmethod
     def _find_show(obj, show_id: int) -> Optional[dict]:
