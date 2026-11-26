@@ -13082,3 +13082,27 @@ https://www.ste-barbe.com/wp-content/uploads/2024/02/Enregistrement-13-septembre
 https://www.ste-barbe.com/seances-du-conseil/,direct_file,head+ffprobe,2013.32,2024-02-14,40270464,1,accept,,1.10,2026-11-26T08:55:24+00:00,feed_tier3_auto_transcription,0
 https://www.saintefelicite.ca/wp-content/uploads/2022/01/Seance-Janvier-2022.mp3,direct_file,head+ffprobe,1688.94,2022-01-12,33780216,1,accept,,0.95,2026-11-26T08:55:27+00:00,,0
 https://www.saintefelicite.ca/municipalite/conseil-municipal/,direct_file,head+ffprobe,1688.94,2022-01-12,33780216,1,accept,,1.14,2026-11-26T08:55:28+00:00,feed_tier3_auto_transcription,0
+https://steclotildehorton.ca/wp-content/uploads/2020/07/Séance-6-décembre.mp3,direct_file,head+ffprobe,2897.34,2022-04-29,44701581,1,accept,,0.41,2026-11-26T21:56:10+00:00,,0
+https://steclotildehorton.ca/seances-du-conseil/,direct_file,head+ffprobe,2897.34,2022-04-29,44701581,1,accept,,0.27,2026-11-26T21:56:10+00:00,feed_tier3_auto_transcription,0
+https://ste-claire.ca/wp-content/uploads/2020/07/260303_215252_00-V-1.0.mp3,direct_file,head+ffprobe,2211.66,2026-03-04,8846898,1,accept,,0.57,2026-11-26T21:56:13+00:00,,0
+https://ste-claire.ca/seances-du-conseil/,direct_file,head+ffprobe,2211.66,2026-03-04,8846898,1,accept,,0.46,2026-11-26T21:56:13+00:00,feed_tier3_auto_transcription,0
+https://st-leandre.ca/images/Upload/Files/audio-seances-ordinaires/2022/2022-08-08-pv-2de2-audio.mp3,direct_file,head+ffprobe,1356.85,2026-11-09,21711171,1,accept,,3.44,2026-11-26T21:56:19+00:00,,0
+https://st-leandre.ca/documents/ordres-du-jour-et-proces-verbaux.html,direct_file,head+ffprobe,1356.85,2026-11-09,21711171,1,accept,,1.45,2026-11-26T21:56:20+00:00,feed_tier3_auto_transcription,0
+https://saint-gervais.ca/telechargement/41/proces-verbaux/3359/audio-seance-du-conseil-du-1er-fevrier-2022.mp3,direct_file,head+ffprobe,1389.87,,,1,accept,,1.69,2026-11-26T21:56:27+00:00,,0
+https://saint-gervais.ca/proces-verbal/,direct_file,head+ffprobe,,,,0,reject-dead,ffprobe could not read a duration from the media file,0.89,2026-11-26T21:56:28+00:00,feed_tier3_auto_transcription,0
+https://www.saint-mathieu-du-parc.ca/upload/seances-du-conseil/audio/2026/seance_du_conseil_3_aout_2026.mp3,direct_file,head+ffprobe,3933.48,2026-08-04,69434160,1,accept,,0.76,2026-11-26T21:56:31+00:00,,0
+https://www.saint-mathieu-du-parc.ca/fr/municipalite/vie-municipale/seances-du-conseil,direct_file,head+ffprobe,3933.48,2026-08-04,69434160,1,accept,,0.67,2026-11-26T21:56:32+00:00,feed_tier3_auto_transcription,0
+https://st-stanislas-de-kostka.ca/assets/files/upload/GMT20210609-000143_Recording_640x360-2.mp4,direct_file,head+ffprobe,3125.80,2021-06-09,173277688,1,accept,,1.02,2026-11-26T21:56:35+00:00,,0
+https://st-stanislas-de-kostka.ca/municipalite/administration/seances-conseil,direct_file,head+ffprobe,3125.80,2021-06-09,173277688,1,accept,,0.96,2026-11-26T21:56:36+00:00,feed_tier3_auto_transcription,0
+https://st-liboire.ca/wp-content/uploads/2025/07/4-mai-audio-saint-liboire.mp3,direct_file,head+ffprobe,1965.71,2025-07-16,35520991,1,accept,,0.37,2026-11-26T21:56:38+00:00,,0
+https://st-liboire.ca/ma-municipalite/conseil-municipal/seances-du-conseil/,direct_file,head+ffprobe,1965.71,2025-07-16,35520991,1,accept,,0.37,2026-11-26T21:56:38+00:00,feed_tier3_auto_transcription,0
+http://www.st-simon.qc.ca/documents/audios/2026/2026-02-10.mp3,direct_file,head+ffprobe,1935.83,2026-08-18,30973283,1,accept,,1.01,2026-11-26T21:56:41+00:00,,0
+https://st-simon.qc.ca/municipalite/?id=pv_multimedia,direct_file,head+ffprobe,1935.83,2026-08-18,30973283,1,accept,,1.00,2026-11-26T21:56:42+00:00,feed_tier3_auto_transcription,0
+http://www.septiles.ca/conseil_municipal.mp4,direct_file,head+ffprobe,2670.00,2026-11-24,,1,accept,,0.60,2026-11-26T21:56:45+00:00,,0
+https://septiles.ca/fr/diffusion-des-seances_170/,direct_file,head+ffprobe,2670.00,2026-11-24,,1,accept,,0.64,2026-11-26T21:56:46+00:00,feed_tier3_auto_transcription,0
+https://www.saint-zephirin.ca/upload/seances-du-conseil/audio_2026-01.mp3,direct_file,head+ffprobe,2522.17,2026-01-13,45762947,1,accept,,0.65,2026-11-26T21:56:48+00:00,,0
+https://www.saint-zephirin.ca/fr/ma-municipalite/seances-du-conseil,direct_file,head+ffprobe,2522.17,2026-01-13,45762947,1,accept,,0.64,2026-11-26T21:56:49+00:00,feed_tier3_auto_transcription,0
+https://val-des-bois.ca/wp-content/uploads/2026/09/Enregistrement107_1398-1.mp3?_=1,direct_file,head+ffprobe,3032.75,2026-09-10,48524062,1,accept,,0.86,2026-11-26T21:56:52+00:00,,0
+https://val-des-bois.ca/la-municipalite/document-municipaux/proces-verbaux/,direct_file,head+ffprobe,3032.75,2026-09-10,48524062,1,accept,,0.94,2026-11-26T21:56:53+00:00,feed_tier3_auto_transcription,0
+https://pontiacouest.ca/en/audio-recording-of-the-november-12th-council-meeting/,unknown,head+ffprobe,8026.56,2026-08-12,192637440,1,accept,,1.31,2026-11-26T21:56:57+00:00,,0
+https://pontiacouest.ca/en/audio-recording-of-the-november-12th-council-meeting/,direct_file,head+ffprobe,8026.56,2026-08-12,192637440,1,accept,,0.79,2026-11-26T21:56:58+00:00,feed_tier3_auto_transcription,0
