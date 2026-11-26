@@ -1943,7 +1943,9 @@ Unsaving is a hard delete; no soft-delete/undo.
   resolver→Archive internal call already uses. `POST /api/clerk/webhook`
   handles Clerk's `user.created` (auto-subscribes the address to the
   Resend newsletter audience, sends the "Thanks" email — see "Lifecycle
-  emails" below) and `user.deleted` (purges the account's `SavedItem` rows
+  emails" below; skipped for an account made on
+  upcoming.redtaperecordings.com, which marks it with
+  `unsafe_metadata.signup_site = "upcoming"` and sends its own emails) and `user.deleted` (purges the account's `SavedItem` rows
   — the right-to-deletion story on this app's side, since it stores no
   other PII for an account at all). Verified via `svix` before trusting
   anything in the payload.

@@ -1217,6 +1217,19 @@ async def unsubscribe(request: Request, email: str = ""):
     )
 
 
+def _signup_site(data: dict) -> str:
+    """Which site an account was made on, from the marker a sign-up form
+    leaves in Clerk's `unsafe_metadata`. Empty for the archive's own
+    sign-up, which sets none. Lower-cased and stripped, and never raises on
+    an odd payload: `unsafe_metadata` is writable by the browser, so it is
+    only ever used to SKIP an email, never to grant anything."""
+    meta = data.get("unsafe_metadata")
+    if not isinstance(meta, dict):
+        return ""
+    site = meta.get("signup_site")
+    return site.strip().lower() if isinstance(site, str) else ""
+
+
 @app.post("/api/clerk/webhook")
 async def clerk_webhook(request: Request):
     """Clerk notifies us of account lifecycle events here -- the glue for
@@ -1257,7 +1270,19 @@ async def clerk_webhook(request: Request):
     event_type = event.get("type", "")
     data = event.get("data", {})
 
-    if event_type == "user.created":
+    if event_type == "user.created" and _signup_site(data) == "upcoming":
+        # Made on upcoming.redtaperecordings.com (its /signup page sets this
+        # marker; see rtr-upcoming's app/templates/signup.html). The
+        # archive's welcome email is about pasting a meeting URL and the
+        # newsletter is the archive's, so neither fits someone who came for
+        # upcoming agendas. rtr-upcoming sends its own emails: an access
+        # request notice, then "you're in" when access is granted.
+        logger.info(
+            "Clerk user.created for %s came from upcoming; "
+            "skipping archive welcome and newsletter.",
+            data.get("id"),
+        )
+    elif event_type == "user.created":
         primary_id = data.get("primary_email_address_id")
         email = next(
             (

@@ -156,3 +156,67 @@ async def test_unrecognized_event_type_is_a_harmless_noop(monkeypatch):
     body, headers = _signed_request(event)
     response = client.post("/api/clerk/webhook", content=body, headers=headers)
     assert response.status_code == 200
+
+
+async def test_user_created_on_upcoming_skips_welcome_and_newsletter(monkeypatch):
+    """An account made on upcoming.redtaperecordings.com's /signup carries
+    `unsafe_metadata.signup_site = "upcoming"`. The archive's welcome email
+    and newsletter are not for that reader. Synthetic payload: the field
+    names are Clerk's documented user object; a real upcoming sign-up has
+    not been observed yet (rtr-upcoming's /signup is new, 2026-11-26)."""
+    monkeypatch.setenv("CLERK_WEBHOOK_SIGNING_SECRET", _TEST_SECRET)
+
+    async def _fail_upsert(email, *, unsubscribed):
+        raise AssertionError("must not join the newsletter")
+
+    async def _fail_send(to, *, first_name):
+        raise AssertionError("must not send the archive welcome email")
+
+    monkeypatch.setattr(app.main, "_resend_audience_upsert", _fail_upsert)
+    monkeypatch.setattr(app.main, "_send_account_created_email", _fail_send)
+
+    event = {
+        "type": "user.created",
+        "data": {
+            "id": "user_up",
+            "primary_email_address_id": "idn_1",
+            "email_addresses": [{"id": "idn_1", "email_address": "reader@example.com"}],
+            "unsafe_metadata": {"signup_site": "Upcoming "},
+        },
+    }
+    body, headers = _signed_request(event)
+    response = client.post("/api/clerk/webhook", content=body, headers=headers)
+    assert response.status_code == 200
+
+
+async def test_user_created_with_other_unsafe_metadata_still_gets_welcome(monkeypatch):
+    monkeypatch.setenv("CLERK_WEBHOOK_SIGNING_SECRET", _TEST_SECRET)
+    calls = []
+
+    async def _fake_upsert(email, *, unsubscribed):
+        calls.append(("upsert", email))
+        return True
+
+    async def _fake_send(to, *, first_name):
+        calls.append(("welcome", to))
+        return True
+
+    monkeypatch.setattr(app.main, "_resend_audience_upsert", _fake_upsert)
+    monkeypatch.setattr(app.main, "_send_account_created_email", _fake_send)
+
+    for meta in (None, {}, {"signup_site": 7}, "upcoming", {"signup_site": "archive"}):
+        calls.clear()
+        data = {
+            "id": "user_arch",
+            "primary_email_address_id": "idn_1",
+            "email_addresses": [{"id": "idn_1", "email_address": "member@example.com"}],
+        }
+        if meta is not None:
+            data["unsafe_metadata"] = meta
+        body, headers = _signed_request({"type": "user.created", "data": data})
+        response = client.post("/api/clerk/webhook", content=body, headers=headers)
+        assert response.status_code == 200
+        assert calls == [
+            ("upsert", "member@example.com"),
+            ("welcome", "member@example.com"),
+        ], meta
