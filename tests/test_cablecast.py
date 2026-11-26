@@ -29,11 +29,11 @@ def _no_hls_subtitle_fetch(request, monkeypatch):
     a show has no `vodTranscripts` (see the Hudson tests at the bottom).
     Older tests here list their exact requests, so that extra read is
     stubbed out for them; the tests with "hls_subtitle" in their name keep
-    it live."""
-    if (
-        "hls_subtitle" in request.node.name
-        or "real_dyersville_fastboot" in request.node.name
-    ):
+    it live. The same goes for a CablecastPublicSite show's caption read
+    (WO-1987), kept live in the tests with "publicsite_captions" in their
+    name."""
+    name = request.node.name
+    if "hls_subtitle" in name or "real_dyersville_fastboot" in name:
         return
 
     async def _none(_url):
@@ -42,6 +42,10 @@ def _no_hls_subtitle_fetch(request, monkeypatch):
     monkeypatch.setattr(
         CablecastAssetFinder, "_fetch_fastboot_captions", staticmethod(_none)
     )
+    if "publicsite_captions" not in name:
+        monkeypatch.setattr(
+            CablecastAssetFinder, "_fetch_publicsite_captions", staticmethod(_none)
+        )
 
 
 PORTAL_URL = "http://detroit-vod.cablecast.tv/internetchannel/show/15323?site=1"
@@ -2026,3 +2030,126 @@ def test_chapters_to_agenda_items_skips_bad_rows():
         (92.0, 120.0, "1. Call to Order"),
         (120.0, 120.0, "2. Roll Call"),
     ]
+
+
+# WO-1987 (2026-11-26): a CablecastPublicSite show whose record says
+# `hasCaptions: true` carries an English subtitle track in its own
+# vod.m3u8. Real captures from Merrimac, MA (reflect-merrimac-access,
+# Select Board 2026-11-24). The subtitle playlist is trimmed to two of its
+# 464 real pieces (19 and 20); the pieces themselves are unedited.
+MERRIMAC_SHOW_URL = (
+    "https://reflect-merrimac-access.cablecast.tv/CablecastPublicSite/show/3794?site=1"
+)
+MERRIMAC_VOD_BASE = (
+    "https://reflect-merrimac-access.cablecast.tv/store-3/"
+    "3794-Unnamed-Record-3-11-24-2026-5-56-52-PM-v1"
+)
+
+
+def _merrimac_routes():
+    host = "https://reflect-merrimac-access.cablecast.tv"
+    return {
+        f"{host}/cablecastapi/v1/shows/3794": FakeResponse(
+            status=200,
+            text=load_fixture("cablecast", "merrimac_publicsite_show_3794.json"),
+        ),
+        f"{host}/cablecastapi/v1/vods/1710": FakeResponse(
+            status=200,
+            text=load_fixture("cablecast", "merrimac_publicsite_vod_1710.json"),
+        ),
+        # No caption file in this test, so the HLS track is read (the real
+        # station has both; they give the same cues).
+        f"{MERRIMAC_VOD_BASE}/captions.vtt": FakeResponse(status=404, text=""),
+        f"{MERRIMAC_VOD_BASE}/vod.m3u8": FakeResponse(
+            status=200, text=load_fixture("cablecast", "merrimac_vod_3794.m3u8")
+        ),
+        f"{MERRIMAC_VOD_BASE}/captions.m3u8": FakeResponse(
+            status=200,
+            text=load_fixture("cablecast", "merrimac_captions_3794.m3u8"),
+        ),
+        f"{MERRIMAC_VOD_BASE}/subtitles/captions.00019.vtt?duration=10.000": (
+            FakeResponse(
+                status=200,
+                text=load_fixture("cablecast", "merrimac_captions_00019.vtt"),
+            )
+        ),
+        f"{MERRIMAC_VOD_BASE}/subtitles/captions.00020.vtt?duration=10.000": (
+            FakeResponse(
+                status=200,
+                text=load_fixture("cablecast", "merrimac_captions_00020.vtt"),
+            )
+        ),
+    }
+
+
+async def test_resolve_real_merrimac_publicsite_show_reads_hls_subtitle_track():
+    with mock_session(_merrimac_routes()):
+        result = await CablecastAssetFinder().resolve(MERRIMAC_SHOW_URL)
+
+    assert result.title == "Select Board 11/24/2026"
+    assert result.date == "2026-11-24"
+    assert result.video_url == f"{MERRIMAC_VOD_BASE}/vod.mp4"
+    # Two-line roll-up captions (each cue repeats the line before),
+    # collapsed by dedupe_rollup_cues() to one copy of each spoken line.
+    assert [s.text for s in result.segments] == [
+        "Right Awesome. Uh, I want to",
+        "welcome everyone to the uh",
+        "select board meeting of Mayor",
+        "Mack, Massachusetts for",
+        "November 24th, 2026. The time",
+        "is 6:00 p.m. We're in Sergeant",
+    ]
+    assert result.segments[0].start == pytest.approx(195.16)
+    assert result.transcript_language == "en"
+    assert result.transcript_warnings == []
+
+
+async def test_publicsite_captions_are_not_read_without_the_captions_flag_hls_subtitle():
+    # Synthetic: the real Merrimac show record with `hasCaptions` set to
+    # false. No playlist route is registered, so a fetch would fail the
+    # test; the resolve must not try one.
+    routes = _merrimac_routes()
+    show_url = "https://reflect-merrimac-access.cablecast.tv/cablecastapi/v1/shows/3794"
+    show = json.loads(load_fixture("cablecast", "merrimac_publicsite_show_3794.json"))
+    show["show"]["hasCaptions"] = False
+    routes[show_url] = FakeResponse(status=200, text=json.dumps(show))
+    for key in [k for k in routes if k.startswith(MERRIMAC_VOD_BASE)]:
+        del routes[key]
+    with mock_session(routes):
+        result = await CablecastAssetFinder().resolve(MERRIMAC_SHOW_URL)
+    assert result.segments == []
+    assert result.transcript_warnings == ["No transcript found for this event."]
+
+
+async def test_resolve_real_harwich_show_reads_publicsite_captions_file():
+    # Real captures from Harwich, MA (reflect-harwich-18, Conservation
+    # Commission 2026-11-18). Its vod.m3u8 declares no subtitle track; the
+    # captions are only in captions.vtt next to the video. The file is
+    # trimmed to its first 6 of 1,264 real cues, otherwise unedited.
+    host = "https://reflect-harwich-18.cablecast.tv"
+    base = f"{host}/store-3/3818-Cons-Com-Nov-18-2026-v1"
+    routes = {
+        f"{host}/cablecastapi/v1/shows/3818": FakeResponse(
+            status=200,
+            text=load_fixture("cablecast", "harwich_publicsite_show_3818.json"),
+        ),
+        f"{host}/cablecastapi/v1/vods/1706": FakeResponse(
+            status=200,
+            text=load_fixture("cablecast", "harwich_publicsite_vod_1706.json"),
+        ),
+        f"{base}/captions.vtt": FakeResponse(
+            status=200,
+            text=load_fixture("cablecast", "harwich_captions_3818_head.vtt"),
+        ),
+    }
+    with mock_session(routes):
+        result = await CablecastAssetFinder().resolve(
+            f"{host}/CablecastPublicSite/show/3818?site=1"
+        )
+    assert result.date == "2026-11-18"
+    assert len(result.segments) == 6
+    # Ordinary pop-on captions: the roll-up dedupe leaves them as they are.
+    assert result.segments[3].text == (
+        "Uh, participation is possible.\nParticipation in the meeting is"
+    )
+    assert result.transcript_warnings == []

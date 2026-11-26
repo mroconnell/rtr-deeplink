@@ -17,6 +17,7 @@ from ..utils.vtt_parser import (
     decode_vtt_bytes,
     detect_language_from_texts,
     caption_text_is_sparse,
+    dedupe_rollup_cues,
     normalize_shouting_caption,
     parse_vtt,
 )
@@ -191,13 +192,29 @@ _GALLERY_EVENT_DATE_FORMAT = "%m/%d/%Y %I:%M:%S %p"
 # backend API, not something specific to this template -- but that's a
 # separate refactor question, deliberately not pursued here; this stays
 # scoped to giving the CablecastPublicSite template a working path.
-# No captions available via this API even when a show's own record says
-# `hasCaptions: true` (confirmed on Charlotte's known-transcript show:
-# the API's own `webVtt` field points at a real but empty
-# "WEBVTT FILE" response) -- unlike the Remix template's `vodTranscripts`
-# mechanism, there is no confirmed transcript source for this template at
-# all yet, so `resolve()` degrades to no-transcript honestly rather than
-# guessing at one.
+# The API's own `webVtt` field is no caption source (it points at a
+# chapters file that answers an empty "WEBVTT FILE", confirmed on
+# Charlotte's known-transcript show). But when a show's record says
+# `hasCaptions: true`, a `captions.vtt` file sits next to its `vod.mp4`,
+# and the video's own `vod.m3u8` may also declare an English subtitle
+# track (the shape the FastBoot path reads). `_fetch_publicsite_captions()`
+# reads the file first, then the track (WO-1987, 2026-11-26). Confirmed
+# live on three stations:
+#   - Merrimac, MA (reflect-merrimac-access, show 3794, Select Board
+#     2026-11-24): file and track both, the same 2,068 cues (the track in
+#     464 ten-second pieces). Two-line roll-up
+#     captions (each cue repeats the line before), which
+#     `dedupe_rollup_cues()` halves to one copy of each line (23,041 words
+#     to 11,495).
+#   - Harwich, MA (reflect-harwich-18, show 3818, Conservation Commission
+#     2026-11-18): the file only (its playlist declares no subtitle
+#     track), 1,264 ordinary two-line cues, not roll-up; the dedupe leaves
+#     them unchanged.
+#   - reflect-origin-1440 (show 868, Zoning Board of Appeals
+#     2026-11-18): 283 cues, 1,854 words.
+# 42 of Merrimac's 43 newest shows with video carry captions, 15 of
+# Harwich's 30. A show whose record says `hasCaptions: false` is not
+# read (one fewer request, and no example of captions without the flag).
 _PUBLICSITE_SHOW_ID_RE = re.compile(r"/CablecastPublicSite/show/(\d+)")
 
 # WO-344: a THIRD, genuinely different real shape -- not a different
@@ -769,6 +786,35 @@ class CablecastAssetFinder(AssetFinder):
                 video_warnings=["No video found for this meeting."],
             )
 
+        segments: List[TranscriptSegment] = []
+        transcript_language: Optional[str] = None
+        transcript_warnings: List[str] = []
+        if show.get("hasCaptions") and video_url.endswith("/vod.mp4"):
+            # The caption file next to the video, or the subtitle track
+            # in its own HLS playlist (see the module note above
+            # `_PUBLICSITE_SHOW_ID_RE`).
+            cues = await CablecastAssetFinder._fetch_publicsite_captions(video_url)
+            cues = dedupe_rollup_cues(cues) if cues else []
+            sparse, sparse_words, sparse_minutes = caption_text_is_sparse(cues)
+            if sparse:
+                transcript_warnings.append(
+                    f"The station's captions hold only {sparse_words} words "
+                    f"over {sparse_minutes:.0f} minutes, so they were not used."
+                )
+            elif cues:
+                normalize_shouting_caption(cues)
+                segments = [TranscriptSegment(**cue) for cue in cues]
+                transcript_language = detect_language_from_texts(
+                    c["text"] for c in cues
+                )
+                if transcript_language and transcript_language != TARGET_LANGUAGE:
+                    transcript_warnings.append(
+                        f"These captions appear to be in '{transcript_language}', not "
+                        f"'{TARGET_LANGUAGE}' — no matching-language track was found for this meeting."
+                    )
+        if not segments:
+            transcript_warnings.append("No transcript found for this event.")
+
         return ResolvedMeeting(
             platform=CablecastAssetFinder.platform_name,
             source_url=url,
@@ -781,9 +827,9 @@ class CablecastAssetFinder(AssetFinder):
             jurisdiction=jurisdiction,
             video_url=video_url,
             video_format=video_format,
-            # No confirmed transcript source for this template yet -- see
-            # the module-level note above _PUBLICSITE_SHOW_ID_RE.
-            transcript_warnings=["No transcript found for this event."],
+            segments=segments,
+            transcript_language=transcript_language,
+            transcript_warnings=transcript_warnings,
         )
 
     async def _resolve_watch_vod_embed(self, url: str) -> Optional[ResolvedMeeting]:
@@ -1016,6 +1062,25 @@ class CablecastAssetFinder(AssetFinder):
                 cues.append(cue)
         cues.sort(key=lambda c: c.get("start") or 0.0)
         return cues
+
+    @staticmethod
+    async def _fetch_publicsite_captions(vod_mp4_url: str) -> List[dict]:
+        """A CablecastPublicSite show's captions, from the `captions.vtt`
+        next to its `vod.mp4` (the whole track in one file), else from the
+        subtitle track its `vod.m3u8` declares. Harwich, MA has only the
+        file (its playlist declares no subtitle track); Merrimac, MA has
+        both, and they give the same cues. Returns `[]` when neither has
+        any."""
+        base = vod_mp4_url[: -len("vod.mp4")]
+        text = await CablecastAssetFinder._fetch_html(base + "captions.vtt")
+        if text and "-->" in text:
+            try:
+                cues = parse_vtt(text)
+            except Exception:  # noqa: BLE001
+                cues = []
+            if cues:
+                return cues
+        return await CablecastAssetFinder._fetch_fastboot_captions(base + "vod.m3u8")
 
     @staticmethod
     async def _fetch_publicsite_json(netloc: str, path: str) -> Optional[dict]:
