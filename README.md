@@ -1831,6 +1831,31 @@ purely additive things a signed-in visitor sees are a "Save this
 meeting"/"Save this search" button, a bookmark icon by the meeting title,
 a "My Saved Items" nav link, and a user avatar.
 
+**Since 2026-11-24 signed-out visitors see the Save buttons too** (when
+Clerk is configured). A signed-out click saves nothing: it opens a short
+box (`archive/static/signup_prompt.js`) that says what a free account
+gives you and links to `/sign-up` or `/sign-in`. After sign-up the visitor
+returns to the same page and the save they asked for runs once. Reason: GA
+showed 0 views of `/sign-up` and 0 saves in 30 days, because no signed-out
+visitor ever learned saving existed. GA events: `signup_prompt_shown`,
+`signup_prompt_click`, `signup_prompt_completed`, plus `sign_up` (an
+account created in the last 30 minutes, once per browser, from
+`shared_static/clerk_nav.js`) and `visit_start` with a 30-day visit count
+(`shared_static/visit_counter.js`).
+
+**Welcome bar for shared-moment arrivals (2026-11-24).** A signed-out
+visitor who arrives from another site on a meeting link with `t=` sees a
+bar fixed to the bottom of the window (`archive/static/welcome_bar.js`):
+"Get an email when <jurisdiction> posts a new meeting." They type an
+email, Clerk emails a 6-digit code, and the code creates a free account
+(or signs in an existing one) in place, with no password. The bar then
+saves a search for that jurisdiction, so the existing saved-search alert
+email does the rest. It relies on Clerk Production having "Sign-up with
+password" off (Ryan switched it off 2026-11-24). Anything Clerk can't
+finish in place (a second factor, a device check) falls back to
+`/sign-in` or `/sign-up`. Shown once per browser: a dismiss or a finished
+sign-up hides it for good. GA event `welcome_bar` with `step`.
+
 ### What needs an account, at a glance
 
 | Works for everyone, no sign-in | Requires a signed-in Clerk session |
@@ -1857,8 +1882,10 @@ this sits alongside.
 (This paragraph used to flag an open UX gap — the "Save this meeting"/
 "Save this search" buttons rendering for signed-out visitors. That
 premise was investigated 2026-08-13 and turned out to be **false**: both
-templates have gated on `{% if active_account %}` since the first
-accounts commits. Corrected here 2026-08-21; see `BACKLOG_DONE.md`.)
+templates gated on `{% if active_account %}` from the first accounts
+commits. Corrected here 2026-08-21; see `BACKLOG_DONE.md`. On 2026-11-24
+the buttons were shown to signed-out visitors on purpose, opening the
+free-account box rather than calling the API: see the paragraph above.)
 
 **Why Clerk, not a hand-rolled session system.** The user explicitly chose
 a third-party auth provider over building/maintaining login, sessions, and
@@ -3518,6 +3545,40 @@ this:
    `GET /admin/origin-lock-check` (admin token) returns the counts:
    `match`, `missing`, `mismatch`, and the length of the last wrong
    value. It never returns the secret.
+
+**Why the lock saw no header (found 2026-11-24).** In check-only mode,
+705 of 705 requests arrived with no `X-Origin-Auth`. The cause was DNS,
+not the app. The apex record was an A record to `216.24.57.1`.
+Render serves custom domains through its own Cloudflare account
+("Cloudflare for SaaS"). Our zone's rules apply to that traffic only
+when the record is a proxied **CNAME to `rtr-deeplink.onrender.com`**
+(Cloudflare calls this "orange-to-orange"). With an A record, apex
+traffic skipped our zone entirely: no analytics, no rules, no header.
+
+**Fixed 2026-11-24 12:22 ET.** The apex is now a proxied CNAME to
+`rtr-deeplink.onrender.com`. Rollback value: A `216.24.57.1`, proxied,
+TTL Auto. Our zone saw 0 apex requests the week before and about
+88,000 the next day.
+
+Zone rules added since (Cloudflare dashboard, not in this repo):
+
+| Rule | Type | What it does |
+|---|---|---|
+| Challenge Singapore | WAF custom rule | `ip.src.country eq "SG"`, Managed Challenge |
+| Cache feed.xml 10 min | Cache rule | `/feed.xml` on the apex, edge copy kept 10 minutes, errors not cached |
+| Rate limit 50 per 10s per IP | Rate limiting rule (the free plan's only one) | Over 50 requests in 10 seconds from one IP: blocked for 10 seconds |
+
+The rate limit covers the public domain only. A script that calls
+`redtaperecordings.com` faster than about 5 requests a second gets 429s.
+Calls to `*.onrender.com` skip Cloudflare and are not limited.
+
+**The origin lock has not been re-tested since the fix. Do not turn on
+`enforce` until check-only shows `match` climbing and `mismatch` at 0.**
+On 2026-11-15, `enforce` refused every visitor until it was rolled back.
+The Transform Rule "Origin lock header" still holds an old value that
+does not match Render's `ORIGIN_SHARED_SECRET`; set them equal first.
+See BACKLOG.md, "Re-test the origin lock now that the apex goes through
+our Cloudflare zone".
 
 **First try failed (2026-11-15).** The lock went straight to blocking.
 Requests through Cloudflare then got 403 too: the header Cloudflare sent

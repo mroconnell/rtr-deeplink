@@ -72061,3 +72061,69 @@ Every self-generated job is `PRIORITY_LOW` (the idle trickle, the batch top-up a
 
 **Not deployed when merged.** The worker and Archive services need a deploy before the emails stop.
 
+## [Done 2026-11-25] Singapore scraper: the apex now goes through our Cloudflare zone, with a Singapore challenge, a feed cache and a rate limit
+
+**What happened.** From 2026-11-11 a scraper loaded one page per visit (direct, Chrome at 1280x1200, a new IP each time, many from Alibaba Cloud). A second wave from Nov 17 was about 10 times bigger: 53.5K of 56.6K GA users in Nov 17-23 were "Singapore". The harm was speed, not cost: 5xx errors from Nov 20, a typical response time of 9.8 seconds on Nov 23, and 16 Archive restarts overnight Nov 23-24.
+
+**Root cause.** The apex record was an A record to `216.24.57.1`. Render serves custom domains through Cloudflare for SaaS, and a customer zone's rules apply only through a proxied CNAME to the Render host ("orange-to-orange"). So apex traffic skipped our zone: no analytics, no rules, no Transform Rule header. That is also why the origin lock saw 705 of 705 requests with no header.
+
+**What changed (Cloudflare dashboard, Ryan's written approval each time).**
+
+| When (ET) | Change |
+|---|---|
+| 2026-11-24 12:22 | Apex A `216.24.57.1` changed to CNAME `rtr-deeplink.onrender.com`, proxied |
+| 2026-11-24 12:23 | WAF custom rule "Challenge Singapore" (Managed Challenge) |
+| 2026-11-25 13:31 | Cache rule "Cache feed.xml 10 min" |
+| 2026-11-25 13:32 | Rate limit "Rate limit 50 per 10s per IP" (10-second block) |
+
+The feed cache and rate limit followed a second burst: "ShapBot/0.1.0" on Google Cloud sent about 41,000 requests, almost all `/feed.xml`, from 4 IPs in 90 minutes on Nov 24 night (about 30 per 10 seconds from its busiest IP). The Archive builds the feed on every request. We chose to cache the feed rather than block ShapBot.
+
+**Result.**
+
+| Measure | Before | After |
+|---|---|---|
+| GA Singapore users per day | 5,811 (Nov 23) | 5 or fewer (Nov 25, morning) |
+| Typical response time | 9.8 s (Nov 23) | 0.06 s (Nov 25) |
+| Archive restarts | 16 overnight Nov 23-24 | 3 in the following day |
+| Apex requests seen by our zone | 0 in 7 days | about 88,000 in 24 hours |
+
+"Challenge Singapore" logged 5,330 challenges in its first 24 hours, none solved. Feed test: first request a cache MISS, then HITs. Rate limit test: 80 fast requests, 52 served, 28 got 429; the home page loaded 15 seconds later.
+
+**Left open.** The origin lock is untested since the fix: see BACKLOG.md, "Re-test the origin lock now that the apex goes through our Cloudflare zone".
+
+## [Done 2026-11-25] WO-1983: the tier-3 feed dropped 594 real meetings because GitHub's runner has no ffprobe
+
+**What was looked at, and why.** The 2026-11-25 worker report read "47 chunks completed, 0 jobs finished, 0 segments", with an empty queue. Ryan asked why jobs were not finishing.
+
+**Result 1: jobs were finishing; the report's window was two days.** The chunk count is a diff against the last *successful* send. The 2026-11-24 send failed (the Archive answered with a Render error page during the Nov 23-24 restarts). So "47 chunks" covered about 50 hours, while "Jobs finished" counts only the last 24 hours. The workflow logs show the real totals:
+
+| Report | All-time chunks | All-time jobs | Jobs finished, last 24 hours |
+|---|---|---|---|
+| 2026-11-23 03:59 UTC | 67,174 | 5,281 | 2 |
+| 2026-11-24 07:05 UTC | send failed | send failed | send failed |
+| 2026-11-25 05:39 UTC | 67,221 | 5,285 | 0 |
+
+4 jobs finished between the two reports. The report now says "since the last report, N hours ago" when that gap is over 30 hours.
+
+**Result 2: the real problem is that almost nothing is being fed in.** The workers sit idle (0 active jobs every day since at least Nov 21). `feed-tier3-transcription.yml` is the main inflow, and it runs every 6 hours on GitHub's `ubuntu-latest`, which has no ffmpeg. For every direct-file line (a bare .mp3/.mp4, a Google Drive or Dropbox file, a school-board CDN file), the duration probe raised `FileNotFoundError: 'ffprobe'`. `queue_probe` reports that as "ffprobe could not read a duration from the media file", the same words as a truly dead file, so the feed dropped the line for good.
+
+| Month | Lines dropped this way |
+|---|---|
+| 2026-09 (from Sept 26) | 32 |
+| 2026-10 | 180 |
+| 2026-11 (to Nov 25) | 392 |
+
+(604 distinct URLs in the feed log; 594 of them were dropped by a GitHub-runner commit and are recovered below. The other 10 were dropped elsewhere and are left alone.)
+
+In November that was about 20 a day against about 1.5 a day fed successfully. The rest of each batch is Granicus/Cablecast lines GitHub's IPs are blocked from, which are kept in the queue (WO-1143).
+
+**What changed.**
+
+1. The workflow installs ffmpeg before feeding (same step `adapter-canary.yml` already had).
+2. `feed_tier3_auto_transcription.py` exits before touching the queue when `ffprobe` is not on PATH.
+3. The 594 dropped lines are back at the end of `scripts/tier3_auto_transcription_queue.txt`, each byte-for-byte the line the runner removed (recovered from each feed commit's own diff), written with `append_queue_line()`. One line had its `gov_id` in the source_url column (Christian County MO); it now sits in column 3.
+4. The workflow's header said RETIRED (WO-1168). It is enabled and running; the header now says so.
+
+**Caution.** Some recovered lines may really be dead. With ffprobe present the feed will probe them properly and drop those for the right reason.
+
+**Cloudflare ruled out.** The workers reach the database directly, not over HTTP. The feed makes 12 Archive requests per 6 hours, far under the 50 per 10 seconds limit, and the failed Nov 24 report was a Render error page, from before the rate limit was added.

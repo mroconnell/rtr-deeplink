@@ -85,6 +85,7 @@ hammering question.
 import asyncio
 import csv
 import os
+import shutil
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -541,6 +542,19 @@ async def main() -> None:
     if not lines:
         print("Queue is empty -- nothing left to feed. This script can be retired.")
         return
+
+    # WO-1983 (2026-11-25): refuse to run without ffprobe. Without it every
+    # direct-file line's duration probe fails with FileNotFoundError, which
+    # queue_probe reports as "ffprobe could not read a duration" -- the same
+    # words as a genuinely dead file -- so the line is dropped for good.
+    # GitHub's ubuntu-latest runner has no ffmpeg; this workflow ran without
+    # it from 2026-09-26 to 2026-11-25 and dropped 594 real queue lines that
+    # way. Stopping here leaves the queue untouched.
+    if shutil.which("ffprobe") is None:
+        sys.exit(
+            "ffprobe is not on PATH. Every direct-file line would be dropped as "
+            "dead. Install ffmpeg first (see feed-tier3-transcription.yml)."
+        )
 
     # WO-1064: this process must make no YouTube request at all, direct or
     # through an adapter (CLAUDE.md; the runbook's rule 5). Installed here,

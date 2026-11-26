@@ -817,6 +817,12 @@ function wireSaveMeetingButton() {
 
   controls.forEach((btn) => {
     btn.addEventListener('click', async () => {
+      // Signed out: show what a free account gives them instead of a
+      // silent 401 (archive/static/signup_prompt.js).
+      if (window.RTRSignupPrompt && window.RTRSignupPrompt.isSignedOut(btn)) {
+        window.RTRSignupPrompt.open({ feature: 'save_meeting', buttonId: btn.id });
+        return;
+      }
       const saved = btn.dataset.saved === 'true';
       const endpoint = saved ? '/api/account/unsave-meeting' : '/api/account/save-meeting';
       controls.forEach((el) => { el.disabled = true; });

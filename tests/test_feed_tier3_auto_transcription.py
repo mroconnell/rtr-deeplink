@@ -1138,3 +1138,16 @@ async def test_push_if_has_video_still_skips_non_cablecast_dead_link(monkeypatch
     monkeypatch.setattr(mod, "probe_queue_entry", _dead)
     outcome = await _push_if_has_video(session=None, url=url)
     assert outcome.startswith("[SKIP] reject-dead")
+
+
+async def test_main_refuses_to_run_without_ffprobe(tmp_path, monkeypatch):
+    """WO-1983: with no ffprobe on PATH every direct-file probe fails and
+    reads as a dead file, so the line is dropped. main() must stop first
+    and leave the queue file exactly as it was."""
+    queue = tmp_path / "queue.txt"
+    queue.write_text("https://example.gov/meeting.mp3\t\tus:place:0000000\n")
+    monkeypatch.setattr(_feed_tier3_mod, "QUEUE_FILE", queue)
+    monkeypatch.setattr(_feed_tier3_mod.shutil, "which", lambda name: None)
+    with pytest.raises(SystemExit):
+        await _feed_tier3_mod.main()
+    assert queue.read_text() == "https://example.gov/meeting.mp3\t\tus:place:0000000\n"
