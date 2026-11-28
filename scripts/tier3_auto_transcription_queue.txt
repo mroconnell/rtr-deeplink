@@ -295,18 +295,6 @@ https://vimeo.com/1233006487		us:place:2018250
 https://vimeo.com/1233494766		us:place:2633420
 https://vimeo.com/1231005435		us:place:2970000
 https://player.vimeo.com/video/784792836?h=e33e8fbaac&byline=0		us:county:13247
-https://www.st-isidore-clifton.qc.ca/app/uploads/2026/09/Audio-14-septembre-2026-partie-2.mp3	https://www.st-isidore-clifton.qc.ca/democratie/seances-du-conseil/	ca:csd:2441012	Saint-Isidore-de-Clifton (Québec) — Séances du conseil : Audio 14 septembre 2026 partie 2 (enregistrement audio)	2026-09-14	Conseil municipal
-http://www.ste-perpetue.ca/wp-content/uploads/2022/01/Conseil-10-janvier-2022.m4a	https://www.ste-perpetue.ca/proces-verbaux/	ca:csd:2450050	Sainte-Perpétue (Québec) — Procès-verbaux : Conseil 10 janvier 2022 (enregistrement audio)	2022-01-10	Conseil municipal
-https://www.municipalite.saint-modeste.qc.ca/documents/videos/seance_du_conseil/3-seance_extra_15_juin_2020_video.mp4	https://municipalite.saint-modeste.qc.ca/vie_democratique/?id=enregistrements_seances_du_conseil	ca:csd:2412020	Saint-Modeste (Québec) — Enregistrements séances du conseil : 3 seance extra 15 juin 2020 video (enregistrement vidéo)	2020-06-15	Conseil municipal
-https://saintjoachim.qc.ca/wp-content/uploads/video1575840054.mp4	https://saintjoachim.qc.ca/administration-municipale/proces-verbaux/	ca:csd:2421020	Saint-Joachim (Québec) — Procès-verbaux (enregistrement vidéo)		Conseil municipal
-http://municipalite.saint-paul-de-la-croix.qc.ca/documents/autres/2024/240109_0114.MP3	https://municipalite.saint-paul-de-la-croix.qc.ca/vie_democratique/?id=crx-enregistrements_seances_du_conseil	ca:csd:2412035	Saint-Paul-de-la-Croix (Québec) — Enregistrements séances du conseil (enregistrement audio)		Conseil municipal
-https://st-remi-de-tingwick.qc.ca/wp-content/uploads/2023/01/2023_07_04_19_00_53.mp3	https://st-remi-de-tingwick.qc.ca/administration/seances-du-conseil/	ca:csd:2439020	Saint-Rémi-de-Tingwick (Québec) — Séances du conseil (enregistrement audio)		Conseil municipal
-https://sfxb.qc.ca/wp-content/uploads/2026/01/2026-01-12-Seance-extra-B2026.mp3	https://sfxb.qc.ca/vie-municipale/seances-du-conseil/	ca:csd:2442020	Saint-François-Xavier-de-Brompton (Québec) — Séances du conseil : 2026 01 12 Seance extra B2026 (enregistrement audio)	2026-01-12	Conseil municipal
-https://www.barnston-ouest.ca/upload/documents/Proces-verbaux/Conseil Janvier  2022.m4a	https://www.barnston-ouest.ca/fr/municipalite/proces-verbaux.php	ca:csd:2444045
-https://www.bouchette.ca/fichiersUpload/fichiers/20260202130101-nouvel-enregistrement-15.m4a	https://www.bouchette.ca/fr/conseil-municipal/proces-verbaux-et-ordres-du-jour/	ca:csd:2483050
-https://www.chesterville.net/fichiersUpload/fichiers/20211103141902-2021-pv-seance-ordinaire-du-7-juin-audio.m4a	https://www.chesterville.net/fr/municipalite/vie-municipale/seances-du-conseil/	ca:csd:2439030
-https://www.municipalite.duhamel.qc.ca/public_upload/images/10. 15 mai 2026.m4a	https://www.municipalite.duhamel.qc.ca/fr/municipalite/Conseil-municipal/seances-du-conseil	ca:csd:2480135
-https://www.egan-sud.ca/images/proces-verbaux/pv_2020-10-07.m4a	https://www.egan-sud.ca/index.php/conseil/proces-verbaux-et-ordres-du-jour	ca:csd:2483075
 https://www.kazabazua.ca/images/2024/PV_-_MINUTES/240604_0110.MP3	https://www.kazabazua.ca/index.php/fr/hotel-de-ville/proces-verbaux	ca:csd:2483015
 https://www.lepiphanie.ca/video/Seance-extraordinaire-Reglements-durbanisme-20250317_163152-Enregistrement-de-la-reunion.mp4	https://www.lepiphanie.ca/seance-du-conseil	ca:csd:2460037
 https://www.lowquebec.ca/fichiersUpload/fichiers/20230914191809-pv-2023-09-05.mp3	https://www.lowquebec.ca/fr/municipalite/vie-municipale/proces-verbaux-et-ordre-du-jour/	ca:csd:2483010
